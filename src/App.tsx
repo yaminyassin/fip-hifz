@@ -10,19 +10,6 @@ function App() {
   const docId = "counterDoc"; // Define a constant document ID
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const docRef = doc(firestore, "count", docId);
-        await setDoc(docRef, { counter: count });
-        console.log("Document written with ID: ", docRef.id);
-      } catch (e) {
-        console.error("Error adding document: ", e);
-      }
-    };
-    fetchData();
-  }, [count]);
-
-  useEffect(() => {
     const docRef = doc(firestore, "count", docId);
     const unsubscribe = onSnapshot(docRef, (doc) => {
       if (doc.exists()) {
