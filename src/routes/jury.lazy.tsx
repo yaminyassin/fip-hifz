@@ -5,6 +5,7 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useParticipant } from "@/hooks/useParticipant";
 import { useScores } from "@/hooks/useScores";
+import { QuranViewer } from "@/components/ui/quran-viewer";
 
 export const Route = createLazyFileRoute("/jury")({
   component: RouteComponent,
@@ -18,9 +19,11 @@ function RouteComponent() {
   const [selectedQuestion, setSelectedQuestion] = useState(1);
   const { data: participant } = useParticipant(participantId);
 
+  const currentPage = participant?.assignedQuestions[selectedQuestion - 1];
+
   return (
     <div className="flex flex-row bg-gray-400">
-      <div className="flex flex-col w-2/3">
+      <div className="flex flex-col w-4/6">
         <div className="p-4 space-y-4 flex-grow">
           <h2 className="text-2xl font-bold mb-4">
             Question {participant?.assignedQuestions[selectedQuestion - 1]}
@@ -49,33 +52,32 @@ function RouteComponent() {
             question={selectedQuestion}
             category="Fluency"
           />
-        </div>
-
-        {/* Bottom Navigation Bar */}
-        <div className="flex flex-row items-center bg-gray-300 p-4 gap-4 mt-auto">
-          <div className="flex flex-row gap-4">
-            {[1, 2, 3].map((q) => (
-              <Button
-                key={q}
-                className={`h-12 w-20 rounded-lg  text-white font-bold transition-colors`}
-                onClick={() => setSelectedQuestion(q)}
-              >
-                Q{q}
-              </Button>
-            ))}
+          {/* Bottom Navigation Bar */}
+          <div className="flex flex-row items-center bg-gray-300 p-4 gap-4 mt-auto">
+            <div className="flex flex-row gap-4">
+              {[1, 2, 3].map((q) => (
+                <Button
+                  key={q}
+                  className={`h-12 w-20 rounded-lg  text-white font-bold transition-colors`}
+                  onClick={() => setSelectedQuestion(q)}
+                >
+                  Q{q}
+                </Button>
+              ))}
+            </div>
+            <div className="flex-grow" />
+            <Button
+              className="h-12 px-6 rounded-lg bg-green-600 text-white font-bold hover:bg-green-500 transition-colors"
+              // onClick={handleSubmit}
+            >
+              Done
+            </Button>
           </div>
-          <div className="flex-grow" />
-          <Button
-            className="h-12 px-6 rounded-lg bg-green-600 text-white font-bold hover:bg-green-500 transition-colors"
-            // onClick={handleSubmit}
-          >
-            Done
-          </Button>
         </div>
       </div>
 
-      <div className="flex flex-col w-1/3 bg-red-900">
-        <h1>Quran pdf</h1>
+      <div className="flex flex-col w-2/6">
+        <QuranViewer pageNumber={currentPage} />
       </div>
     </div>
   );
