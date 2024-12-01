@@ -1,7 +1,7 @@
 import { firestore } from "@/main";
 import { Participant } from "@/models/models";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, onSnapshot } from "firebase/firestore";
 
 type UpdateQuestionParams = {
   participantId: string;
@@ -19,17 +19,43 @@ const updateParticipantQuestions = async ({
   });
 };
 
-const getParticipant = async (participantId: string) => {
+const getParticipant = async (
+  participantId: string,
+  onChange: (data: Participant) => void
+) => {
   const participantRef = doc(firestore, "participants", participantId);
-  const participantSnap = await getDoc(participantRef);
-  if (!participantSnap.exists()) throw new Error("Participant not found");
-  return participantSnap.data() as Participant;
+
+  const unsubscribe = onSnapshot(participantRef, (doc) => {
+    if (!doc.exists()) {
+      throw new Error("Participant not found");
+    }
+    onChange(doc.data() as Participant);
+  });
+
+  return unsubscribe;
 };
 
 export const useParticipant = (participantId: string) => {
   return useQuery({
-    queryKey: ["participant", participantId],
-    queryFn: () => getParticipant(participantId),
+    queryKey: ["participants", participantId],
+    queryFn: () =>
+      new Promise<Participant>((resolve, reject) => {
+        const participantRef = doc(firestore, "participants", participantId);
+        const unsubscribe = onSnapshot(
+          participantRef,
+          (doc) => {
+            if (!doc.exists()) {
+              reject(new Error("Participant not found"));
+              return;
+            }
+            resolve(doc.data() as Participant);
+          },
+          reject
+        );
+
+        // Cleanup subscription on abort
+        return () => unsubscribe();
+      }),
   });
 };
 
