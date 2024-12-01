@@ -5,7 +5,7 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useParticipant } from "@/hooks/useParticipant";
 import { useScores } from "@/hooks/useScores";
-import { QuranViewer } from "@/components/ui/quran-viewer";
+import { QuranViewer } from "@/components/ui/QuranViewer";
 
 export const Route = createLazyFileRoute("/jury")({
   component: RouteComponent,
