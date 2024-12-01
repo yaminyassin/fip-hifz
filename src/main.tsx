@@ -1,16 +1,15 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import App from "./App.tsx";
+import { RouterProvider, createRouter } from "@tanstack/react-router";
+import { routeTree } from "./routeTree.gen";
+
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyBXU4Jv-lSCp4IfeBPINGVmYJd3fs9ya5U",
   authDomain: "fip-hifz.firebaseapp.com",
@@ -18,16 +17,30 @@ const firebaseConfig = {
   storageBucket: "fip-hifz.firebasestorage.app",
   messagingSenderId: "38455279748",
   appId: "1:38455279748:web:2b3595c3409052f17882d1",
-  measurementId: "G-84RZXSQMN8",
+  measurementId: "G-84RZXSQMN8", // measurementId is optional
 };
 
-// Initialize Firebase
+// firebase setup
 const app = initializeApp(firebaseConfig);
 getAnalytics(app);
 export const firestore = getFirestore(app);
 
+// TanStackRouter setup
+
+const router = createRouter({ routeTree });
+const client = new QueryClient();
+
+// Register the router instance for type safety
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: typeof router;
+  }
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <QueryClientProvider client={client}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
   </StrictMode>
 );

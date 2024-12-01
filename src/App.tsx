@@ -1,6 +1,4 @@
 import "./App.css";
-import { Button } from "./components/ui/button";
-import { Label } from "./components/ui/label";
 import { doc, setDoc, onSnapshot } from "firebase/firestore";
 import { firestore } from "./main";
 import { useEffect, useState } from "react";
@@ -31,18 +29,7 @@ function App() {
     }
   };
 
-  return (
-    <div className="flex justify-center">
-      <div className="flex gap-8 flex-col">
-        <Button size="lg" onClick={handleIncrement}>
-          press to increment
-        </Button>
-        <div className="flex text-center justify-center">
-          <Label>{count}</Label>
-        </div>
-      </div>
-    </div>
-  );
+  return <div className="flex justify-center"></div>;
 }
 
 export default App;
