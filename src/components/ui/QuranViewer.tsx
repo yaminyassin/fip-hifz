@@ -59,6 +59,7 @@ export function QuranViewer({ pageNumber }: QuranViewerProps) {
       <img
         src={`data:image/png;base64,${pageData.page}`}
         alt={`Quran page ${pageNumber}`}
+        onLoad={handleContainerResize}
         style={{
           maxWidth: imageWidth,
           maxHeight: imageHeight,
