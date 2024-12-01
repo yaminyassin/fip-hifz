@@ -1,6 +1,6 @@
 // src/services/scores.ts
+import { firestore } from "@/main";
 import { doc, setDoc } from "firebase/firestore";
-import { firestore } from "@/lib/firebase"; // Move firebase config to lib
 
 interface Score {
   juryId: string;
