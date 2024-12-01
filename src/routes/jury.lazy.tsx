@@ -1,6 +1,6 @@
 import { Button } from "@/components/shadcn/button";
 import { Label } from "@/components/shadcn/label";
-import { Scoring } from "@/components/ui/scoring";
+import { ScoreInput } from "@/components/ui/ScoreInput";
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useParticipant } from "@/hooks/useParticipant";
@@ -109,7 +109,7 @@ const ScoreCategory = ({
         {labels.map((label) => {
           const scoreKey = `${category}_${label.replace(/\s+/g, "")}`;
           return (
-            <Scoring
+            <ScoreInput
               key={`${category}-${label}`}
               label={label}
               juryId={juryId}

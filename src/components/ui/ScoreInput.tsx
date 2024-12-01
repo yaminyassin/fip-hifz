@@ -15,7 +15,7 @@ type ScoringProps = {
   initialScore?: number;
 };
 
-export const Scoring = (props: ScoringProps) => {
+export const ScoreInput = (props: ScoringProps) => {
   const {
     label,
     juryId,
