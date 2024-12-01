@@ -1,6 +1,6 @@
 import { firestore } from "@/main";
 import { Participant } from "@/models/models";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { doc, updateDoc, onSnapshot } from "firebase/firestore";
 
 type UpdateQuestionParams = {
@@ -20,6 +20,8 @@ const updateParticipantQuestions = async ({
 };
 
 export const useParticipant = (participantId: string) => {
+  const queryClient = useQueryClient();
+
   return useQuery({
     queryKey: ["participants", participantId],
     queryFn: () =>
@@ -32,14 +34,18 @@ export const useParticipant = (participantId: string) => {
               reject(new Error("Participant not found"));
               return;
             }
-            resolve(doc.data() as Participant);
+            const data = doc.data() as Participant;
+            // Update cache in real-time
+            queryClient.setQueryData(["participants", participantId], data);
+            resolve(data);
           },
           reject
         );
 
-        // Cleanup subscription on abort
+        // Cleanup subscription when query is unmounted
         return () => unsubscribe();
       }),
+    staleTime: Infinity, // Keep the data fresh since we're using real-time updates
   });
 };
 
