@@ -1,7 +1,7 @@
 import { firestore } from "@/main";
 import { Participant } from "@/models/models";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { doc, getDoc, updateDoc, onSnapshot } from "firebase/firestore";
+import { doc, updateDoc, onSnapshot } from "firebase/firestore";
 
 type UpdateQuestionParams = {
   participantId: string;
@@ -17,22 +17,6 @@ const updateParticipantQuestions = async ({
     assignedQuestions: questions,
     updatedAt: new Date().toISOString(),
   });
-};
-
-const getParticipant = async (
-  participantId: string,
-  onChange: (data: Participant) => void
-) => {
-  const participantRef = doc(firestore, "participants", participantId);
-
-  const unsubscribe = onSnapshot(participantRef, (doc) => {
-    if (!doc.exists()) {
-      throw new Error("Participant not found");
-    }
-    onChange(doc.data() as Participant);
-  });
-
-  return unsubscribe;
 };
 
 export const useParticipant = (participantId: string) => {
