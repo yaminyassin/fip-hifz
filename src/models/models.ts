@@ -25,3 +25,9 @@ export type Record = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type Quran = {
+  filename: string;
+  page: string;
+  timestamp: string;
+};
