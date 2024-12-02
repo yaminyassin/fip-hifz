@@ -54,7 +54,7 @@ export function QuranViewer({ pageNumber }: QuranViewerProps) {
   return (
     <div
       ref={containerRef}
-      className="flex items-center justify-center w-full h-full bg-white overflow-hidden"
+      className="flex items-center justify-center bg-slate-300 border-x-2 border-slate-800 p-1"
     >
       <img
         src={`data:image/png;base64,${pageData.page}`}
@@ -64,9 +64,9 @@ export function QuranViewer({ pageNumber }: QuranViewerProps) {
           maxWidth: imageWidth,
           maxHeight: imageHeight,
           width: "auto",
-          height: "auto",
+          height: "800px",
         }}
-        className="object-contain"
+        className="object-contain "
       />
     </div>
   );

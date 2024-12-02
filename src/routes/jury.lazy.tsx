@@ -22,7 +22,7 @@ function RouteComponent() {
   const currentPage = participant?.assignedQuestions[selectedQuestion - 1];
 
   return (
-    <div className="flex flex-row bg-gray-400">
+    <div className="flex flex-row bg-gray-400 px-4">
       <div className="flex flex-col w-4/6">
         <div className="p-4 space-y-4 flex-grow">
           <h2 className="text-2xl font-bold mb-4">
