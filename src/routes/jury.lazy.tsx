@@ -103,7 +103,7 @@ const ScoreCategory = ({
   const { data: scores } = useScores(participantId, juryId, question);
 
   return (
-    <div className="flex flex-col bg-red-300 p-4 items-start gap-y-2">
+    <div className="flex flex-col bg-slate-300 p-4 items-start gap-y-2">
       <Label className="text-2xl">{title}</Label>
       <div className="flex flex-row justify-evenly w-2/3">
         {labels.map((label) => {
