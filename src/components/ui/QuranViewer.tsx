@@ -1,5 +1,6 @@
 import { useQuranPage } from "@/hooks/useQuranPage";
 import { useRef, useState, useEffect } from "react";
+import { Label } from "../shadcn/label";
 
 type QuranViewerProps = {
   pageNumber?: number;
@@ -54,20 +55,23 @@ export function QuranViewer({ pageNumber }: QuranViewerProps) {
   return (
     <div
       ref={containerRef}
-      className="flex items-center justify-center bg-slate-300 border-x-2 border-slate-800 p-1"
+      className="flex flex-col items-center justify-center bg-slate-300 border-2 border-slate-800 p-1"
     >
-      <img
-        src={`data:image/png;base64,${pageData.page}`}
-        alt={`Quran page ${pageNumber}`}
-        onLoad={handleContainerResize}
-        style={{
-          maxWidth: imageWidth,
-          maxHeight: imageHeight,
-          width: "auto",
-          height: "800px",
-        }}
-        className="object-contain "
-      />
+      <Label className="pb-2"> Question {pageNumber} </Label>
+      <div className="border-2 border-slate-800">
+        <img
+          src={`data:image/png;base64,${pageData.page}`}
+          alt={`Quran page ${pageNumber}`}
+          onLoad={handleContainerResize}
+          style={{
+            maxWidth: imageWidth,
+            maxHeight: imageHeight,
+            width: "auto",
+            height: "800px",
+          }}
+          className="object-contain "
+        />
+      </div>
     </div>
   );
 }
