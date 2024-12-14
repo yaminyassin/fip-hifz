@@ -4,6 +4,12 @@ export type Participant = {
   age: number;
   country: string;
   category: string;
+  school: string;
+  scheduled: string;
+  isDone: boolean;
+  flag: string;
+  parentsName: string;
+  phoneNum: string;
   assignedQuestions: number[]; // Array of 3 random numbers between 1-600
   createdAt: string;
 };
