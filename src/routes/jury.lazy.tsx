@@ -26,7 +26,8 @@ function RouteComponent() {
       <div className="flex flex-col w-4/6">
         <div className="p-4 space-y-4 flex-grow">
           <h2 className="text-2xl font-bold mb-4">
-            Question {participant?.assignedQuestions[selectedQuestion - 1]}
+            Question {selectedQuestion} - Page
+            {participant?.assignedQuestions[selectedQuestion - 1]}
           </h2>
           <ScoreCategory
             title="Hifz"
