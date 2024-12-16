@@ -4,6 +4,7 @@ import { ParticipantBanner } from "@/components/ui/ParticipantBanner";
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useUpdateParticipantQuestions } from "@/hooks/useParticipant";
+import { Card, CardContent } from "@/components/shadcn/card";
 
 const RandomNumber = ({ number, index }: { number: number; index: number }) => {
   const [displayNumber, setDisplayNumber] = useState(number);
@@ -25,18 +26,18 @@ const RandomNumber = ({ number, index }: { number: number; index: number }) => {
   }, [number]);
 
   return (
-    <div className="flex flex-col gap-y-2">
-      <div className="text-4xl">Question {index}</div>
-      <div
-        className={
-          "flex justify-center self-center w-24 h-12 border-2 rounded-sm border-gray-800"
-        }
-      >
-        <Label className="flex flex-col text-center justify-center text-2xl">
-          {displayNumber === 0 ? "" : displayNumber}
-        </Label>
-      </div>
-    </div>
+    <Card className="w-auto h-auto flex flex-col items-center justify-center bg-card/50 shadow-md">
+      <CardContent className="flex flex-col items-center justify-center p-6 space-y-4">
+        <div className="text-4xl font-medium text-muted-foreground">
+          Question {index}
+        </div>
+        <div className="flex items-center justify-center w-32 h-16 border-2 rounded-lg border-primary/20 bg-background/50 shadow-sm">
+          <Label className="text-3xl font-bold">
+            {displayNumber === 0 ? "" : displayNumber}
+          </Label>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
@@ -71,17 +72,27 @@ const RouteComponent = () => {
   };
 
   return (
-    <div className="flex flex-col gap-y-4 justify-center items-center bg-green-200">
-      <ParticipantBanner />
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted">
+      <div className="container mx-auto p-6 flex flex-col justify-center gap-12">
+        <ParticipantBanner />
 
-      <div className="flex flex-row gap-x-20">
-        <RandomNumber number={random1} index={1} />
-        <RandomNumber number={random2} index={2} />
-        <RandomNumber number={random3} index={3} />
+        <Card className="flex-1 flex flex-col items-center justify-center gap-12 bg-card/50 backdrop-blur-sm p-8">
+          <div className="flex flex-row gap-x-24">
+            <RandomNumber number={random1} index={1} />
+            <RandomNumber number={random2} index={2} />
+            <RandomNumber number={random3} index={3} />
+          </div>
+
+          <Button
+            className="w-1/2"
+            onClick={handlePress}
+            size="lg"
+            variant="default"
+          >
+            Generate Questions
+          </Button>
+        </Card>
       </div>
-      <Button className="flex w-1/2" onClick={handlePress} size="lg">
-        <Label className="text-xl">Generate Questions</Label>
-      </Button>
     </div>
   );
 };
