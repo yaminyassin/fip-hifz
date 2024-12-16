@@ -6,6 +6,7 @@ import {
   TableHeader,
   TableRow,
 } from "../shadcn/table";
+import { Card } from "../shadcn/card";
 
 interface Participant {
   name: string;
@@ -25,38 +26,30 @@ const participants: Participant[] = [
 
 export const ParticipantBanner = () => {
   return (
-    <div className="rounded-md border bg-black shadow-sm">
+    <Card className="w-full shadow-lg bg-card/50 backdrop-blur-sm">
       <Table>
         <TableHeader>
-          <TableRow className="bg-black hover:bg-black">
-            <TableHead className="font-semibold text-white">Name</TableHead>
-            <TableHead className="font-semibold text-white">Age</TableHead>
-            <TableHead className="font-semibold text-white">Country</TableHead>
-            <TableHead className="font-semibold text-white">Category</TableHead>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className="font-semibold">Name</TableHead>
+            <TableHead className="font-semibold">Age</TableHead>
+            <TableHead className="font-semibold">Country</TableHead>
+            <TableHead className="font-semibold">Category</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {participants.map((participant) => (
             <TableRow
               key={participant.name}
-              className="bg-zinc-900 hover:bg-zinc-800 transition-colors"
+              className="hover:bg-muted/50 transition-colors"
             >
-              <TableCell className="font-medium p-4 text-white">
-                {participant.name}
-              </TableCell>
-              <TableCell className="p-4 text-white">
-                {participant.age}
-              </TableCell>
-              <TableCell className="p-4 text-white">
-                {participant.country}
-              </TableCell>
-              <TableCell className="p-4 text-white">
-                {participant.category}
-              </TableCell>
+              <TableCell className="font-medium">{participant.name}</TableCell>
+              <TableCell>{participant.age}</TableCell>
+              <TableCell>{participant.country}</TableCell>
+              <TableCell>{participant.category}</TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-    </div>
+    </Card>
   );
 };
