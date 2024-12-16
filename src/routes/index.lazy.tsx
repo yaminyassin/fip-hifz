@@ -22,6 +22,12 @@ const Home = () => {
         <Button variant="secondary" onClick={() => navigation({ to: "/jury" })}>
           Jury
         </Button>
+        <Button
+          variant="secondary"
+          onClick={() => navigation({ to: "/participants" })}
+        >
+          Participant List
+        </Button>
       </div>
     </div>
   );
