@@ -7,24 +7,27 @@ import {
   TableRow,
 } from "../shadcn/table";
 import { Card } from "../shadcn/card";
-
-interface Participant {
-  name: string;
-  age: number;
-  country: string;
-  category: string;
-}
-
-const participants: Participant[] = [
-  {
-    name: "YAMIN",
-    age: 25,
-    country: "Pakistan",
-    category: "Hifz",
-  },
-];
+import { useActiveParticipant } from "@/hooks/useActiveParticipant";
 
 export const ParticipantBanner = () => {
+  const { data: activeParticipant, isLoading, error } = useActiveParticipant();
+
+  if (isLoading) {
+    return (
+      <Card className="w-full shadow-lg bg-card/50 backdrop-blur-sm p-4">
+        <div className="text-center text-muted-foreground">Loading participant data...</div>
+      </Card>
+    );
+  }
+
+  if (error || !activeParticipant) {
+    return (
+      <Card className="w-full shadow-lg bg-card/50 backdrop-blur-sm p-4">
+        <div className="text-center text-muted-foreground">No active participant found</div>
+      </Card>
+    );
+  }
+
   return (
     <Card className="w-full shadow-lg bg-card/50 backdrop-blur-sm">
       <Table>
@@ -37,17 +40,12 @@ export const ParticipantBanner = () => {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {participants.map((participant) => (
-            <TableRow
-              key={participant.name}
-              className="hover:bg-muted/50 transition-colors"
-            >
-              <TableCell className="font-medium">{participant.name}</TableCell>
-              <TableCell>{participant.age}</TableCell>
-              <TableCell>{participant.country}</TableCell>
-              <TableCell>{participant.category}</TableCell>
-            </TableRow>
-          ))}
+          <TableRow className="hover:bg-muted/50 transition-colors">
+            <TableCell className="font-medium">{activeParticipant.name}</TableCell>
+            <TableCell>{activeParticipant.age}</TableCell>
+            <TableCell>{activeParticipant.country}</TableCell>
+            <TableCell>{activeParticipant.category}</TableCell>
+          </TableRow>
         </TableBody>
       </Table>
     </Card>
