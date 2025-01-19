@@ -6,7 +6,9 @@ import { doc, updateDoc, onSnapshot } from "firebase/firestore";
 export const useParticipant = () => {
   const queryClient = useQueryClient();
 
-  const participantId = getCurrentParticipantId();
+  const participantId = "";
+
+  getCurrentParticipantId();
 
   return useQuery({
     queryKey: ["participants", participantId],
@@ -57,4 +59,6 @@ export const useUpdateParticipantQuestions = () => {
   });
 };
 
-const getCurrentParticipantId = () => {};
+const getCurrentParticipantId = () => {
+  //QUERY para ir buscar o currentParticipant (isActive: true)
+};
