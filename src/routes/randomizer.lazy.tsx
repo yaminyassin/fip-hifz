@@ -5,6 +5,7 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useUpdateParticipantQuestions } from "@/hooks/useParticipant";
 import { Card, CardContent } from "@/components/shadcn/card";
+import { useActiveParticipant } from "@/hooks/useActiveParticipant";
 
 const RandomNumber = ({ number, index }: { number: number; index: number }) => {
   const [displayNumber, setDisplayNumber] = useState(number);
@@ -47,8 +48,14 @@ const RouteComponent = () => {
   const [random3, setRandom3] = useState(0);
 
   const updateQuestions = useUpdateParticipantQuestions();
+  const { data: activeParticipant } = useActiveParticipant();
 
   const handlePress = () => {
+    if (!activeParticipant) {
+      console.error("No active participant found");
+      return;
+    }
+
     // Reset to 0 to trigger rolling animation
     setRandom1(0);
     setRandom2(0);
@@ -65,7 +72,7 @@ const RouteComponent = () => {
 
       // Update Firestore after all numbers are set
       updateQuestions.mutate({
-        participantId: "current-participant-id",
+        participantId: activeParticipant.id,
         questions: [final1, final2, final3],
       });
     }, 1500);
