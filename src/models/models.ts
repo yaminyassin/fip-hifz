@@ -51,6 +51,7 @@ export type Participant = {
   school: string;
   scheduled: string; // ?
   isDone: boolean;
+  isActive: boolean;
   flag: string; // flag symbol of the country
   parentsName: string;
   phoneNum: string;
