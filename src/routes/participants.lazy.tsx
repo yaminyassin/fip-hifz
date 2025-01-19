@@ -1,10 +1,11 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { ParticipantsTable } from "@/components/ui/ParticipantsTable";
 import { FloatingParticipantList } from "@/components/ui/FloatingParticipantList";
-import { MachineContext } from "../machines";
+
 import { Input } from "@/components/shadcn/input";
 import { Search } from "lucide-react";
 import { useState } from "react";
+import { useParticipants } from "@/hooks/useParticipants";
 
 export const Route = createLazyFileRoute("/participants")({
   component: RouteComponent,
@@ -12,16 +13,15 @@ export const Route = createLazyFileRoute("/participants")({
 
 function RouteComponent() {
   const [searchQuery, setSearchQuery] = useState("");
-  const participants = MachineContext.useSelector(
-    (state) => state.context.participants
+  const { data: participants = [], isLoading } = useParticipants();
+
+  const filteredParticipants = participants.filter((participant) =>
+    participant.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredParticipants = participants.filter(
-    (participant) =>
-      participant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      participant.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      participant.country.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -43,7 +43,7 @@ function RouteComponent() {
           <ParticipantsTable participants={filteredParticipants} />
         </div>
 
-        <FloatingParticipantList participants={participants} />
+        <FloatingParticipantList participants={filteredParticipants} />
       </div>
     </div>
   );
