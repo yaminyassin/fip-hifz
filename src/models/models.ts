@@ -1,3 +1,5 @@
+import { Timestamp } from "firebase/firestore";
+
 export type Quran = {
   filename: string;
   page: string;
@@ -7,7 +9,7 @@ export type Quran = {
 /**
  * the judge evaluation of the participant
  */
-export type QuestionScore = {
+export type QuestionFields = {
   hifz_reminder: number;
   hifz_assitance: number;
   tajweed_minor: number;
@@ -15,33 +17,16 @@ export type QuestionScore = {
   fluency: number;
 };
 
-/**
- * Question number:string -> result:QuestionScore
- */
-export type Results = Map<string, QuestionScore>;
+export type Scores = {
+  id: string; // Format: `${participantId}_${juryId}_${questionNumber}`
+  participantId: string;
+  juryId: string;
+  questionNumber: number;
+  scores: QuestionFields;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+};
 
-/**
- * id: string -> Results
- */
-export type scores = Map<string, Results>;
-
-/**
- * {
- *  Judge 1 : {
- *    Question X : {
- *      hifz_reminder: 1,
- *      hifz_assitance: 2,
- *      ...
- *    },
- *    Question Y : {
- *     hifz_reminder: 1,
- *     ...
- *    }
- *    ...
- *  Judge 2 ...
- * }
- *
- */
 export type Participant = {
   id: string;
   name: string;
@@ -56,28 +41,9 @@ export type Participant = {
   parentsName: string;
   phoneNum: string;
   assignedQuestions: number[]; // Array of 3 random numbers between 1-600
-  scores: scores;
 };
 
-/**
- * {
- *  Participant 1 : {
- *    Question X : {
- *      hifz_reminder: 1,
- *      hifz_assitance: 2,
- *      ...
- *    },
- *    Question Y : {
- *     hifz_reminder: 1,
- *     ...
- *    }
- *    ...
- *  Participant 2 ...
- * }
- *
- */
 export type Jury = {
   id: string;
   name: string;
-  scores: Results;
 };

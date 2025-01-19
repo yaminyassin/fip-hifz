@@ -7,4 +7,4 @@ export const useActiveParticipant = () => {
     queryFn: getCurrentParticipantFromFirestore,
     staleTime: 1000 * 60, // Consider data fresh for 1 minute
   });
-}; 
+};
