@@ -1,4 +1,4 @@
-import { Participant } from "@/models/models";
+import { Participant, QuestionFields } from "@/models/models";
 import {
   Table,
   TableBody,
@@ -8,13 +8,19 @@ import {
   TableRow,
 } from "@/components/shadcn/table";
 
+type ParticipantWithScores = Participant & {
+  questionScores: {
+    [key: number]: QuestionFields;
+  };
+};
+
 interface ParticipantsTableProps {
-  participants: Participant[];
+  participants: ParticipantWithScores[];
 }
 
 export const ParticipantsTable = ({ participants }: ParticipantsTableProps) => {
   return (
-    <div className="rounded-md border">
+    <div className="rounded-md border overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
@@ -25,30 +31,41 @@ export const ParticipantsTable = ({ participants }: ParticipantsTableProps) => {
             <TableHead>School</TableHead>
             <TableHead>Schedule</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>other</TableHead>
+            <TableHead>Q1 Total</TableHead>
+            <TableHead>Q2 Total</TableHead>
+            <TableHead>Q3 Total</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {participants.map((participant) => (
-            <TableRow key={participant.id}>
-              <TableCell>{participant.name}</TableCell>
-              <TableCell>{participant.age}</TableCell>
-              <TableCell>{participant.country}</TableCell>
-              <TableCell>{participant.category}</TableCell>
-              <TableCell>{participant.school}</TableCell>
-              <TableCell>{participant.scheduled}</TableCell>
-              <TableCell>
-                {participant.isDone ? "Complete" : "Pending"}
-              </TableCell>
-              <TableCell>
-                <img
-                  src={"https://placeholder.pics/svg/500"}
-                  alt={participant.name}
-                  className="w-12 h-1 rounded-10"
-                />
-              </TableCell>
-            </TableRow>
-          ))}
+          {participants.map((participant) => {
+            const getQuestionTotal = (questionNumber: number) => {
+              const scores = participant.questionScores[questionNumber];
+              if (!scores) return 0;
+              return Object.values(scores).reduce(
+                (sum, score) => sum + score,
+                0
+              );
+            };
+
+            return (
+              <TableRow key={participant.id}>
+                <TableCell>{participant.name}</TableCell>
+                <TableCell>{participant.age}</TableCell>
+                <TableCell>{participant.country}</TableCell>
+                <TableCell>{participant.category}</TableCell>
+                <TableCell>{participant.school}</TableCell>
+                <TableCell>{participant.scheduled}</TableCell>
+                <TableCell>
+                  {participant.isDone ? "Complete" : "Pending"}
+                </TableCell>
+                {participant.assignedQuestions.map((questionNumber) => (
+                  <TableCell key={questionNumber}>
+                    {getQuestionTotal(questionNumber)}
+                  </TableCell>
+                ))}
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>
