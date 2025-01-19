@@ -61,7 +61,7 @@ const Home = () => {
       title: "Results",
       description: "Competition results",
       icon: BookOpen,
-      className: "md:col-span-2 row-span-1",
+      className: "md:col-span-3 row-span-1",
     },
   ];
 

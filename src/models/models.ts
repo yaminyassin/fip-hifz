@@ -1,3 +1,47 @@
+export type Quran = {
+  filename: string;
+  page: string;
+  timestamp: string;
+};
+
+/**
+ * the judge evaluation of the participant
+ */
+export type QuestionScore = {
+  hifz_reminder: number;
+  hifz_assitance: number;
+  tajweed_minor: number;
+  tajweed_major: number;
+  fluency: number;
+};
+
+/**
+ * Question number:string -> result:QuestionScore
+ */
+export type Results = Map<string, QuestionScore>;
+
+/**
+ * id: string -> Results
+ */
+export type scores = Map<string, Results>;
+
+/**
+ * {
+ *  Judge 1 : {
+ *    Question X : {
+ *      hifz_reminder: 1,
+ *      hifz_assitance: 2,
+ *      ...
+ *    },
+ *    Question Y : {
+ *     hifz_reminder: 1,
+ *     ...
+ *    }
+ *    ...
+ *  Judge 2 ...
+ * }
+ *
+ */
 export type Participant = {
   id: string;
   name: string;
@@ -5,35 +49,34 @@ export type Participant = {
   country: string;
   category: string;
   school: string;
-  scheduled: string;
+  scheduled: string; // ?
   isDone: boolean;
-  flag: string;
+  flag: string; // flag symbol of the country
   parentsName: string;
   phoneNum: string;
   assignedQuestions: number[]; // Array of 3 random numbers between 1-600
-  createdAt: string;
+  scores: scores;
 };
 
+/**
+ * {
+ *  Participant 1 : {
+ *    Question X : {
+ *      hifz_reminder: 1,
+ *      hifz_assitance: 2,
+ *      ...
+ *    },
+ *    Question Y : {
+ *     hifz_reminder: 1,
+ *     ...
+ *    }
+ *    ...
+ *  Participant 2 ...
+ * }
+ *
+ */
 export type Jury = {
   id: string;
   name: string;
-  createdAt: string;
-};
-
-export type Record = {
-  id: string;
-  participantId: string;
-  jurorId: string;
-  questionNumber: number;
-  scores: {
-    [key: string]: number;
-  };
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type Quran = {
-  filename: string;
-  page: string;
-  timestamp: string;
+  scores: Results;
 };

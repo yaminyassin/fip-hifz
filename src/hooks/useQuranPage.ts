@@ -11,11 +11,9 @@ async function fetchQuranPage(pageNumber: number) {
 }
 
 export function useQuranPage(pageNumber?: number) {
-  const { data, isLoading, error } = useQuery({
+  return useQuery({
     queryKey: ["quranPage", pageNumber],
     queryFn: () => fetchQuranPage(pageNumber!),
     enabled: !!pageNumber,
   });
-
-  return { data, isLoading, error };
 }

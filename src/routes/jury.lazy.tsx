@@ -17,7 +17,7 @@ const participantId = "current-participant-id";
 
 function RouteComponent() {
   const [selectedQuestion, setSelectedQuestion] = useState(1);
-  const { data: participant } = useParticipant(participantId);
+  const { data: participant } = useParticipant();
 
   const currentPage = participant?.assignedQuestions[selectedQuestion - 1];
 
