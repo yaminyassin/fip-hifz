@@ -11,7 +11,7 @@ export type Quran = {
  */
 export type QuestionFields = {
   hifz_reminder: number;
-  hifz_assitance: number;
+  hifz_assistance: number;
   tajweed_minor: number;
   tajweed_major: number;
   fluency: number;

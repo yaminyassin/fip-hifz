@@ -29,7 +29,7 @@ export const useParticipants = () => {
 
           const questionScore: QuestionFields = {
             hifz_reminder: 0,
-            hifz_assitance: 0,
+            hifz_assistance: 0,
             tajweed_minor: 0,
             tajweed_major: 0,
             fluency: 0,
@@ -37,18 +37,24 @@ export const useParticipants = () => {
 
           scoresSnapshot.docs.forEach((scoreDoc) => {
             const scoreData = scoreDoc.data();
+            // Map array index to question number (0->1, 1->2, 2->3)
+            const mappedQuestionNumber = participant.assignedQuestions.indexOf(questionNumber) + 1;
             if (
               scoreData.participantId === participant.id &&
-              scoreData.questionNumber === questionNumber
+              scoreData.questionNumber === mappedQuestionNumber
             ) {
               Object.keys(scoreData.scores).forEach((field) => {
-                questionScore[field as keyof QuestionFields] +=
-                  scoreData.scores[field];
+                if (typeof scoreData.scores[field] === 'number') {
+                  questionScore[field as keyof QuestionFields] = 
+                    scoreData.scores[field];
+                }
               });
             }
           });
 
-          questionScores[questionNumber] = questionScore;
+          // Store using the mapped question number
+          const mappedQuestionNumber = participant.assignedQuestions.indexOf(questionNumber) + 1;
+          questionScores[mappedQuestionNumber] = questionScore;
         }
 
         participants.push({
