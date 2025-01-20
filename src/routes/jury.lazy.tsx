@@ -2,14 +2,18 @@ import { Button } from "@/components/shadcn/button";
 import { ScoreInput } from "@/components/ui/ScoreInput";
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useScores } from "@/hooks/useScores";
 import { QuranViewer } from "@/components/ui/QuranViewer";
 import { useActiveParticipant } from "../hooks/useActiveParticipant";
+import { updateJuryProgress, getJuryMember } from "../services/jury";
 
 import { QuestionFields } from "../models/models";
 import { Card } from "../components/shadcn/card";
 import { ParticipantBanner } from "../components/ui/ParticipantBanner";
+import { useToast } from "@/components/shadcn/use-toast";
+
 export const Route = createLazyFileRoute("/jury")({
   component: RouteComponent,
 });
@@ -20,8 +24,64 @@ const juryId = "SsqIITjOvucdNyEpx16m";
 function RouteComponent() {
   const [selectedQuestion, setSelectedQuestion] = useState(1);
   const { data: participant } = useActiveParticipant();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: juryMember } = useQuery({
+    queryKey: ["jury", juryId],
+    queryFn: () => getJuryMember(juryId),
+  });
 
   const currentPage = participant?.assignedQuestions[selectedQuestion - 1];
+
+  const updateJuryMutation = useMutation({
+    mutationFn: async ({
+      currentQuestion,
+      hasFinishedEvaluating
+    }: {
+      currentQuestion: number;
+      hasFinishedEvaluating: boolean;
+    }) => {
+      await updateJuryProgress(juryId, currentQuestion, hasFinishedEvaluating);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["jury"] });
+    },
+  });
+
+  const handleQuestionChange = (questionNumber: number) => {
+    setSelectedQuestion(questionNumber);
+    updateJuryMutation.mutate({
+      currentQuestion: questionNumber,
+      hasFinishedEvaluating: false,
+    });
+  };
+
+  const handleDone = async () => {
+    const isLastQuestion = selectedQuestion === 3;
+
+    if (isLastQuestion) {
+      updateJuryMutation.mutate({
+        currentQuestion: selectedQuestion,
+        hasFinishedEvaluating: true,
+      });
+      toast({
+        title: "Evaluation Complete",
+        description: "You have completed evaluating all questions for this participant.",
+      });
+    } else {
+      const nextQuestion = selectedQuestion + 1;
+      setSelectedQuestion(nextQuestion);
+      updateJuryMutation.mutate({
+        currentQuestion: nextQuestion,
+        hasFinishedEvaluating: false,
+      });
+      toast({
+        title: "Question Complete",
+        description: `Moving to Question ${nextQuestion}`,
+      });
+    }
+  };
 
   return (
     <div className="flex flex-row bg-gray-400 px-4">
@@ -36,7 +96,7 @@ function RouteComponent() {
           <ScoreCategory
             title="Hifz"
             labels={["Reminder", "Assisted"]}
-            fields={["hifz_reminder", "hifz_assitance"]}
+            fields={["hifz_reminder", "hifz_assistance"]}
             juryId={juryId}
             participantId={participant?.id}
             questionNumber={selectedQuestion}
@@ -64,8 +124,12 @@ function RouteComponent() {
               {[1, 2, 3].map((q) => (
                 <Button
                   key={q}
-                  className={`h-12 w-20 rounded-lg  text-white font-bold transition-colors`}
-                  onClick={() => setSelectedQuestion(q)}
+                  className={`h-12 w-20 rounded-lg ${selectedQuestion === q
+                    ? "bg-blue-600 hover:bg-blue-500"
+                    : "bg-gray-600 hover:bg-gray-500"
+                    } text-white font-bold transition-colors`}
+                  onClick={() => handleQuestionChange(q)}
+                  disabled={updateJuryMutation.isPending}
                 >
                   Q{q}
                 </Button>
@@ -73,10 +137,19 @@ function RouteComponent() {
             </div>
             <div className="flex-grow" />
             <Button
-              className="h-12 px-6 rounded-lg bg-green-600 text-white font-bold hover:bg-green-500 transition-colors"
-              // onClick={handleSubmit}
+              className="h-12 px-6 rounded-lg bg-green-600 text-white font-bold hover:bg-green-500 transition-colors disabled:bg-gray-400"
+              onClick={handleDone}
+              disabled={
+                !participant?.id ||
+                updateJuryMutation.isPending ||
+                (juryMember?.hasFinishedEvaluating && selectedQuestion === 3)
+              }
             >
-              Done
+              {updateJuryMutation.isPending
+                ? "Saving..."
+                : juryMember?.hasFinishedEvaluating && selectedQuestion === 3
+                  ? "Completed"
+                  : "Done"}
             </Button>
           </div>
         </div>
