@@ -20,6 +20,7 @@ const RandomizerLazyImport = createFileRoute('/randomizer')()
 const ParticipantsLazyImport = createFileRoute('/participants')()
 const JuryLazyImport = createFileRoute('/jury')()
 const BigScreenLazyImport = createFileRoute('/big-screen')()
+const AdminLazyImport = createFileRoute('/admin')()
 const IndexLazyImport = createFileRoute('/')()
 
 // Create/Update Routes
@@ -48,6 +49,12 @@ const BigScreenLazyRoute = BigScreenLazyImport.update({
   getParentRoute: () => rootRoute,
 } as any).lazy(() => import('./routes/big-screen.lazy').then((d) => d.Route))
 
+const AdminLazyRoute = AdminLazyImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRoute,
+} as any).lazy(() => import('./routes/admin.lazy').then((d) => d.Route))
+
 const IndexLazyRoute = IndexLazyImport.update({
   id: '/',
   path: '/',
@@ -63,6 +70,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexLazyImport
+      parentRoute: typeof rootRoute
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminLazyImport
       parentRoute: typeof rootRoute
     }
     '/big-screen': {
@@ -100,6 +114,7 @@ declare module '@tanstack/react-router' {
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexLazyRoute
+  '/admin': typeof AdminLazyRoute
   '/big-screen': typeof BigScreenLazyRoute
   '/jury': typeof JuryLazyRoute
   '/participants': typeof ParticipantsLazyRoute
@@ -108,6 +123,7 @@ export interface FileRoutesByFullPath {
 
 export interface FileRoutesByTo {
   '/': typeof IndexLazyRoute
+  '/admin': typeof AdminLazyRoute
   '/big-screen': typeof BigScreenLazyRoute
   '/jury': typeof JuryLazyRoute
   '/participants': typeof ParticipantsLazyRoute
@@ -117,6 +133,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexLazyRoute
+  '/admin': typeof AdminLazyRoute
   '/big-screen': typeof BigScreenLazyRoute
   '/jury': typeof JuryLazyRoute
   '/participants': typeof ParticipantsLazyRoute
@@ -125,21 +142,29 @@ export interface FileRoutesById {
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/big-screen' | '/jury' | '/participants' | '/randomizer'
+  fullPaths:
+  | '/'
+  | '/admin'
+  | '/big-screen'
+  | '/jury'
+  | '/participants'
+  | '/randomizer'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/big-screen' | '/jury' | '/participants' | '/randomizer'
+  to: '/' | '/admin' | '/big-screen' | '/jury' | '/participants' | '/randomizer'
   id:
-    | '__root__'
-    | '/'
-    | '/big-screen'
-    | '/jury'
-    | '/participants'
-    | '/randomizer'
+  | '__root__'
+  | '/'
+  | '/admin'
+  | '/big-screen'
+  | '/jury'
+  | '/participants'
+  | '/randomizer'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexLazyRoute: typeof IndexLazyRoute
+  AdminLazyRoute: typeof AdminLazyRoute
   BigScreenLazyRoute: typeof BigScreenLazyRoute
   JuryLazyRoute: typeof JuryLazyRoute
   ParticipantsLazyRoute: typeof ParticipantsLazyRoute
@@ -148,6 +173,7 @@ export interface RootRouteChildren {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexLazyRoute: IndexLazyRoute,
+  AdminLazyRoute: AdminLazyRoute,
   BigScreenLazyRoute: BigScreenLazyRoute,
   JuryLazyRoute: JuryLazyRoute,
   ParticipantsLazyRoute: ParticipantsLazyRoute,
@@ -165,6 +191,7 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
+        "/admin",
         "/big-screen",
         "/jury",
         "/participants",
@@ -173,6 +200,9 @@ export const routeTree = rootRoute
     },
     "/": {
       "filePath": "index.lazy.tsx"
+    },
+    "/admin": {
+      "filePath": "admin.lazy.tsx"
     },
     "/big-screen": {
       "filePath": "big-screen.lazy.tsx"
