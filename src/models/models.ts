@@ -46,4 +46,6 @@ export type Participant = {
 export type Jury = {
   id: string;
   name: string;
+  currentQuestion: number;
+  hasFinishedEvaluating: boolean;
 };
