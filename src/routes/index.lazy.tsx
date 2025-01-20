@@ -8,6 +8,7 @@ import {
   Trophy,
   GraduationCap,
   BookOpen,
+  Settings,
 } from "lucide-react";
 import { MagicCard } from "@/components/shadcn/magic-card";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,13 @@ const Home = () => {
       className: "md:col-span-2 row-span-1",
     },
     {
+      title: "Admin Panel",
+      description: "Manage jury and active participants",
+      icon: Settings,
+      route: "/admin",
+      className: "md:col-span-2 row-span-1",
+    },
+    {
       title: "Competition",
       description: "Event overview",
       icon: Trophy,
@@ -61,7 +69,7 @@ const Home = () => {
       title: "Results",
       description: "Competition results",
       icon: BookOpen,
-      className: "md:col-span-3 row-span-1",
+      className: "md:col-span-1 row-span-1",
     },
   ];
 
