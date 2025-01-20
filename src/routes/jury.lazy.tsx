@@ -1,13 +1,16 @@
 import { Button } from "@/components/shadcn/button";
 import { ScoreInput } from "@/components/ui/ScoreInput";
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 
 import { useScores } from "@/hooks/useScores";
 import { QuranViewer } from "@/components/ui/QuranViewer";
 import { useActiveParticipant } from "../hooks/useActiveParticipant";
 import { updateJuryProgress, getJuryMember } from "../services/jury";
+import { getAuthenticatedJury, clearAuthenticatedJury } from "@/services/juryAuth";
+import { JuryLogin } from "@/components/ui/JuryLogin";
 
 import { QuestionFields } from "../models/models";
 import { Card } from "../components/shadcn/card";
@@ -18,18 +21,26 @@ export const Route = createLazyFileRoute("/jury")({
   component: RouteComponent,
 });
 
-// Add these as props or get from context/state management
-const juryId = "SsqIITjOvucdNyEpx16m";
-
 function RouteComponent() {
   const [selectedQuestion, setSelectedQuestion] = useState(1);
   const { data: participant } = useActiveParticipant();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Check authentication on mount and when auth state changes
+  useEffect(() => {
+    const juryId = getAuthenticatedJury();
+    setIsAuthenticated(!!juryId);
+  }, []);
+
+  const juryId = getAuthenticatedJury();
 
   const { data: juryMember } = useQuery({
     queryKey: ["jury", juryId],
-    queryFn: () => getJuryMember(juryId),
+    queryFn: () => getJuryMember(juryId || ""),
+    enabled: !!juryId,
   });
 
   const currentPage = participant?.assignedQuestions[selectedQuestion - 1];
@@ -42,6 +53,7 @@ function RouteComponent() {
       currentQuestion: number;
       hasFinishedEvaluating: boolean;
     }) => {
+      if (!juryId) return;
       await updateJuryProgress(juryId, currentQuestion, hasFinishedEvaluating);
     },
     onSuccess: () => {
@@ -83,80 +95,112 @@ function RouteComponent() {
     }
   };
 
+  const handleLogout = () => {
+    clearAuthenticatedJury();
+    setIsAuthenticated(false);
+    queryClient.clear();
+    navigate({ to: "/" });
+  };
+
+  const handleLoginSuccess = () => {
+    setIsAuthenticated(true);
+  };
+
+  // Show login if not authenticated
+  if (!isAuthenticated) {
+    return <JuryLogin onLoginSuccess={handleLoginSuccess} />;
+  }
+
   return (
-    <div className="flex flex-row bg-gray-400 px-4">
-      <div className="flex flex-col w-4/6">
-        <div className="p-4 space-y-4 flex-grow">
-          <ParticipantBanner />
-          <h2 className="text-2xl font-bold mb-4">
-            Question {selectedQuestion} - Page
-            {" " + participant?.assignedQuestions[selectedQuestion - 1]}
-          </h2>
-
-          <ScoreCategory
-            title="Hifz"
-            labels={["Reminder", "Assisted"]}
-            fields={["hifz_reminder", "hifz_assistance"]}
-            juryId={juryId}
-            participantId={participant?.id}
-            questionNumber={selectedQuestion}
-          />
-          <ScoreCategory
-            title="Tajweed"
-            labels={["Minor Mistakes", "Major Mistakes"]}
-            fields={["tajweed_minor", "tajweed_major"]}
-            juryId={juryId}
-            participantId={participant?.id}
-            questionNumber={selectedQuestion}
-          />
-          <ScoreCategory
-            title="Fluency"
-            labels={["Fluency"]}
-            fields={["fluency"]}
-            juryId={juryId}
-            participantId={participant?.id}
-            questionNumber={selectedQuestion}
-          />
-
-          {/* Bottom Navigation Bar */}
-          <div className="flex flex-row items-center bg-gray-300 p-4 gap-4 mt-auto">
-            <div className="flex flex-row gap-4">
-              {[1, 2, 3].map((q) => (
-                <Button
-                  key={q}
-                  className={`h-12 w-20 rounded-lg ${selectedQuestion === q
-                    ? "bg-blue-600 hover:bg-blue-500"
-                    : "bg-gray-600 hover:bg-gray-500"
-                    } text-white font-bold transition-colors`}
-                  onClick={() => handleQuestionChange(q)}
-                  disabled={updateJuryMutation.isPending}
-                >
-                  Q{q}
-                </Button>
-              ))}
-            </div>
-            <div className="flex-grow" />
-            <Button
-              className="h-12 px-6 rounded-lg bg-green-600 text-white font-bold hover:bg-green-500 transition-colors disabled:bg-gray-400"
-              onClick={handleDone}
-              disabled={
-                !participant?.id ||
-                updateJuryMutation.isPending ||
-                (juryMember?.hasFinishedEvaluating && selectedQuestion === 3)
-              }
-            >
-              {updateJuryMutation.isPending
-                ? "Saving..."
-                : juryMember?.hasFinishedEvaluating && selectedQuestion === 3
-                  ? "Completed"
-                  : "Done"}
-            </Button>
-          </div>
+    <div className="flex flex-col min-h-screen bg-gray-400">
+      {/* Header with logout */}
+      <div className="bg-white shadow-md p-4">
+        <div className="flex justify-between items-center max-w-7xl mx-auto">
+          <h1 className="text-xl font-bold">Jury Panel</h1>
+          <Button
+            variant="outline"
+            onClick={handleLogout}
+            className="text-red-600 hover:text-red-700"
+          >
+            Logout
+          </Button>
         </div>
       </div>
 
-      <div className="flex flex-col w-2/6">
-        <QuranViewer pageNumber={currentPage} />
+      <div className="flex flex-row px-4 flex-grow">
+        <div className="flex flex-col w-4/6">
+          <div className="p-4 space-y-4 flex-grow">
+            <ParticipantBanner />
+            <h2 className="text-2xl font-bold mb-4">
+              Question {selectedQuestion} - Page
+              {" " + participant?.assignedQuestions[selectedQuestion - 1]}
+            </h2>
+
+            <ScoreCategory
+              title="Hifz"
+              labels={["Reminder", "Assisted"]}
+              fields={["hifz_reminder", "hifz_assistance"]}
+              juryId={juryId || ""}
+              participantId={participant?.id}
+              questionNumber={selectedQuestion}
+            />
+            <ScoreCategory
+              title="Tajweed"
+              labels={["Minor Mistakes", "Major Mistakes"]}
+              fields={["tajweed_minor", "tajweed_major"]}
+              juryId={juryId || ""}
+              participantId={participant?.id}
+              questionNumber={selectedQuestion}
+            />
+            <ScoreCategory
+              title="Fluency"
+              labels={["Fluency"]}
+              fields={["fluency"]}
+              juryId={juryId || ""}
+              participantId={participant?.id}
+              questionNumber={selectedQuestion}
+            />
+
+            {/* Bottom Navigation Bar */}
+            <div className="flex flex-row items-center bg-gray-300 p-4 gap-4 mt-auto">
+              <div className="flex flex-row gap-4">
+                {[1, 2, 3].map((q) => (
+                  <Button
+                    key={q}
+                    className={`h-12 w-20 rounded-lg ${selectedQuestion === q
+                      ? "bg-blue-600 hover:bg-blue-500"
+                      : "bg-gray-600 hover:bg-gray-500"
+                      } text-white font-bold transition-colors`}
+                    onClick={() => handleQuestionChange(q)}
+                    disabled={updateJuryMutation.isPending}
+                  >
+                    Q{q}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex-grow" />
+              <Button
+                className="h-12 px-6 rounded-lg bg-green-600 text-white font-bold hover:bg-green-500 transition-colors disabled:bg-gray-400"
+                onClick={handleDone}
+                disabled={
+                  !participant?.id ||
+                  updateJuryMutation.isPending ||
+                  (juryMember?.hasFinishedEvaluating && selectedQuestion === 3)
+                }
+              >
+                {updateJuryMutation.isPending
+                  ? "Saving..."
+                  : juryMember?.hasFinishedEvaluating && selectedQuestion === 3
+                    ? "Completed"
+                    : "Done"}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col w-2/6">
+          <QuranViewer pageNumber={currentPage} />
+        </div>
       </div>
     </div>
   );
