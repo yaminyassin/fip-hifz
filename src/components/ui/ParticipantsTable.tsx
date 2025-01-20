@@ -58,7 +58,7 @@ export const ParticipantsTable = ({ participants }: ParticipantsTableProps) => {
                 <TableCell>
                   {participant.isDone ? "Complete" : "Pending"}
                 </TableCell>
-                {participant.assignedQuestions.map((questionNumber) => (
+                {[1, 2, 3].map((questionNumber) => (
                   <TableCell key={questionNumber}>
                     {getQuestionTotal(questionNumber)}
                   </TableCell>
