@@ -3,9 +3,10 @@ import { Label } from "@/components/shadcn/label";
 import { ParticipantBanner } from "@/components/ui/ParticipantBanner";
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { useUpdateParticipantQuestions } from "@/hooks/useParticipant";
+import { useUpdateParticipantQuestions } from "@/hooks/useUpdateParticipantQuestions";
 import { Card, CardContent } from "@/components/shadcn/card";
 import { useActiveParticipant } from "@/hooks/useActiveParticipant";
+import { useToast } from "@/components/shadcn/use-toast";
 
 const RandomNumber = ({ number, index }: { number: number; index: number }) => {
   const [displayNumber, setDisplayNumber] = useState(number);
@@ -46,15 +47,27 @@ const RouteComponent = () => {
   const [random1, setRandom1] = useState(0);
   const [random2, setRandom2] = useState(0);
   const [random3, setRandom3] = useState(0);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const updateQuestions = useUpdateParticipantQuestions();
   const { data: activeParticipant } = useActiveParticipant();
+  const { toast } = useToast();
 
   const handlePress = () => {
     if (!activeParticipant) {
-      console.error("No active participant found");
+      toast({
+        title: "Error",
+        description: "No active participant found",
+        variant: "destructive",
+      });
       return;
     }
+
+    if (isGenerating) {
+      return;
+    }
+
+    setIsGenerating(true);
 
     // Reset to 0 to trigger rolling animation
     setRandom1(0);
@@ -71,10 +84,29 @@ const RouteComponent = () => {
       setRandom3(final3);
 
       // Update Firestore after all numbers are set
-      updateQuestions.mutate({
-        participantId: activeParticipant.id,
-        questions: [final1, final2, final3],
-      });
+      updateQuestions.mutate(
+        {
+          participantId: activeParticipant.id,
+          questions: [final1, final2, final3],
+        },
+        {
+          onSuccess: () => {
+            toast({
+              title: "Success",
+              description: "Questions have been generated and assigned",
+            });
+            setIsGenerating(false);
+          },
+          onError: (error) => {
+            toast({
+              title: "Error",
+              description: "Failed to update questions",
+              variant: "destructive",
+            });
+            setIsGenerating(false);
+          },
+        }
+      );
     }, 1500);
   };
 
@@ -95,8 +127,9 @@ const RouteComponent = () => {
             onClick={handlePress}
             size="lg"
             variant="default"
+            disabled={isGenerating || !activeParticipant}
           >
-            Generate Questions
+            {isGenerating ? "Generating..." : "Generate Questions"}
           </Button>
         </Card>
       </div>
