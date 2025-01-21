@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { collection, getDocs, doc, updateDoc, writeBatch } from "firebase/firestore";
+import { collection, getDocs, doc, writeBatch } from "firebase/firestore";
 import { firestore } from "@/main";
 import { Participant } from "@/models/models";
 import { Button } from "@/components/shadcn/button";
@@ -11,10 +11,12 @@ import {
     SelectValue,
 } from "@/components/shadcn/select";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 export const ParticipantSelector = () => {
     const [selectedParticipantId, setSelectedParticipantId] = useState<string>("");
     const queryClient = useQueryClient();
+    const { t } = useTranslation();
 
     const { data: participants, isLoading } = useQuery({
         queryKey: ["participants"],
@@ -63,7 +65,7 @@ export const ParticipantSelector = () => {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center p-8">
-                <p className="text-muted-foreground">Loading participants...</p>
+                <p className="text-muted-foreground">{t("common.loading")}</p>
             </div>
         );
     }
@@ -73,21 +75,21 @@ export const ParticipantSelector = () => {
     return (
         <div className="space-y-6">
             <div className="flex flex-col space-y-2">
-                <label className="text-sm font-medium">Current Active Participant</label>
+                <label className="text-sm font-medium">{t("participants.currentActive")}</label>
                 <p className="text-lg font-semibold">
-                    {activeParticipant?.name || "No active participant"}
+                    {activeParticipant?.name || t("participants.noActive")}
                 </p>
             </div>
 
             <div className="flex flex-col space-y-4">
-                <label className="text-sm font-medium">Select New Participant</label>
+                <label className="text-sm font-medium">{t("participants.selectNew")}</label>
                 <div className="flex gap-4">
                     <Select
                         value={selectedParticipantId}
                         onValueChange={handleParticipantChange}
                     >
                         <SelectTrigger className="w-[300px]">
-                            <SelectValue placeholder="Select a participant" />
+                            <SelectValue placeholder={t("participants.selectPlaceholder")} />
                         </SelectTrigger>
                         <SelectContent>
                             {participants?.map((participant) => (
@@ -102,7 +104,9 @@ export const ParticipantSelector = () => {
                         onClick={handleActivateParticipant}
                         disabled={!selectedParticipantId || setActiveParticipant.isPending}
                     >
-                        {setActiveParticipant.isPending ? "Activating..." : "Set Active"}
+                        {setActiveParticipant.isPending 
+                            ? t("participants.actions.activating")
+                            : t("participants.actions.setActive")}
                     </Button>
                 </div>
             </div>

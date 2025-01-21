@@ -1,6 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { ParticipantsTable } from "@/components/ui/ParticipantsTable";
 import { FloatingParticipantList } from "@/components/ui/FloatingParticipantList";
+import { useTranslation } from "react-i18next";
 
 import { Input } from "@/components/shadcn/input";
 import { Search } from "lucide-react";
@@ -14,24 +15,25 @@ export const Route = createLazyFileRoute("/participants")({
 function RouteComponent() {
   const [searchQuery, setSearchQuery] = useState("");
   const { data: participants = [], isLoading } = useParticipants();
+  const { t } = useTranslation();
 
   const filteredParticipants = participants.filter((participant) =>
     participant.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div>{t("common.loading")}</div>;
   }
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6 space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold tracking-tight">Participants</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("participants.header.title")}</h1>
           <div className="relative w-72">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search participants..."
+              placeholder={t("participants.searchPlaceholder")}
               className="pl-8"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

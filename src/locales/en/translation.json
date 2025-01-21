@@ -1,0 +1,150 @@
+{
+  "menu": {
+    "home": "Home",
+    "participants": "Participants",
+    "participantsDesc": "Manage contestants",
+    "jury": "Jury Panel",
+    "juryDesc": "Score participants",
+    "randomizer": "Randomizer",
+    "randomizerDesc": "Generate random questions",
+    "language": "Language",
+    "bigScreen": "Big Screen",
+    "bigScreenDesc": "View competition display",
+    "admin": "Admin Panel",
+    "adminDesc": "Manage jury and active participants",
+    "competition": "Competition",
+    "competitionDesc": "Event overview",
+    "schools": "Schools",
+    "schoolsDesc": "Participating institutions",
+    "results": "Results",
+    "resultsDesc": "Competition results"
+  },
+  "home": {
+    "title": "Hifz Competition Dashboard",
+    "subtitle": "Manage and oversee the competition proceedings"
+  },
+  "jury": {
+    "title": "Jury Panel",
+    "question": "Question",
+    "page": "Page",
+    "login": {
+      "title": "Jury Login",
+      "subtitle": "Enter your jury ID to continue",
+      "placeholder": "Enter Jury ID",
+      "button": "Login",
+      "error": {
+        "invalid": "Authentication Failed",
+        "invalidDesc": "Invalid jury ID",
+        "failed": "Error",
+        "failedDesc": "Failed to authenticate"
+      }
+    },
+    "categories": {
+      "hifz": "Hifz",
+      "hifz_reminder": "Reminder",
+      "hifz_assistance": "Assisted",
+      "tajweed": "Tajweed",
+      "tajweed_minor": "Minor Mistakes",
+      "tajweed_major": "Major Mistakes",
+      "fluency": "Fluency"
+    },
+    "actions": {
+      "logout": "Logout",
+      "done": "Done",
+      "saving": "Saving...",
+      "completed": "Completed",
+      "decrease": "Decrease score",
+      "increase": "Increase score"
+    },
+    "messages": {
+      "evaluationComplete": "Evaluation Complete",
+      "evaluationCompleteDesc": "You have completed evaluating all questions for this participant.",
+      "questionComplete": "Question Complete",
+      "movingToQuestion": "Moving to Question {{number}}",
+      "inProgress": "In Progress"
+    }
+  },
+  "randomizer": {
+    "title": "Question Randomizer",
+    "generateQuestions": "Generate Questions",
+    "generating": "Generating...",
+    "questionLabel": "Question {{number}}",
+    "messages": {
+      "noParticipant": "No active participant found",
+      "success": "Success",
+      "successDesc": "Questions have been generated and assigned",
+      "error": "Error",
+      "errorDesc": "Failed to update questions"
+    }
+  },
+  "participants": {
+    "title": "Participants",
+    "searchPlaceholder": "Search participants...",
+    "currentActive": "Current Active Participant",
+    "noActive": "No active participant",
+    "selectNew": "Select New Participant",
+    "selectPlaceholder": "Select a participant",
+    "nextParticipants": "Next Participants",
+    "header": {
+      "title": "Participants",
+      "subtitle": "Manage and view all participants"
+    },
+    "banner": {
+      "loading": "Loading participant data...",
+      "noParticipant": "No active participant found",
+      "name": "Name",
+      "age": "Age",
+      "country": "Country",
+      "category": "Category"
+    },
+    "actions": {
+      "setActive": "Set Active",
+      "activating": "Activating..."
+    },
+    "table": {
+      "name": "Name",
+      "age": "Age",
+      "country": "Country",
+      "category": "Category",
+      "school": "School",
+      "schedule": "Schedule",
+      "status": "Status",
+      "actions": "Actions",
+      "q1Total": "Q1 Total",
+      "q2Total": "Q2 Total",
+      "q3Total": "Q3 Total",
+      "statusComplete": "Complete",
+      "statusPending": "Pending"
+    }
+  },
+  "admin": {
+    "title": "Admin Panel",
+    "juryStatus": "Jury Status",
+    "activeParticipant": "Active Participant",
+    "table": {
+      "juryName": "Jury Name",
+      "currentQuestion": "Current Question",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "actions": {
+      "select": "Select",
+      "remove": "Remove",
+      "save": "Save Changes"
+    },
+    "messages": {
+      "participantUpdated": "Active participant updated",
+      "participantRemoved": "Active participant removed"
+    }
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "submit": "Submit"
+  }
+} 

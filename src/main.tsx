@@ -9,6 +9,7 @@ import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import "./i18n"; // Import i18n configuration
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -26,7 +27,6 @@ getAnalytics(app);
 export const firestore = getFirestore(app);
 
 // TanStackRouter setup
-
 const router = createRouter({ routeTree });
 const client = new QueryClient();
 
@@ -37,14 +37,12 @@ declare module "@tanstack/react-router" {
   }
 }
 
-const rootElement = document.getElementById("root")!;
-if (!rootElement.innerHTML) {
-  const root = createRoot(rootElement);
-  root.render(
-    <StrictMode>
-      <QueryClientProvider client={client}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>
-    </StrictMode>
-  );
-}
+const container = document.getElementById("root")!;
+const root = createRoot(container);
+root.render(
+  <StrictMode>
+    <QueryClientProvider client={client}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  </StrictMode>
+);
