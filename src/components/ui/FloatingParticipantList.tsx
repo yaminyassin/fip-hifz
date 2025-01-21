@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ChevronUp, ChevronDown, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/shadcn/card";
+import { useTranslation } from "react-i18next";
 
 interface FloatingParticipantListProps {
   participants: Participant[];
@@ -13,6 +14,7 @@ export const FloatingParticipantList = ({
 }: FloatingParticipantListProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const nextParticipants = participants.slice(0, 5);
+  const { t } = useTranslation();
 
   return (
     <motion.div
@@ -27,7 +29,7 @@ export const FloatingParticipantList = ({
         >
           <div className="flex items-center gap-2">
             <User className="w-4 h-4" />
-            <span className="font-semibold">Next Participants</span>
+            <span className="font-semibold">{t("participants.nextParticipants")}</span>
           </div>
           {isExpanded ? (
             <ChevronDown className="w-4 h-4" />

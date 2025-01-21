@@ -1,6 +1,7 @@
 import { useQuranPage } from "@/hooks/useQuranPage";
 import { useRef, useState, useEffect } from "react";
 import { Label } from "../shadcn/label";
+import { useTranslation } from "react-i18next";
 
 type QuranViewerProps = {
   pageNumber?: number;
@@ -10,6 +11,7 @@ export function QuranViewer({ pageNumber }: QuranViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [imageWidth, setImageWidth] = useState<number>(800);
   const [imageHeight, setImageHeight] = useState<number>(1000);
+  const { t } = useTranslation();
 
   const { data: pageData, isLoading, error } = useQuranPage(pageNumber);
 
@@ -31,7 +33,7 @@ export function QuranViewer({ pageNumber }: QuranViewerProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        Loading page data...
+        {t("common.loading")}
       </div>
     );
   }
@@ -39,7 +41,7 @@ export function QuranViewer({ pageNumber }: QuranViewerProps) {
   if (error) {
     return (
       <div className="flex items-center justify-center h-full text-red-500">
-        Error loading page data
+        {t("common.error")}
       </div>
     );
   }
@@ -47,7 +49,7 @@ export function QuranViewer({ pageNumber }: QuranViewerProps) {
   if (!pageData?.page) {
     return (
       <div className="flex items-center justify-center h-full">
-        No page data available
+        {t("randomizer.messages.noParticipant")}
       </div>
     );
   }
@@ -57,11 +59,11 @@ export function QuranViewer({ pageNumber }: QuranViewerProps) {
       ref={containerRef}
       className="flex flex-col items-center justify-center bg-slate-300 border-2 border-slate-800 p-1"
     >
-      <Label className="pb-2"> Question {pageNumber} </Label>
+      <Label className="pb-2">{t("randomizer.questionLabel", { number: pageNumber })}</Label>
       <div className="border-2 border-slate-800">
         <img
           src={`data:image/png;base64,${pageData.page}`}
-          alt={`Quran page ${pageNumber}`}
+          alt={t("randomizer.questionLabel", { number: pageNumber })}
           onLoad={handleContainerResize}
           style={{
             maxWidth: imageWidth,
@@ -69,7 +71,7 @@ export function QuranViewer({ pageNumber }: QuranViewerProps) {
             width: "auto",
             height: "800px",
           }}
-          className="object-contain "
+          className="object-contain"
         />
       </div>
     </div>

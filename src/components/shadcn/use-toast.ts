@@ -6,7 +6,7 @@ import type {
 } from "@/components/shadcn/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_REMOVE_DELAY = 3333
 
 type ToasterToast = ToastProps & {
     id: string
@@ -15,12 +15,13 @@ type ToasterToast = ToastProps & {
     action?: ToastActionElement
 }
 
-const actionTypes = {
-    ADD_TOAST: "ADD_TOAST",
-    UPDATE_TOAST: "UPDATE_TOAST",
-    DISMISS_TOAST: "DISMISS_TOAST",
-    REMOVE_TOAST: "REMOVE_TOAST",
-} as const
+type ActionType = {
+    ADD_TOAST: "ADD_TOAST"
+    UPDATE_TOAST: "UPDATE_TOAST"
+    DISMISS_TOAST: "DISMISS_TOAST"
+    REMOVE_TOAST: "REMOVE_TOAST"
+}
+
 
 let count = 0
 
@@ -28,8 +29,6 @@ function genId() {
     count = (count + 1) % Number.MAX_VALUE
     return count.toString()
 }
-
-type ActionType = typeof actionTypes
 
 type Action =
     | {
