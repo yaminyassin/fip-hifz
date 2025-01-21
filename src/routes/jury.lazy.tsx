@@ -116,7 +116,14 @@ function RouteComponent() {
       {/* Header with logout */}
       <div className="bg-white shadow-md p-4">
         <div className="flex justify-between items-center max-w-7xl mx-auto">
-          <h1 className="text-xl font-bold">Jury Panel</h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-bold">Jury Panel</h1>
+            {juryMember && (
+              <span className="text-muted-foreground">
+                | {juryMember.name}
+              </span>
+            )}
+          </div>
           <Button
             variant="outline"
             onClick={handleLogout}
