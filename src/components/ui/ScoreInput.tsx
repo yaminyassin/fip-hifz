@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "../shadcn/button";
 import { Label } from "../shadcn/label";
 import { Card } from "../shadcn/card";
+import { useTranslation } from "react-i18next";
 
 import { QuestionFields } from "../../models/models";
 import { storeScore } from "../../services/scores";
@@ -26,6 +27,7 @@ export const ScoreInput = ({
   onScoreChange,
 }: ScoreInputProps) => {
   const [score, setScore] = useState(initialScore);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (initialScore !== undefined) {
@@ -43,7 +45,7 @@ export const ScoreInput = ({
     try {
       const scores = {
         hifz_reminder: 0,
-        hifz_assitance: 0,
+        hifz_assistance: 0,
         tajweed_minor: 0,
         tajweed_major: 0,
         fluency: 0,
@@ -52,7 +54,7 @@ export const ScoreInput = ({
 
       await storeScore(participantId, juryId, questionNumber, scores);
     } catch (error) {
-      console.error("Error updating score:", error);
+      console.error(t("common.error"), error);
     }
   };
 
@@ -61,7 +63,7 @@ export const ScoreInput = ({
       <div className="flex flex-col gap-y-4 justify-center">
         <div className="flex text-center justify-center w-full">
           <Label className="flex items-center justify-center px-1 text-muted-foreground">
-            {label}
+            {t(label)}
           </Label>
         </div>
         <div className="flex justify-center flex-row gap-2">
@@ -69,6 +71,7 @@ export const ScoreInput = ({
             size="sm"
             onClick={() => handleScoreChange(score - 1)}
             disabled={score <= 0}
+            aria-label={t("jury.actions.decrease")}
           >
             -
           </Button>
@@ -83,6 +86,7 @@ export const ScoreInput = ({
             size="sm"
             onClick={() => handleScoreChange(score + 1)}
             disabled={score >= 10}
+            aria-label={t("jury.actions.increase")}
           >
             +
           </Button>
