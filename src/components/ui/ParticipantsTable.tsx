@@ -7,9 +7,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/shadcn/table";
+import { useTranslation } from "react-i18next";
 
 type ParticipantWithScores = Participant & {
-  questionScores: {
+  questionScores?: {
     [key: number]: QuestionFields;
   };
 };
@@ -19,27 +20,29 @@ interface ParticipantsTableProps {
 }
 
 export const ParticipantsTable = ({ participants }: ParticipantsTableProps) => {
+  const { t } = useTranslation();
+
   return (
     <div className="rounded-md border overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Age</TableHead>
-            <TableHead>Country</TableHead>
-            <TableHead>Category</TableHead>
-            <TableHead>School</TableHead>
-            <TableHead>Schedule</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Q1 Total</TableHead>
-            <TableHead>Q2 Total</TableHead>
-            <TableHead>Q3 Total</TableHead>
+            <TableHead>{t("participants.table.name")}</TableHead>
+            <TableHead>{t("participants.table.age")}</TableHead>
+            <TableHead>{t("participants.table.country")}</TableHead>
+            <TableHead>{t("participants.table.category")}</TableHead>
+            <TableHead>{t("participants.table.school")}</TableHead>
+            <TableHead>{t("participants.table.schedule")}</TableHead>
+            <TableHead>{t("participants.table.status")}</TableHead>
+            <TableHead>{t("participants.table.q1Total")}</TableHead>
+            <TableHead>{t("participants.table.q2Total")}</TableHead>
+            <TableHead>{t("participants.table.q3Total")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {participants.map((participant) => {
             const getQuestionTotal = (questionNumber: number) => {
-              const scores = participant.questionScores[questionNumber];
+              const scores = participant.questionScores?.[questionNumber];
               if (!scores) return 0;
               return Object.values(scores).reduce(
                 (sum, score) => sum + score,
@@ -56,7 +59,9 @@ export const ParticipantsTable = ({ participants }: ParticipantsTableProps) => {
                 <TableCell>{participant.school}</TableCell>
                 <TableCell>{participant.scheduled}</TableCell>
                 <TableCell>
-                  {participant.isDone ? "Complete" : "Pending"}
+                  {participant.isDone 
+                    ? t("participants.table.statusComplete") 
+                    : t("participants.table.statusPending")}
                 </TableCell>
                 {[1, 2, 3].map((questionNumber) => (
                   <TableCell key={questionNumber}>

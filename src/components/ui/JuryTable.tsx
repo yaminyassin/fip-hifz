@@ -10,8 +10,10 @@ import {
 import { Jury } from "@/models/models";
 import { collection, getDocs } from "firebase/firestore";
 import { firestore } from "@/main";
+import { useTranslation } from "react-i18next";
 
 export const JuryTable = () => {
+    const { t } = useTranslation();
     const { data: juryMembers, isLoading } = useQuery({
         queryKey: ["jury"],
         queryFn: async () => {
@@ -24,7 +26,7 @@ export const JuryTable = () => {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center p-8">
-                <p className="text-muted-foreground">Loading jury members...</p>
+                <p className="text-muted-foreground">{t("common.loading")}</p>
             </div>
         );
     }
@@ -34,16 +36,16 @@ export const JuryTable = () => {
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Current Question</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>{t("admin.table.juryName")}</TableHead>
+                        <TableHead>{t("admin.table.currentQuestion")}</TableHead>
+                        <TableHead>{t("admin.table.status")}</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {juryMembers?.map((jury) => (
                         <TableRow key={jury.id}>
                             <TableCell className="font-medium">{jury.name}</TableCell>
-                            <TableCell>Question {jury.currentQuestion}</TableCell>
+                            <TableCell>{t("jury.question")} {jury.currentQuestion}</TableCell>
                             <TableCell>
                                 <span
                                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${jury.hasFinishedEvaluating
@@ -51,7 +53,9 @@ export const JuryTable = () => {
                                         : "bg-yellow-100 text-yellow-800"
                                         }`}
                                 >
-                                    {jury.hasFinishedEvaluating ? "Completed" : "In Progress"}
+                                    {jury.hasFinishedEvaluating 
+                                        ? t("jury.actions.completed") 
+                                        : t("jury.messages.inProgress")}
                                 </span>
                             </TableCell>
                         </TableRow>

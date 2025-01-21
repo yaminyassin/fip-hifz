@@ -7,9 +7,11 @@ import { useUpdateParticipantQuestions } from "@/hooks/useUpdateParticipantQuest
 import { Card, CardContent } from "@/components/shadcn/card";
 import { useActiveParticipant } from "@/hooks/useActiveParticipant";
 import { useToast } from "@/components/shadcn/use-toast";
+import { useTranslation } from "react-i18next";
 
 const RandomNumber = ({ number, index }: { number: number; index: number }) => {
   const [displayNumber, setDisplayNumber] = useState(number);
+  const { t } = useTranslation();
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
@@ -31,7 +33,7 @@ const RandomNumber = ({ number, index }: { number: number; index: number }) => {
     <Card className="w-auto h-auto flex flex-col items-center justify-center bg-card/50 shadow-md">
       <CardContent className="flex flex-col items-center justify-center p-6 space-y-4">
         <div className="text-4xl font-medium text-muted-foreground">
-          Question {index}
+          {t("randomizer.questionLabel", { number: index })}
         </div>
         <div className="flex items-center justify-center w-32 h-16 border-2 rounded-lg border-primary/20 bg-background/50 shadow-sm">
           <Label className="text-3xl font-bold">
@@ -52,12 +54,13 @@ const RouteComponent = () => {
   const updateQuestions = useUpdateParticipantQuestions();
   const { data: activeParticipant } = useActiveParticipant();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const handlePress = () => {
     if (!activeParticipant) {
       toast({
-        title: "Error",
-        description: "No active participant found",
+        title: t("randomizer.messages.error"),
+        description: t("randomizer.messages.noParticipant"),
         variant: "destructive",
       });
       return;
@@ -92,15 +95,15 @@ const RouteComponent = () => {
         {
           onSuccess: () => {
             toast({
-              title: "Success",
-              description: "Questions have been generated and assigned",
+              title: t("randomizer.messages.success"),
+              description: t("randomizer.messages.successDesc"),
             });
             setIsGenerating(false);
           },
-          onError: (error) => {
+          onError: () => {
             toast({
-              title: "Error",
-              description: "Failed to update questions",
+              title: t("randomizer.messages.error"),
+              description: t("randomizer.messages.errorDesc"),
               variant: "destructive",
             });
             setIsGenerating(false);
@@ -129,7 +132,7 @@ const RouteComponent = () => {
             variant="default"
             disabled={isGenerating || !activeParticipant}
           >
-            {isGenerating ? "Generating..." : "Generate Questions"}
+            {isGenerating ? t("randomizer.generating") : t("randomizer.generateQuestions")}
           </Button>
         </Card>
       </div>

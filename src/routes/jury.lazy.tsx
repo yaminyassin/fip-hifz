@@ -4,6 +4,7 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 
 import { useScores } from "@/hooks/useScores";
 import { QuranViewer } from "@/components/ui/QuranViewer";
@@ -28,6 +29,7 @@ function RouteComponent() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { t } = useTranslation();
 
   // Check authentication on mount and when auth state changes
   useEffect(() => {
@@ -78,8 +80,8 @@ function RouteComponent() {
         hasFinishedEvaluating: true,
       });
       toast({
-        title: "Evaluation Complete",
-        description: "You have completed evaluating all questions for this participant.",
+        title: t("jury.messages.evaluationComplete"),
+        description: t("jury.messages.evaluationCompleteDesc"),
       });
     } else {
       const nextQuestion = selectedQuestion + 1;
@@ -89,8 +91,8 @@ function RouteComponent() {
         hasFinishedEvaluating: false,
       });
       toast({
-        title: "Question Complete",
-        description: `Moving to Question ${nextQuestion}`,
+        title: t("jury.messages.questionComplete"),
+        description: t("jury.messages.movingToQuestion", { number: nextQuestion }),
       });
     }
   };
@@ -117,7 +119,7 @@ function RouteComponent() {
       <div className="bg-white shadow-md p-4">
         <div className="flex justify-between items-center max-w-7xl mx-auto">
           <div className="flex items-center gap-4">
-            <h1 className="text-xl font-bold">Jury Panel</h1>
+            <h1 className="text-xl font-bold">{t("jury.title")}</h1>
             {juryMember && (
               <span className="text-muted-foreground">
                 | {juryMember.name}
@@ -129,7 +131,7 @@ function RouteComponent() {
             onClick={handleLogout}
             className="text-red-600 hover:text-red-700"
           >
-            Logout
+            {t("jury.actions.logout")}
           </Button>
         </div>
       </div>
@@ -139,29 +141,29 @@ function RouteComponent() {
           <div className="p-4 space-y-4 flex-grow">
             <ParticipantBanner />
             <h2 className="text-2xl font-bold mb-4">
-              Question {selectedQuestion} - Page
-              {" " + participant?.assignedQuestions[selectedQuestion - 1]}
+              {t("jury.question")} {selectedQuestion} - {t("jury.page")}{" "}
+              {participant?.assignedQuestions[selectedQuestion - 1]}
             </h2>
 
             <ScoreCategory
-              title="Hifz"
-              labels={["Reminder", "Assisted"]}
+              title={t("jury.categories.hifz")}
+              labels={[t("jury.categories.hifz_reminder"), t("jury.categories.hifz_assistance")]}
               fields={["hifz_reminder", "hifz_assistance"]}
               juryId={juryId || ""}
               participantId={participant?.id}
               questionNumber={selectedQuestion}
             />
             <ScoreCategory
-              title="Tajweed"
-              labels={["Minor Mistakes", "Major Mistakes"]}
+              title={t("jury.categories.tajweed")}
+              labels={[t("jury.categories.tajweed_minor"), t("jury.categories.tajweed_major")]}
               fields={["tajweed_minor", "tajweed_major"]}
               juryId={juryId || ""}
               participantId={participant?.id}
               questionNumber={selectedQuestion}
             />
             <ScoreCategory
-              title="Fluency"
-              labels={["Fluency"]}
+              title={t("jury.categories.fluency")}
+              labels={[t("jury.categories.fluency")]}
               fields={["fluency"]}
               juryId={juryId || ""}
               participantId={participant?.id}
@@ -196,10 +198,10 @@ function RouteComponent() {
                 }
               >
                 {updateJuryMutation.isPending
-                  ? "Saving..."
+                  ? t("jury.actions.saving")
                   : juryMember?.hasFinishedEvaluating && selectedQuestion === 3
-                    ? "Completed"
-                    : "Done"}
+                    ? t("jury.actions.completed")
+                    : t("jury.actions.done")}
               </Button>
             </div>
           </div>

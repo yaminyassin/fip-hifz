@@ -13,61 +13,63 @@ import {
 import { MagicCard } from "@/components/shadcn/magic-card";
 import { cn } from "@/lib/utils";
 import BlurIn from "@/components/shadcn/blur-in";
+import { useTranslation } from "react-i18next";
 
 const Home = () => {
   const navigation = useNavigate();
+  const { t } = useTranslation();
 
   const bentoItems = [
     {
-      title: "Big Screen",
-      description: "View competition display",
+      title: t("menu.bigScreen"),
+      description: t("menu.bigScreenDesc"),
       icon: MonitorPlay,
       route: "/big-screen",
       className: "md:col-span-2 row-span-1",
     },
     {
-      title: "Randomizer",
-      description: "Generate random questions",
+      title: t("menu.randomizer"),
+      description: t("menu.randomizerDesc"),
       icon: Shuffle,
       route: "/randomizer",
       className: "md:col-span-1 row-span-1",
     },
     {
-      title: "Jury Panel",
-      description: "Score participants",
+      title: t("menu.jury"),
+      description: t("menu.juryDesc"),
       icon: Scale,
       route: "/jury",
       className: "md:col-span-1 row-span-2",
     },
     {
-      title: "Participants",
-      description: "Manage contestants",
+      title: t("menu.participants"),
+      description: t("menu.participantsDesc"),
       icon: Users,
       route: "/participants",
       className: "md:col-span-2 row-span-1",
     },
     {
-      title: "Admin Panel",
-      description: "Manage jury and active participants",
+      title: t("menu.admin"),
+      description: t("menu.adminDesc"),
       icon: Settings,
       route: "/admin",
       className: "md:col-span-2 row-span-1",
     },
     {
-      title: "Competition",
-      description: "Event overview",
+      title: t("menu.competition"),
+      description: t("menu.competitionDesc"),
       icon: Trophy,
       className: "md:col-span-1 row-span-1",
     },
     {
-      title: "Schools",
-      description: "Participating institutions",
+      title: t("menu.schools"),
+      description: t("menu.schoolsDesc"),
       icon: GraduationCap,
       className: "md:col-span-1 row-span-1",
     },
     {
-      title: "Results",
-      description: "Competition results",
+      title: t("menu.results"),
+      description: t("menu.resultsDesc"),
       icon: BookOpen,
       className: "md:col-span-1 row-span-1",
     },
@@ -78,7 +80,7 @@ const Home = () => {
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="space-y-2">
           <BlurIn
-            word="Hifz Competition Dashboard"
+            word={t("home.title")}
             className="text-4xl font-bold tracking-tight md:text-4xl md:leading-normal"
             duration={0.25}
             variant={{
@@ -87,7 +89,7 @@ const Home = () => {
             }}
           />
           <BlurIn
-            word="Manage and oversee the competition proceedings"
+            word={t("home.subtitle")}
             className="text-muted-foreground text-base md:text-base md:leading-normal"
             duration={0.25}
             variant={{

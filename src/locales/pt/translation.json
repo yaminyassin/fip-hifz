@@ -1,0 +1,150 @@
+{
+  "menu": {
+    "home": "Início",
+    "participants": "Participantes",
+    "participantsDesc": "Gerenciar participantes",
+    "jury": "Painel do Júri",
+    "juryDesc": "Avaliar participantes",
+    "randomizer": "Sorteador",
+    "randomizerDesc": "Gerar questões aleatórias",
+    "language": "Idioma",
+    "bigScreen": "Tela Grande",
+    "bigScreenDesc": "Visualizar exibição da competição",
+    "admin": "Painel Admin",
+    "adminDesc": "Gerenciar júri e participantes ativos",
+    "competition": "Competição",
+    "competitionDesc": "Visão geral do evento",
+    "schools": "Escolas",
+    "schoolsDesc": "Instituições participantes",
+    "results": "Resultados",
+    "resultsDesc": "Resultados da competição"
+  },
+  "home": {
+    "title": "Painel da Competição de Hifz",
+    "subtitle": "Gerencie e supervisione os procedimentos da competição"
+  },
+  "jury": {
+    "title": "Painel do Júri",
+    "question": "Questão",
+    "page": "Página",
+    "login": {
+      "title": "Login do Júri",
+      "subtitle": "Digite seu ID de jurado para continuar",
+      "placeholder": "Digite o ID do Jurado",
+      "button": "Entrar",
+      "error": {
+        "invalid": "Autenticação Falhou",
+        "invalidDesc": "ID de jurado inválido",
+        "failed": "Erro",
+        "failedDesc": "Falha na autenticação"
+      }
+    },
+    "categories": {
+      "hifz": "Hifz",
+      "hifz_reminder": "Lembrete",
+      "hifz_assistance": "Assistido",
+      "tajweed": "Tajweed",
+      "tajweed_minor": "Erros Menores",
+      "tajweed_major": "Erros Maiores",
+      "fluency": "Fluência"
+    },
+    "actions": {
+      "logout": "Sair",
+      "done": "Concluir",
+      "saving": "Salvando...",
+      "completed": "Concluído",
+      "decrease": "Diminuir pontuação",
+      "increase": "Aumentar pontuação"
+    },
+    "messages": {
+      "evaluationComplete": "Avaliação Concluída",
+      "evaluationCompleteDesc": "Você concluiu a avaliação de todas as questões para este participante.",
+      "questionComplete": "Questão Concluída",
+      "movingToQuestion": "Indo para Questão {{number}}",
+      "inProgress": "Em Andamento"
+    }
+  },
+  "randomizer": {
+    "title": "Sorteador de Questões",
+    "generateQuestions": "Gerar Questões",
+    "generating": "Gerando...",
+    "questionLabel": "Questão {{number}}",
+    "messages": {
+      "noParticipant": "Nenhum participante ativo encontrado",
+      "success": "Sucesso",
+      "successDesc": "As questões foram geradas e atribuídas",
+      "error": "Erro",
+      "errorDesc": "Falha ao atualizar questões"
+    }
+  },
+  "participants": {
+    "title": "Participantes",
+    "searchPlaceholder": "Buscar participantes...",
+    "currentActive": "Participante Ativo Atual",
+    "noActive": "Nenhum participante ativo",
+    "selectNew": "Selecionar Novo Participante",
+    "selectPlaceholder": "Selecione um participante",
+    "nextParticipants": "Próximos Participantes",
+    "header": {
+      "title": "Participantes",
+      "subtitle": "Gerenciar e visualizar todos os participantes"
+    },
+    "banner": {
+      "loading": "Carregando dados do participante...",
+      "noParticipant": "Nenhum participante ativo encontrado",
+      "name": "Nome",
+      "age": "Idade",
+      "country": "País",
+      "category": "Categoria"
+    },
+    "actions": {
+      "setActive": "Definir como Ativo",
+      "activating": "Ativando..."
+    },
+    "table": {
+      "name": "Nome",
+      "age": "Idade",
+      "country": "País",
+      "category": "Categoria",
+      "school": "Escola",
+      "schedule": "Horário",
+      "status": "Status",
+      "actions": "Ações",
+      "q1Total": "Total Q1",
+      "q2Total": "Total Q2",
+      "q3Total": "Total Q3",
+      "statusComplete": "Concluído",
+      "statusPending": "Pendente"
+    }
+  },
+  "admin": {
+    "title": "Painel Administrativo",
+    "juryStatus": "Status do Júri",
+    "activeParticipant": "Participante Ativo",
+    "table": {
+      "juryName": "Nome do Jurado",
+      "currentQuestion": "Questão Atual",
+      "status": "Status",
+      "actions": "Ações"
+    },
+    "actions": {
+      "select": "Selecionar",
+      "remove": "Remover",
+      "save": "Salvar Alterações"
+    },
+    "messages": {
+      "participantUpdated": "Participante ativo atualizado",
+      "participantRemoved": "Participante ativo removido"
+    }
+  },
+  "common": {
+    "loading": "Carregando...",
+    "error": "Erro",
+    "success": "Sucesso",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "submit": "Enviar"
+  }
+} 
