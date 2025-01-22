@@ -5,18 +5,28 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
+import { Check } from "lucide-react";
+import { doc, setDoc } from "firebase/firestore";
+import { firestore } from "@/main";
 
-import { useScores } from "@/hooks/useScores";
 import { QuranViewer } from "@/components/ui/QuranViewer";
 import { useActiveParticipant } from "../hooks/useActiveParticipant";
 import { updateJuryProgress, getJuryMember } from "../services/jury";
 import { getAuthenticatedJury, clearAuthenticatedJury } from "@/services/juryAuth";
 import { JuryLogin } from "@/components/ui/JuryLogin";
 
-import { QuestionFields } from "../models/models";
+import { QuestionFields, Jury } from "../models/models";
 import { Card } from "../components/shadcn/card";
 import { ParticipantBanner } from "../components/ui/ParticipantBanner";
 import { useToast } from "@/components/shadcn/use-toast";
+
+const defaultScores: QuestionFields = {
+  hifz_reminder: 0,
+  hifz_assistance: 0,
+  tajweed_minor: 0,
+  tajweed_major: 0,
+  fluency: 0,
+};
 
 export const Route = createLazyFileRoute("/jury")({
   component: RouteComponent,
@@ -24,6 +34,7 @@ export const Route = createLazyFileRoute("/jury")({
 
 function RouteComponent() {
   const [selectedQuestion, setSelectedQuestion] = useState(1);
+  const [currentScores, setCurrentScores] = useState<QuestionFields>(defaultScores);
   const { data: participant } = useActiveParticipant();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -39,13 +50,13 @@ function RouteComponent() {
 
   const juryId = getAuthenticatedJury();
 
-  const { data: juryMember } = useQuery({
+  const { data: juryMember } = useQuery<Jury | null>({
     queryKey: ["jury", juryId],
     queryFn: () => getJuryMember(juryId || ""),
     enabled: !!juryId,
   });
 
-  const currentPage = participant?.assignedQuestions[selectedQuestion - 1];
+  const currentPage = participant?.assignedQuestions?.[selectedQuestion - 1];
 
   const updateJuryMutation = useMutation({
     mutationFn: async ({
@@ -63,38 +74,88 @@ function RouteComponent() {
     },
   });
 
-  const handleQuestionChange = (questionNumber: number) => {
-    setSelectedQuestion(questionNumber);
-    updateJuryMutation.mutate({
-      currentQuestion: questionNumber,
-      hasFinishedEvaluating: false,
-    });
+  const saveScoresMutation = useMutation({
+    mutationFn: async () => {
+      if (!juryId || !participant) return;
+
+      const scoreRef = doc(
+        firestore,
+        "scores",
+        `${participant.id}_${juryId}_${selectedQuestion}`
+      );
+
+      await setDoc(
+        scoreRef,
+        {
+          participantId: participant.id,
+          juryId,
+          questionNumber: selectedQuestion,
+          scores: currentScores,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
+    },
+  });
+
+  const handleScoreChange = (field: keyof QuestionFields, value: number) => {
+    setCurrentScores(prev => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
   const handleDone = async () => {
     const isLastQuestion = selectedQuestion === 3;
 
-    if (isLastQuestion) {
-      updateJuryMutation.mutate({
-        currentQuestion: selectedQuestion,
-        hasFinishedEvaluating: true,
-      });
+    try {
+      // First save the scores
+      await saveScoresMutation.mutateAsync();
+
+      // Then update jury progress
+      if (isLastQuestion) {
+        updateJuryMutation.mutate({
+          currentQuestion: selectedQuestion,
+          hasFinishedEvaluating: true,
+        });
+        toast({
+          title: t("jury.messages.evaluationComplete"),
+          description: t("jury.messages.evaluationCompleteDesc"),
+        });
+      } else {
+        const nextQuestion = selectedQuestion + 1;
+        setSelectedQuestion(nextQuestion);
+        // Reset scores for next question
+        setCurrentScores(defaultScores);
+        updateJuryMutation.mutate({
+          currentQuestion: nextQuestion,
+          hasFinishedEvaluating: false,
+        });
+        toast({
+          title: t("jury.messages.questionComplete"),
+          description: t("jury.messages.movingToQuestion", { number: nextQuestion }),
+        });
+      }
+
+      // Invalidate queries to refresh the data
+      queryClient.invalidateQueries({ queryKey: ["juryScores"] });
+    } catch (error) {
       toast({
-        title: t("jury.messages.evaluationComplete"),
-        description: t("jury.messages.evaluationCompleteDesc"),
-      });
-    } else {
-      const nextQuestion = selectedQuestion + 1;
-      setSelectedQuestion(nextQuestion);
-      updateJuryMutation.mutate({
-        currentQuestion: nextQuestion,
-        hasFinishedEvaluating: false,
-      });
-      toast({
-        title: t("jury.messages.questionComplete"),
-        description: t("jury.messages.movingToQuestion", { number: nextQuestion }),
+        title: t("common.error"),
+        description: t("jury.messages.errorSavingScores"),
+        variant: "destructive",
       });
     }
+  };
+
+  const handleQuestionChange = (questionNumber: number) => {
+    setSelectedQuestion(questionNumber);
+    setCurrentScores(defaultScores);
+    updateJuryMutation.mutate({
+      currentQuestion: questionNumber,
+      hasFinishedEvaluating: false,
+    });
   };
 
   const handleLogout = () => {
@@ -104,13 +165,9 @@ function RouteComponent() {
     navigate({ to: "/" });
   };
 
-  const handleLoginSuccess = () => {
-    setIsAuthenticated(true);
-  };
-
   // Show login if not authenticated
   if (!isAuthenticated) {
-    return <JuryLogin onLoginSuccess={handleLoginSuccess} />;
+    return <JuryLogin onLoginSuccess={() => setIsAuthenticated(true)} />;
   }
 
   return (
@@ -142,50 +199,66 @@ function RouteComponent() {
             <ParticipantBanner />
             <h2 className="text-2xl font-bold mb-4">
               {t("jury.question")} {selectedQuestion} - {t("jury.page")}{" "}
-              {participant?.assignedQuestions[selectedQuestion - 1]}
+              {participant?.assignedQuestions?.[selectedQuestion - 1]}
             </h2>
 
-            <ScoreCategory
-              title={t("jury.categories.hifz")}
-              labels={[t("jury.categories.hifz_reminder"), t("jury.categories.hifz_assistance")]}
-              fields={["hifz_reminder", "hifz_assistance"]}
-              juryId={juryId || ""}
-              participantId={participant?.id}
-              questionNumber={selectedQuestion}
-            />
-            <ScoreCategory
-              title={t("jury.categories.tajweed")}
-              labels={[t("jury.categories.tajweed_minor"), t("jury.categories.tajweed_major")]}
-              fields={["tajweed_minor", "tajweed_major"]}
-              juryId={juryId || ""}
-              participantId={participant?.id}
-              questionNumber={selectedQuestion}
-            />
-            <ScoreCategory
-              title={t("jury.categories.fluency")}
-              labels={[t("jury.categories.fluency")]}
-              fields={["fluency"]}
-              juryId={juryId || ""}
-              participantId={participant?.id}
-              questionNumber={selectedQuestion}
-            />
+            {participant && juryId && (
+              <>
+                <ScoreCategory
+                  title={t("jury.categories.hifz")}
+                  labels={[t("jury.categories.hifz_reminder"), t("jury.categories.hifz_assistance")]}
+                  fields={["hifz_reminder", "hifz_assistance"]}
+                  scores={currentScores}
+                  onScoreChange={handleScoreChange}
+                />
+                <ScoreCategory
+                  title={t("jury.categories.tajweed")}
+                  labels={[t("jury.categories.tajweed_minor"), t("jury.categories.tajweed_major")]}
+                  fields={["tajweed_minor", "tajweed_major"]}
+                  scores={currentScores}
+                  onScoreChange={handleScoreChange}
+                />
+                <ScoreCategory
+                  title={t("jury.categories.fluency")}
+                  labels={[t("jury.categories.fluency")]}
+                  fields={["fluency"]}
+                  scores={currentScores}
+                  onScoreChange={handleScoreChange}
+                />
+              </>
+            )}
 
             {/* Bottom Navigation Bar */}
             <div className="flex flex-row items-center bg-gray-300 p-4 gap-4 mt-auto">
               <div className="flex flex-row gap-4">
-                {[1, 2, 3].map((q) => (
-                  <Button
-                    key={q}
-                    className={`h-12 w-20 rounded-lg ${selectedQuestion === q
-                      ? "bg-blue-600 hover:bg-blue-500"
-                      : "bg-gray-600 hover:bg-gray-500"
-                      } text-white font-bold transition-colors`}
-                    onClick={() => handleQuestionChange(q)}
-                    disabled={updateJuryMutation.isPending}
-                  >
-                    Q{q}
-                  </Button>
-                ))}
+                {[1, 2, 3].map((q) => {
+                  const isCompleted = (juryMember?.currentQuestion ?? 0) > q ||
+                    ((juryMember?.currentQuestion ?? 0) === q && juryMember?.hasFinishedEvaluating === true);
+                  const isCurrent = selectedQuestion === q;
+
+                  return (
+                    <div key={q} className="relative">
+                      <Button
+                        className={`h-12 w-20 rounded-lg ${isCompleted
+                          ? "bg-green-600 hover:bg-green-500"
+                          : isCurrent
+                            ? "bg-blue-600 hover:bg-blue-500"
+                            : "bg-gray-600 hover:bg-gray-500"
+                          } text-white font-bold transition-colors relative ${isCompleted ? "opacity-90" : ""
+                          }`}
+                        onClick={() => handleQuestionChange(q)}
+                        disabled={updateJuryMutation.isPending || saveScoresMutation.isPending}
+                      >
+                        Q{q}
+                        {isCompleted && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 rounded-lg">
+                            <Check className="w-6 h-6 text-white" />
+                          </div>
+                        )}
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
               <div className="flex-grow" />
               <Button
@@ -194,10 +267,11 @@ function RouteComponent() {
                 disabled={
                   !participant?.id ||
                   updateJuryMutation.isPending ||
-                  (juryMember?.hasFinishedEvaluating && selectedQuestion === 3)
+                  saveScoresMutation.isPending ||
+                  (juryMember?.hasFinishedEvaluating === true && selectedQuestion === 3)
                 }
               >
-                {updateJuryMutation.isPending
+                {updateJuryMutation.isPending || saveScoresMutation.isPending
                   ? t("jury.actions.saving")
                   : juryMember?.hasFinishedEvaluating && selectedQuestion === 3
                     ? t("jury.actions.completed")
@@ -219,49 +293,17 @@ interface ScoreCategoryProps {
   title: string;
   labels: string[];
   fields: (keyof QuestionFields)[];
-  juryId: string;
-  participantId?: string;
-  questionNumber: number;
+  scores: QuestionFields;
+  onScoreChange: (field: keyof QuestionFields, value: number) => void;
 }
 
 export const ScoreCategory = ({
   title,
   labels,
   fields,
-  juryId,
-  participantId,
-  questionNumber,
+  scores,
+  onScoreChange,
 }: ScoreCategoryProps) => {
-  const { data: scores, isLoading } = useScores({
-    juryId,
-    participantId,
-    questionNumber,
-  });
-
-  if (isLoading) {
-    return (
-      <Card className="p-4">
-        <h3 className="text-lg font-semibold mb-4">{title}</h3>
-        <div className="flex gap-4">
-          {fields.map((field) => (
-            <Card key={field} className="w-36 p-2 animate-pulse">
-              <div className="flex flex-col gap-y-4 justify-center">
-                <div className="flex text-center justify-center w-full">
-                  <div className="h-4 w-20 bg-muted rounded" />
-                </div>
-                <div className="flex justify-center flex-row gap-2">
-                  <div className="h-8 w-8 bg-muted rounded" />
-                  <div className="h-8 w-8 bg-muted rounded" />
-                  <div className="h-8 w-8 bg-muted rounded" />
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </Card>
-    );
-  }
-
   return (
     <Card className="p-4">
       <h3 className="text-lg font-semibold mb-4">{title}</h3>
@@ -271,10 +313,8 @@ export const ScoreCategory = ({
             key={field}
             label={labels[index]}
             field={field}
-            juryId={juryId}
-            participantId={participantId}
-            questionNumber={questionNumber}
-            initialScore={scores?.scores?.[field] ?? 0}
+            value={scores[field]}
+            onChange={(value) => onScoreChange(field, value)}
           />
         ))}
       </div>
