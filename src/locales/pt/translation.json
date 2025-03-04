@@ -66,15 +66,19 @@
   },
   "randomizer": {
     "title": "Sorteador de Questões",
-    "generateQuestions": "Gerar Questões",
+    "generateQuestions": "Gerar Todas as Questões",
+    "generateQuestion": "Gerar Questão",
     "generating": "Gerando...",
     "questionLabel": "Questão {{number}}",
+    "categoryLabel": "Categoria",
+    "questionsCount": "Número de Questões",
+    "noParticipant": "Nenhum participante ativo selecionado. Por favor, selecione um participante primeiro.",
     "messages": {
       "noParticipant": "Nenhum participante ativo encontrado",
       "success": "Sucesso",
-      "successDesc": "As questões foram geradas e atribuídas",
+      "successDesc": "A questão foi gerada e atribuída",
       "error": "Erro",
-      "errorDesc": "Falha ao atualizar questões"
+      "errorDesc": "Falha ao atualizar questão"
     }
   },
   "participants": {
