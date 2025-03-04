@@ -2,7 +2,7 @@ import { Button } from "@/components/shadcn/button";
 import { Label } from "@/components/shadcn/label";
 import { ParticipantBanner } from "@/components/ui/ParticipantBanner";
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useUpdateParticipantQuestion } from "@/hooks/useUpdateParticipantQuestion";
 import { Card, CardContent } from "@/components/shadcn/card";
 import { useActiveParticipant } from "@/hooks/useActiveParticipant";
@@ -11,7 +11,8 @@ import { useTranslation } from "react-i18next";
 import { getCategoryConfig, generateRandomPage } from "@/lib/quranUtils";
 import { Participant } from "@/models/models";
 
-const RandomNumber = ({ 
+// Memoize the RandomNumber component to prevent unnecessary re-renders
+const RandomNumber = React.memo(({ 
   number, 
   index, 
   onRandomize,
@@ -64,11 +65,14 @@ const RandomNumber = ({
       </CardContent>
     </Card>
   );
-};
+});
+
+// Add display name for debugging purposes
+RandomNumber.displayName = "RandomNumber";
 
 const RouteComponent = () => {
   const [questionNumbers, setQuestionNumbers] = useState<number[]>([]);
-  const [generatingQuestions, setGeneratingQuestions] = useState<Set<number>>(new Set());
+  const [generatingQuestions, setGeneratingQuestions] = useState<Record<number, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
   const lastActiveParticipantRef = useRef<Participant | null>(null);
   
@@ -92,12 +96,12 @@ const RouteComponent = () => {
   }, [activeParticipant, isParticipantLoading, isLoading]);
 
   // Get the number of questions based on the participant's category
-  const getNumQuestions = (participant: Participant | null) => {
+  const getNumQuestions = useCallback((participant: Participant | null) => {
     if (!participant) return 0;
     
     const config = getCategoryConfig(participant.category);
     return config.numQuestions;
-  };
+  }, []);
 
   // Initialize question numbers from participant data
   useEffect(() => {
@@ -121,11 +125,17 @@ const RouteComponent = () => {
     } else {
       setQuestionNumbers([]);
     }
-  }, [activeParticipant]);
+  }, [activeParticipant, getNumQuestions]);
 
-  const handleRandomizeQuestion = (index: number) => {
-    const participant = activeParticipant || lastActiveParticipantRef.current;
-    
+  // Use the active participant or the last known active participant
+  const participant = useMemo(() => 
+    activeParticipant || lastActiveParticipantRef.current, 
+    [activeParticipant]
+  );
+
+  // Use useCallback to maintain a stable function reference
+  const handleRandomizeQuestion = useCallback((index: number) => {
+    // Use the memoized participant value
     if (!participant) {
       toast({
         title: t("randomizer.messages.error"),
@@ -135,12 +145,13 @@ const RouteComponent = () => {
       return;
     }
 
-    if (generatingQuestions.has(index)) {
+    // Check if this question is already being generated
+    if (generatingQuestions[index]) {
       return;
     }
 
-    // Mark this question as generating
-    setGeneratingQuestions(prev => new Set([...prev, index]));
+    // Mark this question as generating using object update
+    setGeneratingQuestions(prev => ({ ...prev, [index]: true }));
 
     // Reset to 0 to trigger rolling animation
     setQuestionNumbers(prev => {
@@ -174,9 +185,10 @@ const RouteComponent = () => {
               title: t("randomizer.messages.success"),
               description: t("randomizer.messages.successDesc"),
             });
+            // Remove from generating state using object update
             setGeneratingQuestions(prev => {
-              const updated = new Set([...prev]);
-              updated.delete(index);
+              const updated = { ...prev };
+              delete updated[index];
               return updated;
             });
           },
@@ -187,16 +199,37 @@ const RouteComponent = () => {
               description: t("randomizer.messages.errorDesc"),
               variant: "destructive",
             });
+            // Remove from generating state using object update
             setGeneratingQuestions(prev => {
-              const updated = new Set([...prev]);
-              updated.delete(index);
+              const updated = { ...prev };
+              delete updated[index];
               return updated;
             });
           },
         }
       );
     }, 1000);
-  };
+  }, [participant, generatingQuestions, toast, t, updateQuestion]);
+
+  // Memoize the grid layout class to prevent recalculation on every render
+  const gridLayoutClass = useMemo(() => {
+    if (questionNumbers.length <= 2) return 'grid-cols-1 md:grid-cols-2';
+    if (questionNumbers.length === 3) return 'grid-cols-1 md:grid-cols-3';
+    return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4';
+  }, [questionNumbers.length]);
+
+  // Memoize the RandomNumber components to prevent unnecessary re-renders
+  const randomNumberComponents = useMemo(() => {
+    return questionNumbers.map((number, index) => (
+      <RandomNumber
+        key={index}
+        number={number}
+        index={index}
+        onRandomize={() => handleRandomizeQuestion(index)}
+        isGenerating={generatingQuestions[index] === true}
+      />
+    ));
+  }, [questionNumbers, generatingQuestions, handleRandomizeQuestion]);
 
   if (isLoading) {
     return (
@@ -213,9 +246,6 @@ const RouteComponent = () => {
     );
   }
 
-  // Use the active participant or the last known active participant
-  const participant = activeParticipant || lastActiveParticipantRef.current;
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted">
       <div className="container mx-auto p-6 flex flex-col justify-center gap-12">
@@ -231,22 +261,8 @@ const RouteComponent = () => {
               </div>
               
               <div className="flex justify-center w-full">
-                <div className={`grid gap-6 ${
-                  questionNumbers.length <= 2 
-                    ? 'grid-cols-1 md:grid-cols-2' 
-                    : questionNumbers.length === 3
-                      ? 'grid-cols-1 md:grid-cols-3'
-                      : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
-                }`}>
-                  {questionNumbers.map((number, index) => (
-                    <RandomNumber
-                      key={index}
-                      number={number}
-                      index={index}
-                      onRandomize={() => handleRandomizeQuestion(index)}
-                      isGenerating={generatingQuestions.has(index)}
-                    />
-                  ))}
+                <div className={`grid gap-6 ${gridLayoutClass}`}>
+                  {randomNumberComponents}
                 </div>
               </div>
             </>
