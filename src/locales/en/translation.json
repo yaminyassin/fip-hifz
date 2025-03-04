@@ -66,15 +66,19 @@
   },
   "randomizer": {
     "title": "Question Randomizer",
-    "generateQuestions": "Generate Questions",
+    "generateQuestions": "Generate All Questions",
+    "generateQuestion": "Generate Question",
     "generating": "Generating...",
     "questionLabel": "Question {{number}}",
+    "categoryLabel": "Category",
+    "questionsCount": "Number of Questions",
+    "noParticipant": "No active participant selected. Please select a participant first.",
     "messages": {
       "noParticipant": "No active participant found",
       "success": "Success",
-      "successDesc": "Questions have been generated and assigned",
+      "successDesc": "Question has been generated and assigned",
       "error": "Error",
-      "errorDesc": "Failed to update questions"
+      "errorDesc": "Failed to update question"
     }
   },
   "participants": {
