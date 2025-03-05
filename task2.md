@@ -20,7 +20,7 @@ there are 3 sections to be evaluated
 Depending on questions that the participant would have, imagine is its 2 questions, the hifz, tajweed and waqf percentage would be divided into 2 parts, the same for the other sections.
 if it was 3 questions, the hifz, tajweed and waqf percentage would be divided into 3 parts and so on.
 
-And at the end of the last question evaluation, the jury will have a the ability to add a geral performance percentage ( Performance/Fluency ) up to 5% which increments with +1 points which will be added to the total score.
+Then we will have a special score called Performance/Fluency, this will add +1 points to the total score and will have a limit of 5 points.
 
 The database schema the way it is right now is the following:
 DB schema
@@ -33,8 +33,4 @@ scores collection -> participantid_juryid_questionumber -> createdAt, JuryId, pa
 , and looking at the models.ts file would also be important,
 
 if needed to change the database schema, please let me know.
-
-
-
-
 

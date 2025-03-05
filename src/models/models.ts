@@ -10,11 +10,20 @@ export type Quran = {
  * the judge evaluation of the participant
  */
 export type QuestionFields = {
-  hifz_reminder: number;
-  hifz_assistance: number;
-  tajweed_minor: number;
-  tajweed_major: number;
-  fluency: number;
+  // Hifz errors (60%)
+  hifz_fath: number; // -2% each
+  hifz_tannin: number; // -1% each
+  hifz_taraddud: number; // -0.5% each
+  
+  // Tajweed errors (30%)
+  tajweed_jali: number; // -2% each
+  tajweed_khafi: number; // -1% each
+  
+  // Waqf errors (10%)
+  waqf_ibtida: number; // -1% each
+  
+  // Performance/Fluency bonus (up to +5%)
+  fluency_bonus: number; // +1% each, max 5
 };
 
 export type Scores = {
