@@ -9,6 +9,10 @@ import {
 } from "@/components/shadcn/table";
 import { useTranslation } from "react-i18next";
 import { calculateFinalScore } from "@/utils/scoreUtils";
+import { Button } from "@/components/shadcn/button";
+import { Eye } from "lucide-react";
+import { useState } from "react";
+import { ScoreDetailsDialog } from "@/components/ui/ScoreDetailsDialog";
 
 type ParticipantWithScores = Participant & {
   questionScores?: {
@@ -22,86 +26,94 @@ interface ParticipantsTableProps {
 
 export const ParticipantsTable = ({ participants }: ParticipantsTableProps) => {
   const { t } = useTranslation();
+  const [selectedParticipant, setSelectedParticipant] = useState<ParticipantWithScores | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+  const handleOpenDetails = (participant: ParticipantWithScores) => {
+    setSelectedParticipant(participant);
+    setIsDetailsOpen(true);
+  };
+
+  const handleCloseDetails = () => {
+    setIsDetailsOpen(false);
+    setSelectedParticipant(null);
+  };
 
   return (
-    <div className="overflow-x-auto w-full">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t("participants.table.name")}</TableHead>
-            <TableHead>{t("participants.table.age")}</TableHead>
-            <TableHead>{t("participants.table.country")}</TableHead>
-            <TableHead>{t("participants.table.category")}</TableHead>
-            <TableHead>{t("participants.table.school")}</TableHead>
-            <TableHead>{t("participants.table.scheduled")}</TableHead>
-            <TableHead>{t("participants.table.status")}</TableHead>
-            <TableHead>{t("participants.table.q1Score")}</TableHead>
-            <TableHead>{t("participants.table.q2Score")}</TableHead>
-            <TableHead>{t("participants.table.q3Score")}</TableHead>
-            <TableHead className="font-bold">{t("participants.table.totalScore")}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {participants.map((participant) => {
-            // Calculate score for each question using the new scoring system
-            const getQuestionScore = (questionNumber: number) => {
-              const scores = participant.questionScores?.[questionNumber];
-              if (!scores) return 0;
-              
-              // Return raw sum for each question (for individual question display)
-              const totalErrors = 
-                scores.hifz_fath + 
-                scores.hifz_tannin + 
-                scores.hifz_taraddud + 
-                scores.tajweed_jali + 
-                scores.tajweed_khafi + 
-                scores.waqf_ibtida;
+    <>
+      <div className="overflow-x-auto w-full">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t("participants.table.name")}</TableHead>
+              <TableHead>{t("participants.table.age")}</TableHead>
+              <TableHead>{t("participants.table.country")}</TableHead>
+              <TableHead>{t("participants.table.category")}</TableHead>
+              <TableHead>{t("participants.table.school")}</TableHead>
+              <TableHead>{t("participants.table.scheduled")}</TableHead>
+              <TableHead>{t("participants.table.status")}</TableHead>
+              <TableHead className="font-bold">{t("participants.table.totalScore")}</TableHead>
+              <TableHead>{t("participants.table.actions")}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {participants.map((participant) => {
+              // Calculate final percentage score using all questions
+              const getFinalScore = () => {
+                if (!participant.questionScores) return 0;
                 
-              const totalFluency = scores.fluency_bonus;
-              
-              // Simple indicator of errors vs bonuses for question columns
-              return totalFluency - totalErrors;
-            };
-            
-            // Calculate final percentage score using all questions
-            const getFinalScore = () => {
-              if (!participant.questionScores) return 0;
-              
-              const totalQuestions = Object.keys(participant.questionScores).length;
-              if (totalQuestions === 0) return 0;
-              
-              const result = calculateFinalScore(participant.questionScores, totalQuestions);
-              return result.percentage;
-            };
+                const totalQuestions = Object.keys(participant.questionScores).length;
+                if (totalQuestions === 0) return 0;
+                
+                const result = calculateFinalScore(participant.questionScores, totalQuestions);
+                return result.percentage;
+              };
 
-            const finalScore = getFinalScore();
+              const finalScore = getFinalScore();
 
-            return (
-              <TableRow key={participant.id}>
-                <TableCell>{participant.name}</TableCell>
-                <TableCell>{participant.age}</TableCell>
-                <TableCell>{participant.country}</TableCell>
-                <TableCell>{participant.category}</TableCell>
-                <TableCell>{participant.school}</TableCell>
-                <TableCell>{participant.scheduled}</TableCell>
-                <TableCell>
-                  {participant.isDone 
-                    ? t("participants.table.statusComplete") 
-                    : t("participants.table.statusPending")}
-                </TableCell>
-                {[1, 2, 3].map((questionNumber) => (
-                  <TableCell key={questionNumber}>
-                    {getQuestionScore(questionNumber)}
+              return (
+                <TableRow key={participant.id}>
+                  <TableCell>{participant.name}</TableCell>
+                  <TableCell>{participant.age}</TableCell>
+                  <TableCell>{participant.country}</TableCell>
+                  <TableCell>{participant.category}</TableCell>
+                  <TableCell>{participant.school}</TableCell>
+                  <TableCell>{participant.scheduled}</TableCell>
+                  <TableCell>
+                    {participant.isDone 
+                      ? t("participants.table.statusComplete") 
+                      : t("participants.table.statusPending")}
                   </TableCell>
-                ))}
-                <TableCell className="font-bold">
-                  {finalScore > 0 ? `${finalScore.toFixed(1)}%` : "-"}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </div>
+                  <TableCell className="font-bold">
+                    {finalScore > 0 ? `${finalScore.toFixed(1)}%` : "-"}
+                  </TableCell>
+                  <TableCell>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex items-center gap-1"
+                      onClick={() => handleOpenDetails(participant)}
+                      disabled={!participant.questionScores || Object.keys(participant.questionScores).length === 0}
+                      aria-label={t("participants.actions.viewDetails")}
+                    >
+                      <Eye className="h-4 w-4" />
+                      {t("participants.actions.details")}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+
+      {selectedParticipant && (
+        <ScoreDetailsDialog
+          participant={selectedParticipant}
+          isOpen={isDetailsOpen}
+          onClose={handleCloseDetails}
+        />
+      )}
+    </>
   );
 };
