@@ -8,6 +8,7 @@ import {
   TableRow,
 } from "@/components/shadcn/table";
 import { useTranslation } from "react-i18next";
+import { calculateFinalScore } from "@/utils/scoreUtils";
 
 type ParticipantWithScores = Participant & {
   questionScores?: {
@@ -23,7 +24,7 @@ export const ParticipantsTable = ({ participants }: ParticipantsTableProps) => {
   const { t } = useTranslation();
 
   return (
-    <div className="rounded-md border overflow-x-auto">
+    <div className="overflow-x-auto w-full">
       <Table>
         <TableHeader>
           <TableRow>
@@ -32,23 +33,48 @@ export const ParticipantsTable = ({ participants }: ParticipantsTableProps) => {
             <TableHead>{t("participants.table.country")}</TableHead>
             <TableHead>{t("participants.table.category")}</TableHead>
             <TableHead>{t("participants.table.school")}</TableHead>
-            <TableHead>{t("participants.table.schedule")}</TableHead>
+            <TableHead>{t("participants.table.scheduled")}</TableHead>
             <TableHead>{t("participants.table.status")}</TableHead>
-            <TableHead>{t("participants.table.q1Total")}</TableHead>
-            <TableHead>{t("participants.table.q2Total")}</TableHead>
-            <TableHead>{t("participants.table.q3Total")}</TableHead>
+            <TableHead>{t("participants.table.q1Score")}</TableHead>
+            <TableHead>{t("participants.table.q2Score")}</TableHead>
+            <TableHead>{t("participants.table.q3Score")}</TableHead>
+            <TableHead className="font-bold">{t("participants.table.totalScore")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {participants.map((participant) => {
-            const getQuestionTotal = (questionNumber: number) => {
+            // Calculate score for each question using the new scoring system
+            const getQuestionScore = (questionNumber: number) => {
               const scores = participant.questionScores?.[questionNumber];
               if (!scores) return 0;
-              return Object.values(scores).reduce(
-                (sum, score) => sum + score,
-                0
-              );
+              
+              // Return raw sum for each question (for individual question display)
+              const totalErrors = 
+                scores.hifz_fath + 
+                scores.hifz_tannin + 
+                scores.hifz_taraddud + 
+                scores.tajweed_jali + 
+                scores.tajweed_khafi + 
+                scores.waqf_ibtida;
+                
+              const totalFluency = scores.fluency_bonus;
+              
+              // Simple indicator of errors vs bonuses for question columns
+              return totalFluency - totalErrors;
             };
+            
+            // Calculate final percentage score using all questions
+            const getFinalScore = () => {
+              if (!participant.questionScores) return 0;
+              
+              const totalQuestions = Object.keys(participant.questionScores).length;
+              if (totalQuestions === 0) return 0;
+              
+              const result = calculateFinalScore(participant.questionScores, totalQuestions);
+              return result.percentage;
+            };
+
+            const finalScore = getFinalScore();
 
             return (
               <TableRow key={participant.id}>
@@ -65,9 +91,12 @@ export const ParticipantsTable = ({ participants }: ParticipantsTableProps) => {
                 </TableCell>
                 {[1, 2, 3].map((questionNumber) => (
                   <TableCell key={questionNumber}>
-                    {getQuestionTotal(questionNumber)}
+                    {getQuestionScore(questionNumber)}
                   </TableCell>
                 ))}
+                <TableCell className="font-bold">
+                  {finalScore > 0 ? `${finalScore.toFixed(1)}%` : "-"}
+                </TableCell>
               </TableRow>
             );
           })}

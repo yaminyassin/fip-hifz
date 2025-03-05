@@ -4,11 +4,13 @@ import { firestore } from "@/main";
 import { QuestionFields, Scores } from "@/models/models";
 
 const defaultScores: QuestionFields = {
-    hifz_reminder: 0,
-    hifz_assistance: 0,
-    tajweed_minor: 0,
-    tajweed_major: 0,
-    fluency: 0,
+    hifz_fath: 0,
+    hifz_tannin: 0,
+    hifz_taraddud: 0,
+    tajweed_jali: 0,
+    tajweed_khafi: 0,
+    waqf_ibtida: 0,
+    fluency_bonus: 0,
 };
 
 export const useJuryScores = (juryId: string, participantId?: string, questionNumber?: number) => {
