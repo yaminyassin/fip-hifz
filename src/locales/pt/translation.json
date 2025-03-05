@@ -43,10 +43,33 @@
       "hifz": "Hifz",
       "hifz_reminder": "Lembrete",
       "hifz_assistance": "Assistido",
+      "hifz_fath": "Fath",
+      "hifz_tannin": "Tannin",
+      "hifz_taraddud": "Taraddud",
       "tajweed": "Tajweed",
       "tajweed_minor": "Erros Menores",
       "tajweed_major": "Erros Maiores",
-      "fluency": "Fluência"
+      "tajweed_jali": "Jali",
+      "tajweed_khafi": "Khafi",
+      "waqf": "Waqf",
+      "waqf_ibtida": "Ibtida",
+      "fluency": "Fluência",
+      "fluency_bonus": "Bônus de Fluência",
+      "ofTotalScore": "do total",
+      "maxDeduction": "Dedução Máxima",
+      "perQuestion": "por questão",
+      "maxBonus": "Bônus Máximo",
+      "total": "total"
+    },
+    "scoreSummary": {
+      "title": "Resumo da Pontuação",
+      "totalScore": "Pontuação Total",
+      "totalScoreExplanation": "Este resumo mostra a pontuação combinada de todas as questões.",
+      "fluencyExplanation": "Os pontos de fluência são cumulativos para o desempenho geral do participante e persistem em todas as questões.",
+      "hifzScore": "Pontuação Hifz",
+      "tajweedScore": "Pontuação Tajweed",
+      "waqfScore": "Pontuação Waqf",
+      "fluencyBonus": "Bônus de Fluência"
     },
     "actions": {
       "logout": "Sair",
@@ -57,11 +80,17 @@
       "increase": "Aumentar pontuação"
     },
     "messages": {
-      "evaluationComplete": "Avaliação Concluída",
+      "evaluationComplete": "Avaliação Completa",
       "evaluationCompleteDesc": "Você concluiu a avaliação de todas as questões para este participante.",
       "questionComplete": "Questão Concluída",
-      "movingToQuestion": "Indo para Questão {{number}}",
-      "inProgress": "Em Andamento"
+      "movingToQuestion": "Passando para a Questão {{number}}",
+      "errorSavingScores": "Houve um erro ao salvar as pontuações. Por favor, tente novamente.",
+      "inProgress": "Em Andamento",
+      "scoreReset": "Pontuações Redefinidas",
+      "scoreResetDesc": "Pontuações anteriores foram apagadas para as novas questões deste participante.",
+      "fluencyCapped": "Bônus de Fluência Limitado",
+      "fluencyCappedDesc": "O bônus total de fluência não pode exceder {{max}} pontos. Total atual: {{current}} pontos.",
+      "overallPerformance": "bônus de desempenho geral"
     }
   },
   "randomizer": {
@@ -111,12 +140,13 @@
       "country": "País",
       "category": "Categoria",
       "school": "Escola",
-      "schedule": "Horário",
+      "scheduled": "Horário",
       "status": "Status",
       "actions": "Ações",
-      "q1Total": "Total Q1",
-      "q2Total": "Total Q2",
-      "q3Total": "Total Q3",
+      "q1Score": "Pontuação Q1",
+      "q2Score": "Pontuação Q2",
+      "q3Score": "Pontuação Q3",
+      "totalScore": "Pontuação Total",
       "statusComplete": "Concluído",
       "statusPending": "Pendente"
     }

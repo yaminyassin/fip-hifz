@@ -20,8 +20,9 @@
     "resultsDesc": "Competition results"
   },
   "home": {
-    "title": "Hifz Competition Dashboard",
-    "subtitle": "Manage and oversee the competition proceedings"
+    "title": "Welcome to Hifz Competition",
+    "description": "A platform for managing Quran memorization competitions",
+    "getStarted": "Get Started"
   },
   "jury": {
     "title": "Jury Panel",
@@ -43,10 +44,29 @@
       "hifz": "Hifz",
       "hifz_reminder": "Reminder",
       "hifz_assistance": "Assisted",
+      "hifz_fath": "Fath",
+      "hifz_tannin": "Tannin",
+      "hifz_taraddud": "Taraddud",
       "tajweed": "Tajweed",
       "tajweed_minor": "Minor Mistakes",
       "tajweed_major": "Major Mistakes",
-      "fluency": "Fluency"
+      "tajweed_jali": "Jali",
+      "tajweed_khafi": "Khafi",
+      "waqf": "Waqf",
+      "waqf_ibtida": "Ibtida",
+      "fluency": "Performance/Fluency",
+      "fluency_bonus": "Fluency Bonus",
+      "ofTotalScore": "of total score",
+      "maxDeduction": "Max Deduction",
+      "perQuestion": "per question",
+      "maxBonus": "Max Bonus",
+      "total": "total"
+    },
+    "scoreSummary": {
+      "title": "Score Summary",
+      "totalScore": "Total Score",
+      "totalScoreExplanation": "This summary shows the combined score across all questions.",
+      "fluencyExplanation": "Fluency points are cumulative for the participant's overall performance and persist across all questions."
     },
     "actions": {
       "logout": "Logout",
@@ -61,7 +81,13 @@
       "evaluationCompleteDesc": "You have completed evaluating all questions for this participant.",
       "questionComplete": "Question Complete",
       "movingToQuestion": "Moving to Question {{number}}",
-      "inProgress": "In Progress"
+      "errorSavingScores": "There was an error saving the scores. Please try again.",
+      "inProgress": "In Progress",
+      "scoreReset": "Scores Reset",
+      "scoreResetDesc": "Previous scores have been cleared for this participant's new questions.",
+      "fluencyCapped": "Fluency Bonus Capped",
+      "fluencyCappedDesc": "Total fluency bonus cannot exceed {{max}} points. Current total: {{current}} points.",
+      "overallPerformance": "overall performance bonus"
     }
   },
   "randomizer": {
@@ -111,12 +137,13 @@
       "country": "Country",
       "category": "Category",
       "school": "School",
-      "schedule": "Schedule",
+      "scheduled": "Schedule",
       "status": "Status",
       "actions": "Actions",
-      "q1Total": "Q1 Total",
-      "q2Total": "Q2 Total",
-      "q3Total": "Q3 Total",
+      "q1Score": "Q1 Score",
+      "q2Score": "Q2 Score",
+      "q3Score": "Q3 Score",
+      "totalScore": "Total Score",
       "statusComplete": "Complete",
       "statusPending": "Pending"
     }
