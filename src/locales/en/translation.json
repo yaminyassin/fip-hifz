@@ -60,7 +60,8 @@
       "maxDeduction": "Max Deduction",
       "perQuestion": "per question",
       "maxBonus": "Max Bonus",
-      "total": "total"
+      "total": "total",
+      "perfectPerformance": "Perfect Performance"
     },
     "scoreSummary": {
       "title": "Score Summary",
@@ -129,7 +130,9 @@
     },
     "actions": {
       "setActive": "Set Active",
-      "activating": "Activating..."
+      "activating": "Activating...",
+      "details": "Details",
+      "viewDetails": "View score details"
     },
     "table": {
       "name": "Name",
@@ -146,6 +149,26 @@
       "totalScore": "Total Score",
       "statusComplete": "Complete",
       "statusPending": "Pending"
+    },
+    "visualizations": {
+      "title": "Score Visualizations",
+      "topPerformers": "Top Performers",
+      "topPerformersDesc": "Highest scoring participants",
+      "categoryPerformance": "Category Performance",
+      "categoryPerformanceDesc": "Average scores by category",
+      "scoreDistribution": "Score Distribution",
+      "scoreDistributionDesc": "Participants by score range",
+      "excellent": "Excellent",
+      "veryGood": "Very Good",
+      "good": "Good",
+      "average": "Average",
+      "belowAverage": "Below Average",
+      "averageScore": "Average Score",
+      "highestScore": "Highest Score",
+      "participantsScored": "Participants Scored",
+      "excellentPerformers": "Excellent Performers",
+      "topThreeComparison": "Top 3 Comparison",
+      "topThreeComparisonDesc": "Category breakdown of top performers"
     }
   },
   "admin": {
@@ -176,6 +199,7 @@
     "cancel": "Cancel",
     "delete": "Delete",
     "edit": "Edit",
-    "submit": "Submit"
+    "submit": "Submit",
+    "close": "Close"
   }
 } 

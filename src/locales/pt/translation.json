@@ -59,7 +59,8 @@
       "maxDeduction": "Dedução Máxima",
       "perQuestion": "por questão",
       "maxBonus": "Bônus Máximo",
-      "total": "total"
+      "total": "total",
+      "perfectPerformance": "Desempenho Perfeito"
     },
     "scoreSummary": {
       "title": "Resumo da Pontuação",
@@ -132,7 +133,9 @@
     },
     "actions": {
       "setActive": "Definir como Ativo",
-      "activating": "Ativando..."
+      "activating": "Ativando...",
+      "details": "Detalhes",
+      "viewDetails": "Ver detalhes da pontuação"
     },
     "table": {
       "name": "Nome",
@@ -149,6 +152,26 @@
       "totalScore": "Pontuação Total",
       "statusComplete": "Concluído",
       "statusPending": "Pendente"
+    },
+    "visualizations": {
+      "title": "Visualizações de Pontuação",
+      "topPerformers": "Melhores Desempenhos",
+      "topPerformersDesc": "Participantes com maior pontuação",
+      "categoryPerformance": "Desempenho por Categoria",
+      "categoryPerformanceDesc": "Pontuações médias por categoria",
+      "scoreDistribution": "Distribuição de Pontuações",
+      "scoreDistributionDesc": "Participantes por faixa de pontuação",
+      "excellent": "Excelente",
+      "veryGood": "Muito Bom",
+      "good": "Bom",
+      "average": "Médio",
+      "belowAverage": "Abaixo da Média",
+      "averageScore": "Pontuação Média",
+      "highestScore": "Maior Pontuação",
+      "participantsScored": "Participantes Avaliados",
+      "excellentPerformers": "Desempenhos Excelentes",
+      "topThreeComparison": "Comparação Top 3",
+      "topThreeComparisonDesc": "Detalhamento por categoria dos melhores participantes"
     }
   },
   "admin": {
@@ -179,6 +202,7 @@
     "cancel": "Cancelar",
     "delete": "Excluir",
     "edit": "Editar",
-    "submit": "Enviar"
+    "submit": "Enviar",
+    "close": "Fechar"
   }
 } 
