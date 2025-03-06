@@ -123,6 +123,14 @@
       "title": "Participantes",
       "subtitle": "Gerenciar e visualizar todos os participantes"
     },
+    "filter": {
+      "by_category": "Filtrar por Categoria",
+      "all_categories": "Todas as Categorias",
+      "category_a": "Categoria A (A1 & A2)",
+      "category_b": "Categoria B (B1 & B2)",
+      "category_c": "Categoria C (C1 & C2)",
+      "category_d": "Categoria D (D1 & D2)"
+    },
     "banner": {
       "loading": "Carregando dados do participante...",
       "noParticipant": "Nenhum participante ativo encontrado",
@@ -171,7 +179,10 @@
       "participantsScored": "Participantes Avaliados",
       "excellentPerformers": "Desempenhos Excelentes",
       "topThreeComparison": "Comparação Top 3",
-      "topThreeComparisonDesc": "Detalhamento por categoria dos melhores participantes"
+      "topThreeComparisonDesc": "Detalhamento por categoria dos melhores participantes",
+      "noParticipantsFound": "Nenhum Participante Encontrado",
+      "noParticipantsWithScores": "Não há participantes com pontuações para exibir",
+      "noParticipantsInCategory": "Não há participantes na Categoria {{category}} com pontuações para exibir"
     }
   },
   "admin": {
