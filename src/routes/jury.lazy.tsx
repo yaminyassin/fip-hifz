@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { Check } from "lucide-react";
+import { Check, ArrowLeft, ArrowRight, RotateCcw } from "lucide-react";
 import { doc, setDoc, collection, query, where, getDocs, deleteDoc, updateDoc } from "firebase/firestore";
 import { firestore } from "@/main";
 
@@ -32,9 +32,71 @@ const defaultScores: QuestionFields = {
   fluency_bonus: 0,
 };
 
-export const Route = createLazyFileRoute("/jury")({
-  component: RouteComponent,
-});
+interface ScoreCategoryProps {
+  title: string;
+  subtitle?: string;
+  labels: string[];
+  fields: (keyof QuestionFields)[];
+  scores: QuestionFields;
+  onScoreChange: (field: keyof QuestionFields, value: number) => void;
+}
+
+export const ScoreCategory = ({
+  title,
+  subtitle,
+  labels,
+  fields,
+  scores,
+  onScoreChange,
+}: ScoreCategoryProps) => {
+  const { t } = useTranslation();
+  const { data: participant } = useActiveParticipant();
+  const totalQuestions = participant?.assignedQuestions?.length || 1;
+
+  const getSectionForCategory = (categoryTitle: string): 'hifz' | 'tajweed' | 'waqf' | 'fluency' => {
+    if (categoryTitle === t("jury.categories.hifz")) return 'hifz';
+    if (categoryTitle === t("jury.categories.tajweed")) return 'tajweed';
+    if (categoryTitle === t("jury.categories.waqf")) return 'waqf';
+    return 'fluency';
+  };
+
+  const section = getSectionForCategory(title);
+  const maxDeduction = section !== 'fluency' ? getMaxDeductionPerQuestion(section, totalQuestions) : 0;
+
+  return (
+    <Card className="p-4">
+      <div className="flex flex-col mb-4">
+        <h3 className="text-lg font-semibold">{title}</h3>
+        {subtitle && <span className="text-sm text-muted-foreground">{subtitle}</span>}
+        {section !== 'fluency' && (
+          <span className="text-xs text-muted-foreground mt-1">
+            {t("jury.categories.maxDeduction")}: {maxDeduction.toFixed(1)}% {t("jury.categories.perQuestion")}
+          </span>
+        )}
+        {section === 'fluency' && (
+          <span className="text-xs text-muted-foreground mt-1">
+            {t("jury.categories.maxBonus")}: +5% {t("jury.categories.total")}
+          </span>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-4">
+        {fields.map((field, index) => (
+          <div key={field} className="flex flex-col">
+            <ScoreInput
+              label={labels[index]}
+              field={field}
+              value={scores[field]}
+              onChange={(value) => onScoreChange(field, value)}
+            />
+            <span className="text-xs text-center mt-1 font-medium text-muted-foreground">
+              {getErrorPenalty(field)}
+            </span>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+};
 
 function RouteComponent() {
   const [selectedQuestion, setSelectedQuestion] = useState(1);
@@ -344,13 +406,13 @@ function RouteComponent() {
       const firstQuestion = Math.min(...Object.keys(updatedScores).map(Number));
       updatedScores[firstQuestion] = {
         ...updatedScores[firstQuestion],
-        fluency_bonus: globalFluencyBonus + currentScores.fluency_bonus
+        fluency_bonus: globalFluencyBonus // Use only the global value
       };
     } else if (selectedQuestion) {
       // If no scores yet, create an entry for current question with just fluency
       updatedScores[selectedQuestion] = {
         ...defaultScores,
-        fluency_bonus: globalFluencyBonus + currentScores.fluency_bonus
+        fluency_bonus: globalFluencyBonus // Use only the global value
       };
     }
     
@@ -422,56 +484,48 @@ function RouteComponent() {
       );
 
       // Save the global fluency bonus to the first question
-      if (currentScores.fluency_bonus > 0) {
-        const newGlobalFluency = globalFluencyBonus + currentScores.fluency_bonus;
-        setGlobalFluencyBonus(newGlobalFluency);
+      // Use globalFluencyBonus directly as it now contains the total
+      const firstPageNumber = participant.assignedQuestions?.[0];
+      if (firstPageNumber === undefined) return;
 
-        // Get the first page number
-        const firstPageNumber = participant.assignedQuestions?.[0];
-        if (firstPageNumber === undefined) return;
+      // Save the global fluency to question 1 with its page number
+      const fluencyRef = doc(
+        firestore,
+        "scores",
+        `${participant.id}_${juryId}_q1_p${firstPageNumber}`
+      );
 
-        // Save the global fluency to question 1 with its page number
-        const fluencyRef = doc(
-          firestore,
-          "scores",
-          `${participant.id}_${juryId}_q1_p${firstPageNumber}`
-        );
-
-        await setDoc(
-          fluencyRef,
-          {
-            participantId: participant.id,
-            juryId,
-            questionNumber: 1,
-            pageNumber: firstPageNumber,
-            scores: {
-              fluency_bonus: newGlobalFluency
-            },
-            createdAt: new Date(),
-            updatedAt: new Date(),
+      await setDoc(
+        fluencyRef,
+        {
+          participantId: participant.id,
+          juryId,
+          questionNumber: 1,
+          pageNumber: firstPageNumber,
+          scores: {
+            fluency_bonus: globalFluencyBonus
           },
-          { merge: true }
-        );
-      }
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
     },
   });
 
   const handleScoreChange = (field: keyof QuestionFields, value: number) => {
-    // For fluency_bonus, cap the value at 5 minus the existing global bonus
+    // For fluency_bonus, cap the value at 5
     if (field === 'fluency_bonus') {
-      const remainingFluencyAllowance = 5 - globalFluencyBonus;
-      const cappedValue = Math.min(value, Math.max(0, remainingFluencyAllowance));
+      const cappedValue = Math.min(value, Math.max(0, 5));
       
-      setCurrentScores(prev => ({
-        ...prev,
-        [field]: cappedValue,
-      }));
+      // Only update the global fluency bonus, don't touch currentScores.fluency_bonus
+      setGlobalFluencyBonus(cappedValue);
       
       // Show toast if value was capped
-      if (value > remainingFluencyAllowance && remainingFluencyAllowance >= 0) {
+      if (value > 5) {
         toast({
           title: t("jury.messages.fluencyCapped"),
-          description: t("jury.messages.fluencyCappedDesc", { max: 5, current: globalFluencyBonus }),
+          description: t("jury.messages.fluencyCappedDesc", { max: 5, current: cappedValue }),
         });
       }
     } else {
@@ -492,32 +546,6 @@ function RouteComponent() {
       // First save the scores
       await saveScoresMutation.mutateAsync();
 
-      // Update the allScores state with the saved scores
-      setAllScores(prev => {
-        const updatedScores = { ...prev };
-        
-        // Update current question scores (without fluency)
-        updatedScores[selectedQuestion] = {
-          ...currentScores,
-          fluency_bonus: 0
-        };
-        
-        // Update question 1 with the global fluency bonus
-        if (updatedScores[1]) {
-          updatedScores[1] = {
-            ...updatedScores[1],
-            fluency_bonus: globalFluencyBonus + currentScores.fluency_bonus
-          };
-        } else {
-          updatedScores[1] = {
-            ...defaultScores,
-            fluency_bonus: globalFluencyBonus + currentScores.fluency_bonus
-          };
-        }
-        
-        return updatedScores;
-      });
-
       // Then update jury progress - ensure hasFinishedEvaluating is only true for the last question
       updateJuryMutation.mutate({
         currentQuestion: isLastQuestion ? selectedQuestion : selectedQuestion + 1,
@@ -533,17 +561,40 @@ function RouteComponent() {
               ...defaultScores,
               fluency_bonus: 0 // Reset fluency input for new question
             }));
-            
             toast({
               title: t("jury.messages.questionComplete"),
               description: t("jury.messages.movingToQuestion", { number: nextQuestion }),
             });
           } else {
+            // For last question, ensure current fluency bonus is not double-counted
+            setCurrentScores(prev => ({ ...prev, fluency_bonus: 0 }));
             toast({
               title: t("jury.messages.evaluationComplete"),
               description: t("jury.messages.evaluationCompleteDesc"),
             });
           }
+          
+          // Update allScores state: for current question, set fluency_bonus to 0,
+          // and update question 1 with global bonus plus current bonus only if not last question
+          setAllScores(prev => {
+            const updatedScores = { ...prev };
+            updatedScores[selectedQuestion] = {
+              ...currentScores,
+              fluency_bonus: 0
+            };
+            if (updatedScores[1]) {
+              updatedScores[1] = {
+                ...updatedScores[1],
+                fluency_bonus: globalFluencyBonus + (isLastQuestion ? 0 : currentScores.fluency_bonus)
+              };
+            } else {
+              updatedScores[1] = {
+                ...defaultScores,
+                fluency_bonus: globalFluencyBonus + (isLastQuestion ? 0 : currentScores.fluency_bonus)
+              };
+            }
+            return updatedScores;
+          });
           
           // Invalidate queries to refresh the data
           queryClient.invalidateQueries({ queryKey: ["juryScores"] });
@@ -561,21 +612,20 @@ function RouteComponent() {
   };
 
   const handleQuestionChange = (questionNumber: number) => {
-    // Save current fluency bonus value
-    const currentFluency = currentScores.fluency_bonus;
+    // No need to save current fluency bonus as it's stored globally
     
     setSelectedQuestion(questionNumber);
     
-    // Set scores for the new question, but preserve any fluency bonus input
+    // Set scores for the new question, don't carry over fluency bonus
     if (allScores[questionNumber]) {
       setCurrentScores({
         ...allScores[questionNumber],
-        fluency_bonus: currentFluency
+        fluency_bonus: 0 // Set to 0 as we use globalFluencyBonus for display
       });
     } else {
       setCurrentScores({
         ...defaultScores,
-        fluency_bonus: currentFluency
+        fluency_bonus: 0 // Set to 0 as we use globalFluencyBonus for display
       });
     }
     
@@ -590,6 +640,51 @@ function RouteComponent() {
     setIsAuthenticated(false);
     queryClient.clear();
     navigate({ to: "/" });
+  };
+
+  // Add arrow navigation functions inside RouteComponent, e.g., right after handleQuestionChange
+  const handlePreviousPage = () => {
+    if (participant?.assignedQuestions && selectedQuestion > 1) {
+      handleQuestionChange(selectedQuestion - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (participant?.assignedQuestions && selectedQuestion < participant.assignedQuestions.length) {
+      handleQuestionChange(selectedQuestion + 1);
+    }
+  };
+
+  // Add new state for viewerPage at the top of RouteComponent, after selectedQuestion declaration
+  const [viewerPage, setViewerPage] = useState<number | undefined>(undefined);
+  const [originalViewerPage, setOriginalViewerPage] = useState<number | undefined>(undefined);
+  
+  /* Add useEffect to sync viewerPage with selectedQuestion when participant changes */
+  useEffect(() => {
+    if (participant && participant.assignedQuestions && participant.assignedQuestions.length >= selectedQuestion) {
+      const initialPage = participant.assignedQuestions[selectedQuestion - 1];
+      setViewerPage(initialPage);
+      setOriginalViewerPage(initialPage);
+    }
+  }, [participant, selectedQuestion]);
+
+  /* Replace the existing handlePreviousPage and handleNextPage with new functions for viewer navigation */
+  const handleViewerPrevious = () => {
+    if (viewerPage && viewerPage > 1) {
+      setViewerPage(viewerPage - 1);
+    }
+  };
+
+  const handleViewerNext = () => {
+    if (viewerPage !== undefined) {
+      setViewerPage(viewerPage + 1);
+    }
+  };
+
+  const handleViewerReset = () => {
+    if (originalViewerPage !== undefined) {
+      setViewerPage(originalViewerPage);
+    }
   };
 
   // Show login if not authenticated
@@ -631,46 +726,68 @@ function RouteComponent() {
 
             {participant && juryId && (
               <>
-                <ScoreCategory
-                  title={t("jury.categories.hifz")}
-                  subtitle={`${getSectionWeight('hifz')} ${t("jury.categories.ofTotalScore")}`}
-                  labels={[t("jury.categories.hifz_fath"), t("jury.categories.hifz_tannin"), t("jury.categories.hifz_taraddud")]}
-                  fields={["hifz_fath", "hifz_tannin", "hifz_taraddud"]}
-                  scores={currentScores}
-                  onScoreChange={handleScoreChange}
-                />
-                <ScoreCategory
-                  title={t("jury.categories.tajweed")}
-                  subtitle={`${getSectionWeight('tajweed')} ${t("jury.categories.ofTotalScore")}`}
-                  labels={[t("jury.categories.tajweed_jali"), t("jury.categories.tajweed_khafi")]}
-                  fields={["tajweed_jali", "tajweed_khafi"]}
-                  scores={currentScores}
-                  onScoreChange={handleScoreChange}
-                />
-                <ScoreCategory
-                  title={t("jury.categories.waqf")}
-                  subtitle={`${getSectionWeight('waqf')} ${t("jury.categories.ofTotalScore")}`}
-                  labels={[t("jury.categories.waqf_ibtida")]}
-                  fields={["waqf_ibtida"]}
-                  scores={currentScores}
-                  onScoreChange={handleScoreChange}
-                />
-                <ScoreCategory
-                  title={t("jury.categories.fluency")}
-                  subtitle={`${getSectionWeight('fluency')} ${t("jury.messages.overallPerformance")}`}
-                  labels={[t("jury.categories.fluency_bonus")]}
-                  fields={["fluency_bonus"]}
-                  scores={currentScores}
-                  onScoreChange={handleScoreChange}
-                />
-
-                {/* Score Summary - Always show total score across all questions */}
+                <div className="grid grid-cols-2 gap-4">
+                  <ScoreCategory
+                    title={t("jury.categories.hifz")}
+                    subtitle={`${getSectionWeight('hifz')} ${t("jury.categories.ofTotalScore")}`}
+                    labels={[t("jury.categories.hifz_fath"), t("jury.categories.hifz_tannin"), t("jury.categories.hifz_taraddud")]}
+                    fields={['hifz_fath', 'hifz_tannin', 'hifz_taraddud']}
+                    scores={currentScores}
+                    onScoreChange={handleScoreChange}
+                  />
+                  <ScoreCategory
+                    title={t("jury.categories.tajweed")}
+                    subtitle={`${getSectionWeight('tajweed')} ${t("jury.categories.ofTotalScore")}`}
+                    labels={[t("jury.categories.tajweed_jali"), t("jury.categories.tajweed_khafi")]}
+                    fields={['tajweed_jali', 'tajweed_khafi']}
+                    scores={currentScores}
+                    onScoreChange={handleScoreChange}
+                  />
+                  <ScoreCategory
+                    title={t("jury.categories.waqf")}
+                    subtitle={`${getSectionWeight('waqf')} ${t("jury.categories.ofTotalScore")}`}
+                    labels={[t("jury.categories.waqf_ibtida")]}
+                    fields={['waqf_ibtida']}
+                    scores={currentScores}
+                    onScoreChange={handleScoreChange}
+                  />
+                  <ScoreCategory
+                    title={t("jury.categories.fluency")}
+                    subtitle={`${getSectionWeight('fluency')} ${t("jury.messages.overallPerformance")}`}
+                    labels={[t("jury.categories.fluency_bonus")]}
+                    fields={['fluency_bonus']}
+                    scores={{ ...currentScores, fluency_bonus: globalFluencyBonus }}
+                    onScoreChange={handleScoreChange}
+                  />
+                </div>
                 <div className="mt-6">
                   <ScoreSummary 
                     allScores={
                       Object.keys(liveScores).length > 0 
-                        ? liveScores 
-                        : { [selectedQuestion]: {...defaultScores, fluency_bonus: globalFluencyBonus} }
+                        ? (() => {
+                            // Create a copy of liveScores with all fluency_bonus values set to 0
+                            const scoresWithoutFluency = Object.fromEntries(
+                              Object.entries(liveScores).map(([qNum, scores]) => [
+                                qNum,
+                                { ...scores, fluency_bonus: 0 }
+                              ])
+                            );
+                            
+                            // Add the global fluency bonus to the first question only
+                            if (Object.keys(scoresWithoutFluency).length > 0) {
+                              const firstQuestionKey = Object.keys(scoresWithoutFluency).sort((a, b) => 
+                                parseInt(a) - parseInt(b)
+                              )[0];
+                              
+                              scoresWithoutFluency[firstQuestionKey] = {
+                                ...scoresWithoutFluency[firstQuestionKey],
+                                fluency_bonus: globalFluencyBonus
+                              };
+                            }
+                            
+                            return scoresWithoutFluency;
+                          })()
+                        : { [selectedQuestion]: { ...defaultScores, fluency_bonus: globalFluencyBonus } }
                     } 
                     totalQuestions={totalQuestions} 
                   />
@@ -746,9 +863,54 @@ function RouteComponent() {
 
         <div className="flex flex-col w-2/6 overflow-hidden">
           {/* Quran Viewer */}
-          {currentPage && (
-            <div className="flex h-screen overflow-hidden">
-              <QuranViewer pageNumber={currentPage} />
+          {viewerPage !== undefined && (
+            <div className="flex flex-col h-[900px]">
+              <div className="flex-grow">
+                <QuranViewer 
+                  pageNumber={viewerPage} 
+                  questionNumber={selectedQuestion} 
+                />
+              </div>
+              <div className="h-[80px] flex items-center">
+                <div className={`flex w-full justify-between mt-2 p-2`}>
+                  <div className="flex flex-col items-center">
+                    <Button variant="outline" onClick={handleViewerNext}>
+                      <ArrowLeft className="w-5 h-5" />
+                    </Button>
+                    <span className="text-xs mt-1 text-muted-foreground">{t("jury.viewer.nextPage")}</span>
+                  </div>
+                  
+                  <div className="flex flex-col items-center relative h-[70px] w-[120px] flex-shrink-0">
+                    <div 
+                      className={`
+                        absolute left-1/2 transform -translate-x-1/2 
+                        ${viewerPage !== originalViewerPage 
+                          ? 'opacity-100 scale-100 translate-y-0 transition-all duration-300 ease-out' 
+                          : 'opacity-0 scale-90 translate-y-2 transition-all duration-200 ease-in pointer-events-none'}
+                      `}
+                    >
+                      <Button 
+                        variant="secondary" 
+                        onClick={handleViewerReset}
+                        className="bg-blue-100 hover:bg-blue-200 border border-blue-300"
+                      >
+                        <RotateCcw className="w-4 h-4 mr-1" />
+                        <span>{t("common.reset")}</span>
+                      </Button>
+                      <span className="text-xs mt-1 text-muted-foreground text-center block">
+                        {t("jury.viewer.resetPage")}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col items-center">
+                    <Button variant="outline" onClick={handleViewerPrevious} disabled={viewerPage <= 1}>
+                      <ArrowRight className="w-5 h-5" />
+                    </Button>
+                    <span className="text-xs mt-1 text-muted-foreground">{t("jury.viewer.previousPage")}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -757,80 +919,6 @@ function RouteComponent() {
   );
 }
 
-interface ScoreCategoryProps {
-  title: string;
-  subtitle?: string;
-  labels: string[];
-  fields: (keyof QuestionFields)[];
-  scores: QuestionFields;
-  onScoreChange: (field: keyof QuestionFields, value: number) => void;
-}
-
-export const ScoreCategory = ({
-  title,
-  subtitle,
-  labels,
-  fields,
-  scores,
-  onScoreChange,
-}: ScoreCategoryProps) => {
-  const { t } = useTranslation();
-  const { data: participant } = useActiveParticipant();
-  
-  // Calculate max deduction per question based on the category
-  const totalQuestions = participant?.assignedQuestions?.length || 1;
-  
-  // Determine which section this category belongs to
-  const getSectionForCategory = (categoryTitle: string): 'hifz' | 'tajweed' | 'waqf' | 'fluency' => {
-    if (categoryTitle === t("jury.categories.hifz")) return 'hifz';
-    if (categoryTitle === t("jury.categories.tajweed")) return 'tajweed';
-    if (categoryTitle === t("jury.categories.waqf")) return 'waqf';
-    return 'fluency';
-  };
-  
-  const section = getSectionForCategory(title);
-  
-  // Get max deduction for this category per question (if applicable)
-  const maxDeduction = section !== 'fluency' 
-    ? getMaxDeductionPerQuestion(section, totalQuestions) 
-    : 0;
-  
-  return (
-    <Card className="p-4">
-      <div className="flex flex-col mb-4">
-        <h3 className="text-lg font-semibold">{title}</h3>
-        {subtitle && <span className="text-sm text-muted-foreground">{subtitle}</span>}
-        
-        {/* Display max deduction per question if not fluency */}
-        {section !== 'fluency' && (
-          <span className="text-xs text-muted-foreground mt-1">
-            {t("jury.categories.maxDeduction")}: {maxDeduction.toFixed(1)}% {t("jury.categories.perQuestion")}
-          </span>
-        )}
-        
-        {/* Display max fluency bonus if fluency category */}
-        {section === 'fluency' && (
-          <span className="text-xs text-muted-foreground mt-1">
-            {t("jury.categories.maxBonus")}: +5% {t("jury.categories.total")}
-          </span>
-        )}
-      </div>
-      
-      <div className="flex flex-wrap gap-4">
-        {fields.map((field, index) => (
-          <div key={field} className="flex flex-col">
-            <ScoreInput
-              label={labels[index]}
-              field={field}
-              value={scores[field]}
-              onChange={(value) => onScoreChange(field, value)}
-            />
-            <span className="text-xs text-center mt-1 font-medium text-muted-foreground">
-              {getErrorPenalty(field)}
-            </span>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-};
+export const Route = createLazyFileRoute("/jury")({
+  component: RouteComponent,
+});

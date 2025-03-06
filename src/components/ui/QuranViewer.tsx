@@ -5,9 +5,10 @@ import { useTranslation } from "react-i18next";
 
 type QuranViewerProps = {
   pageNumber?: number;
+  questionNumber?: number;
 };
 
-export function QuranViewer({ pageNumber }: QuranViewerProps) {
+export function QuranViewer({ pageNumber, questionNumber }: QuranViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [imageWidth, setImageWidth] = useState<number>(800);
   const [imageHeight, setImageHeight] = useState<number>(1000);
@@ -30,50 +31,59 @@ export function QuranViewer({ pageNumber }: QuranViewerProps) {
     return () => window.removeEventListener("resize", handleContainerResize);
   }, []);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        {t("common.loading")}
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-full text-red-500">
-        {t("common.error")}
-      </div>
-    );
-  }
-
-  if (!pageData?.page) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        {t("randomizer.messages.noParticipant")}
-      </div>
-    );
-  }
-
-  return (
+  // Wrapper with fixed height to prevent layout shifts
+  const contentWrapper = (
     <div
       ref={containerRef}
-      className="flex flex-col items-center justify-center bg-slate-300 border-2 border-slate-800 p-1"
+      className="flex flex-col items-center justify-center bg-slate-300 border-2 border-slate-800 p-1 h-[800px]"
     >
-      <Label className="pb-2">{t("randomizer.questionLabel", { number: pageNumber })}</Label>
-      <div className="border-2 border-slate-800">
-        <img
-          src={`data:image/png;base64,${pageData.page}`}
-          alt={t("randomizer.questionLabel", { number: pageNumber })}
-          onLoad={handleContainerResize}
-          style={{
-            maxWidth: imageWidth,
-            maxHeight: imageHeight,
-            width: "auto",
-            height: "800px",
-          }}
-          className="object-contain"
-        />
-      </div>
+      <Label className="pb-2">
+        {questionNumber 
+          ? t("randomizer.questionLabelWithPage", { 
+              question: questionNumber, 
+              page: pageNumber 
+            })
+          : t("randomizer.questionLabel", { number: pageNumber })}
+      </Label>
+      
+      {isLoading && (
+        <div className="flex items-center justify-center h-full w-full">
+          <div className="text-center">
+            {t("common.loading")}
+          </div>
+        </div>
+      )}
+      
+      {error && (
+        <div className="flex items-center justify-center h-full w-full text-red-500">
+          {t("common.error")}
+        </div>
+      )}
+      
+      {!isLoading && !error && !pageData?.page && (
+        <div className="flex items-center justify-center h-full w-full">
+          {t("randomizer.messages.noParticipant")}
+        </div>
+      )}
+      
+      {!isLoading && !error && pageData?.page && (
+        <div className="border-2 border-slate-800 h-full flex items-center justify-center">
+          <img
+            src={`data:image/png;base64,${pageData.page}`}
+            alt={t("randomizer.questionLabel", { number: pageNumber })}
+            onLoad={handleContainerResize}
+            style={{
+              maxWidth: imageWidth,
+              width: "auto",
+              height: "auto",
+              maxHeight: "750px",
+            }}
+            className="object-contain"
+          />
+        </div>
+      )}
     </div>
   );
+
+  return contentWrapper;
 }
