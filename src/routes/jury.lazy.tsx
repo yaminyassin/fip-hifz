@@ -71,6 +71,22 @@ function RouteComponent() {
   
   const juryId = getAuthenticatedJury();
 
+  // Listen for jury ID changes and refresh data
+  useEffect(() => {
+    if (juryId && participant?.id) {
+      console.log(`Jury ID changed to ${juryId}, refreshing data for participant ${participant.id}`);
+      // Reset scores when jury changes
+      setCurrentScores(defaultScores);
+      setAllScores({});
+      setGlobalFluencyBonus(0);
+      setSelectedQuestion(1);
+      
+      // Invalidate and reload data
+      queryClient.invalidateQueries({ queryKey: ["juryScores"] });
+      queryClient.invalidateQueries({ queryKey: ["jury", juryId] });
+    }
+  }, [juryId, queryClient, participant?.id]);
+
   const { data: juryMember } = useQuery<Jury | null>({
     queryKey: ["jury", juryId],
     queryFn: () => getJuryMember(juryId || ""),
@@ -216,11 +232,14 @@ function RouteComponent() {
     const fetchAllScores = async () => {
       if (!participant?.id || !participant.assignedQuestions?.length) return;
       
+      console.log(`Fetching scores for participant ${participant.id} and jury ${juryId}`);
+      
       try {
         const scoresRef = collection(firestore, "scores");
         const q = query(
           scoresRef,
-          where("participantId", "==", participant.id)
+          where("participantId", "==", participant.id),
+          where("juryId", "==", juryId)
         );
         
         const snapshot = await getDocs(q);
@@ -258,15 +277,13 @@ function RouteComponent() {
             const currentValue = scoresByQuestion[currentQuestionNumber][fieldKey];
             const newValue = data.scores[fieldKey];
             
-            // Track fluency bonus separately 
+            // Only use scores from the current jury
             if (fieldKey === 'fluency_bonus') {
-              if (data.juryId === juryId) {
-                totalFluencyBonus += newValue;
-              }
+              totalFluencyBonus += newValue;
             } 
-            // For errors, take the highest count
+            // For errors, use the scores from the current jury
             else {
-              scoresByQuestion[currentQuestionNumber][fieldKey] = Math.max(currentValue, newValue);
+              scoresByQuestion[currentQuestionNumber][fieldKey] = newValue;
             }
           });
         });
@@ -279,7 +296,7 @@ function RouteComponent() {
     };
     
     fetchAllScores();
-  }, [participant, juryId]);
+  }, [participant, juryId, participant?.id]);
 
   // Load current scores for the selected question
   useEffect(() => {
