@@ -21,6 +21,7 @@
   },
   "home": {
     "title": "Welcome to Hifz Competition",
+    "subtitle": "A platform for managing Quran memorization competitions",
     "description": "A platform for managing Quran memorization competitions",
     "getStarted": "Get Started"
   },
@@ -67,7 +68,12 @@
       "title": "Score Summary",
       "totalScore": "Total Score",
       "totalScoreExplanation": "This summary shows the combined score across all questions.",
-      "fluencyExplanation": "Fluency points are cumulative for the participant's overall performance and persist across all questions."
+      "fluencyExplanation": "Fluency points are cumulative for the participant's overall performance and persist across all questions.",
+      "selectJury": "Select Jury",
+      "averageOfAll": "Average of All Juries",
+      "juryMember": "Jury #{id}",
+      "jury": "Jury",
+      "currentlyViewing": "Currently viewing"
     },
     "actions": {
       "logout": "Logout",
@@ -147,6 +153,7 @@
       "q2Score": "Q2 Score",
       "q3Score": "Q3 Score",
       "totalScore": "Total Score",
+      "juryCount": "Jury Evaluations",
       "statusComplete": "Complete",
       "statusPending": "Pending"
     },
@@ -165,6 +172,11 @@
       "belowAverage": "Below Average",
       "averageScore": "Average Score",
       "highestScore": "Highest Score",
+      "evaluatedParticipants": "Evaluated Participants",
+      "averageJuries": "Average Juries per Participant",
+      "evaluationConsistency": "Evaluation Consistency",
+      "strongestCategory": "Strongest Category",
+      "retentionRate": "retention rate",
       "participantsScored": "Participants Scored",
       "excellentPerformers": "Excellent Performers",
       "topThreeComparison": "Top 3 Comparison",
