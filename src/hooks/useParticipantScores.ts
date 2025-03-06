@@ -1,8 +1,70 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { firestore } from "@/main";
-import { Scores } from "@/models/models";
+import { Scores, QuestionFields } from "@/models/models";
 import { useEffect } from "react";
+
+// Helper function to create an empty QuestionFields object
+export const createEmptyQuestionFields = (): QuestionFields => ({
+    hifz_fath: 0,
+    hifz_tannin: 0,
+    hifz_taraddud: 0,
+    tajweed_jali: 0,
+    tajweed_khafi: 0,
+    waqf_ibtida: 0,
+    fluency_bonus: 0,
+});
+
+// Helper function to calculate average scores across jury members
+export const calculateAverageScores = (
+    juryScores: Record<string, { [questionNumber: number]: QuestionFields }>
+): { [questionNumber: number]: QuestionFields } => {
+    const averageScores: { [questionNumber: number]: QuestionFields } = {};
+    const juryIds = Object.keys(juryScores);
+    
+    if (juryIds.length === 0) {
+        return averageScores;
+    }
+    
+    // Find all question numbers across all juries
+    const allQuestionNumbers = new Set<number>();
+    juryIds.forEach(juryId => {
+        Object.keys(juryScores[juryId]).forEach(qNum => {
+            allQuestionNumbers.add(Number(qNum));
+        });
+    });
+    
+    // Calculate average for each question and field
+    allQuestionNumbers.forEach(questionNumber => {
+        averageScores[questionNumber] = createEmptyQuestionFields();
+        
+        // Count how many juries evaluated this question
+        let juryCount = 0;
+        
+        // Sum up scores for this question from all juries
+        juryIds.forEach(juryId => {
+            const juryQuestionScore = juryScores[juryId][questionNumber];
+            if (juryQuestionScore) {
+                juryCount++;
+                Object.keys(juryQuestionScore).forEach(field => {
+                    const fieldKey = field as keyof QuestionFields;
+                    averageScores[questionNumber][fieldKey] += juryQuestionScore[fieldKey];
+                });
+            }
+        });
+        
+        // Calculate average for each field if we have juries that scored this question
+        if (juryCount > 0) {
+            Object.keys(averageScores[questionNumber]).forEach(field => {
+                const fieldKey = field as keyof QuestionFields;
+                averageScores[questionNumber][fieldKey] = 
+                    averageScores[questionNumber][fieldKey] / juryCount;
+            });
+        }
+    });
+    
+    return averageScores;
+};
 
 export const useParticipantScores = (participantId: string, questionNumber?: number) => {
     const queryClient = useQueryClient();
@@ -20,16 +82,38 @@ export const useParticipantScores = (participantId: string, questionNumber?: num
         const q = query(scoresRef, ...constraints);
 
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
-            const scores: Scores[] = [];
+            // Group scores by jury
+            const scoresByJury: Record<string, { [questionNumber: number]: QuestionFields }> = {};
+            const allJuryIds: string[] = [];
+            
             querySnapshot.forEach((doc) => {
-                scores.push({ id: doc.id, ...doc.data() } as Scores);
+                const scoreData = { id: doc.id, ...doc.data() } as Scores;
+                const { juryId, questionNumber, scores } = scoreData;
+                
+                // Initialize jury scores object if needed
+                if (!scoresByJury[juryId]) {
+                    scoresByJury[juryId] = {};
+                    allJuryIds.push(juryId);
+                }
+                
+                // Store scores for this jury and question
+                scoresByJury[juryId][questionNumber] = scores;
             });
+            
+            // Calculate average scores across all juries
+            const averageScores = calculateAverageScores(scoresByJury);
+            
+            const result = {
+                byJury: scoresByJury,
+                average: averageScores,
+                juryIds: allJuryIds
+            };
 
             const queryKey = questionNumber
                 ? ["scores", participantId, questionNumber]
                 : ["scores", participantId];
 
-            queryClient.setQueryData(queryKey, scores);
+            queryClient.setQueryData(queryKey, result);
         }, (error) => {
             console.error("Error fetching scores:", error);
         });
@@ -37,11 +121,18 @@ export const useParticipantScores = (participantId: string, questionNumber?: num
         return () => unsubscribe();
     }, [participantId, questionNumber, queryClient]);
 
+    // Initialize with empty objects to avoid null/undefined errors
+    const emptyResult = {
+        byJury: {} as Record<string, { [questionNumber: number]: QuestionFields }>,
+        average: {} as { [questionNumber: number]: QuestionFields },
+        juryIds: [] as string[]
+    };
+
     return useQuery({
         queryKey: questionNumber
             ? ["scores", participantId, questionNumber]
             : ["scores", participantId],
-        queryFn: () => [], // Initial value, will be updated by the listener
+        queryFn: () => emptyResult, // Initial value with proper typing
         staleTime: Infinity, // Never mark as stale since we're using real-time updates
         enabled: !!participantId,
     });

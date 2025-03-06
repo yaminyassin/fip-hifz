@@ -4,11 +4,14 @@ import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/shadcn/card";
 import { Progress } from "@/components/shadcn/progress";
 import { useMemo } from "react";
-import { TrendingUp, Award, Star, Medal, Users, Zap } from "lucide-react";
+import { TrendingUp, Award, Star, Medal, Users, Zap, BookOpenCheck } from "lucide-react";
 
+// Updated to include the new score format
 type ParticipantWithScores = Participant & {
   questionScores?: {
-    [key: number]: QuestionFields;
+    byJury: Record<string, { [questionNumber: number]: QuestionFields }>;
+    average: { [questionNumber: number]: QuestionFields };
+    juryIds: string[];
   };
 };
 
@@ -22,19 +25,50 @@ export const ParticipantScoreVisualizations = ({ participants }: ParticipantScor
   // Calculate final scores for all participants that have scores
   const participantsWithScores = useMemo(() => {
     return participants
-      .filter(p => p.questionScores && Object.keys(p.questionScores).length > 0)
+      .filter(p => p.questionScores && p.questionScores.average && Object.keys(p.questionScores.average).length > 0)
       .map(participant => {
-        const totalQuestions = Object.keys(participant.questionScores || {}).length;
-        const scoreResult = calculateFinalScore(participant.questionScores || {}, totalQuestions);
+        const totalQuestions = Object.keys(participant.questionScores?.average || {}).length;
+        const scoreResult = calculateFinalScore(participant.questionScores?.average || {}, totalQuestions);
         
         return {
           ...participant,
           finalScore: scoreResult.percentage,
-          breakdown: scoreResult.breakdownBySection
+          breakdown: scoreResult.breakdownBySection,
+          juryCount: participant.questionScores?.juryIds?.length || 0
         };
       })
       .sort((a, b) => b.finalScore - a.finalScore);
   }, [participants]);
+
+  // Calculate the strongest category overall
+  const strongestCategory = useMemo(() => {
+    if (participantsWithScores.length === 0) return { category: "hifz", percentage: 0 };
+    
+    // Calculate the average percentage for each category
+    let totalHifz = 0;
+    let totalTajweed = 0;
+    let totalWaqf = 0;
+    
+    participantsWithScores.forEach(p => {
+      // These are the retention percentages (100 - deductions)
+      totalHifz += (100 - p.breakdown.hifz);
+      totalTajweed += (100 - p.breakdown.tajweed);
+      totalWaqf += (100 - p.breakdown.waqf);
+    });
+    
+    const avgHifz = totalHifz / participantsWithScores.length;
+    const avgTajweed = totalTajweed / participantsWithScores.length;
+    const avgWaqf = totalWaqf / participantsWithScores.length;
+    
+    // Find the maximum
+    if (avgHifz >= avgTajweed && avgHifz >= avgWaqf) {
+      return { category: "hifz", percentage: avgHifz };
+    } else if (avgTajweed >= avgHifz && avgTajweed >= avgWaqf) {
+      return { category: "tajweed", percentage: avgTajweed };
+    } else {
+      return { category: "waqf", percentage: avgWaqf };
+    }
+  }, [participantsWithScores]);
 
   // Only proceed if we have participants with scores
   if (participantsWithScores.length === 0) {
@@ -248,11 +282,11 @@ export const ParticipantScoreVisualizations = ({ participants }: ParticipantScor
                   {t("participants.visualizations.highestScore")}
                 </p>
                 <p className="text-3xl font-bold mt-1">
-                  {topParticipants.length > 0 ? topParticipants[0].finalScore.toFixed(1) : 0}%
+                  {participantsWithScores[0]?.finalScore.toFixed(1)}%
                 </p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
-                <Award className="h-6 w-6 text-amber-500 dark:text-amber-300" />
+              <div className="h-12 w-12 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
+                <Zap className="h-6 w-6 text-emerald-500 dark:text-emerald-300" />
               </div>
             </div>
           </CardContent>
@@ -263,9 +297,11 @@ export const ParticipantScoreVisualizations = ({ participants }: ParticipantScor
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">
-                  {t("participants.visualizations.participantsScored")}
+                  {t("participants.visualizations.evaluatedParticipants")}
                 </p>
-                <p className="text-3xl font-bold mt-1">{participantCount}</p>
+                <p className="text-3xl font-bold mt-1">
+                  {participantsWithScores.length}
+                </p>
               </div>
               <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
                 <Users className="h-6 w-6 text-purple-500 dark:text-purple-300" />
@@ -279,12 +315,17 @@ export const ParticipantScoreVisualizations = ({ participants }: ParticipantScor
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">
-                  {t("participants.visualizations.excellentPerformers")}
+                  {t("participants.visualizations.strongestCategory")}
                 </p>
-                <p className="text-3xl font-bold mt-1">{scoreDistribution.excellent}</p>
+                <p className="text-3xl font-bold mt-1">
+                  {t(`jury.categories.${strongestCategory.category}`)}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {strongestCategory.percentage.toFixed(1)}% {t("participants.visualizations.retentionRate")}
+                </p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
-                <Zap className="h-6 w-6 text-emerald-500 dark:text-emerald-300" />
+              <div className="h-12 w-12 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
+                <BookOpenCheck className="h-6 w-6 text-amber-500 dark:text-amber-300" />
               </div>
             </div>
           </CardContent>

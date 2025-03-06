@@ -3,10 +3,23 @@ import { collection, onSnapshot, query } from "firebase/firestore";
 import { firestore } from "@/main";
 import { Participant, QuestionFields } from "@/models/models";
 import { useEffect } from "react";
+import { calculateAverageScores, createEmptyQuestionFields } from "./useParticipantScores";
+
+// Extended Scores type with pageNumber
+interface ExtendedScores {
+  id: string;
+  participantId: string;
+  juryId: string;
+  questionNumber: number;
+  pageNumber?: number;
+  scores: QuestionFields;
+}
 
 type ParticipantWithScores = Participant & {
   questionScores: {
-    [key: number]: QuestionFields;
+    byJury: Record<string, { [questionNumber: number]: QuestionFields }>;
+    average: { [questionNumber: number]: QuestionFields };
+    juryIds: string[];
   };
 };
 
@@ -17,11 +30,18 @@ export const useParticipants = () => {
     // Set up real-time listener for participants
     const participantsRef = collection(firestore, "participants");
     const participantsUnsubscribe = onSnapshot(participantsRef, (participantsSnapshot) => {
-      const participants = participantsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        questionScores: {},
-      } as ParticipantWithScores));
+      const participants = participantsSnapshot.docs.map(doc => {
+        const participantData = doc.data() as Omit<Participant, 'id'>;
+        return {
+          id: doc.id,
+          ...participantData,
+          questionScores: {
+            byJury: {},
+            average: {},
+            juryIds: []
+          },
+        } as ParticipantWithScores;
+      });
 
       // Update React Query cache with the participants data
       queryClient.setQueryData(["participants"], participants);
@@ -36,39 +56,58 @@ export const useParticipants = () => {
 
         // Create a new array with updated scores
         const updatedParticipants = currentParticipants.map(participant => {
-          const questionScores: { [key: number]: QuestionFields } = {};
-
-          participant.assignedQuestions.forEach((questionNumber, index) => {
-            const mappedQuestionNumber = index + 1;
-            const questionScore: QuestionFields = {
-              hifz_reminder: 0,
-              hifz_assistance: 0,
-              tajweed_minor: 0,
-              tajweed_major: 0,
-              fluency: 0,
-            };
-
-            // Find scores for this participant and question
-            scoresSnapshot.docs.forEach((scoreDoc) => {
-              const scoreData = scoreDoc.data();
-              if (
-                scoreData.participantId === participant.id &&
-                scoreData.questionNumber === mappedQuestionNumber
-              ) {
-                Object.keys(scoreData.scores).forEach((field) => {
-                  if (typeof scoreData.scores[field] === 'number') {
-                    questionScore[field as keyof QuestionFields] = scoreData.scores[field];
+          // Group scores by jury
+          const scoresByJury: Record<string, { [questionNumber: number]: QuestionFields }> = {};
+          const allJuryIds: string[] = [];
+          
+          // Process scores for this participant
+          scoresSnapshot.docs.forEach((scoreDoc) => {
+            const scoreData = scoreDoc.data() as ExtendedScores;
+            
+            if (scoreData.participantId === participant.id && scoreData.scores) {
+              const { juryId, questionNumber, scores } = scoreData;
+              
+              // Initialize jury scores object if needed
+              if (!scoresByJury[juryId]) {
+                scoresByJury[juryId] = {};
+                allJuryIds.push(juryId);
+              }
+              
+              // Make sure we have all question numbers initialized
+              // Some scores might use the new pageNumber field, others might use questionNumber
+              const actualPage = scoreData.pageNumber !== undefined ? scoreData.pageNumber : questionNumber;
+              const questionIndex = participant.assignedQuestions.indexOf(actualPage);
+              
+              // Only include scores for questions that are still assigned to this participant
+              if (questionIndex !== -1) {
+                const mappedQuestionNumber = questionIndex + 1;
+                
+                // Store scores for this jury and question
+                if (!scoresByJury[juryId][mappedQuestionNumber]) {
+                  scoresByJury[juryId][mappedQuestionNumber] = createEmptyQuestionFields();
+                }
+                
+                // Merge in the scores
+                Object.keys(scores).forEach(field => {
+                  const fieldKey = field as keyof QuestionFields;
+                  if (typeof scores[fieldKey] === 'number') {
+                    scoresByJury[juryId][mappedQuestionNumber][fieldKey] = scores[fieldKey];
                   }
                 });
               }
-            });
-
-            questionScores[mappedQuestionNumber] = questionScore;
+            }
           });
-
+          
+          // Calculate average scores across all juries
+          const averageScores = calculateAverageScores(scoresByJury);
+          
           return {
             ...participant,
-            questionScores,
+            questionScores: {
+              byJury: scoresByJury,
+              average: averageScores,
+              juryIds: allJuryIds
+            }
           };
         });
 
