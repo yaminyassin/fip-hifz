@@ -126,6 +126,14 @@
       "title": "Participants",
       "subtitle": "Manage and view all participants"
     },
+    "filter": {
+      "by_category": "Filter by Category",
+      "all_categories": "All Categories",
+      "category_a": "Category A (A1 & A2)",
+      "category_b": "Category B (B1 & B2)",
+      "category_c": "Category C (C1 & C2)",
+      "category_d": "Category D (D1 & D2)"
+    },
     "banner": {
       "loading": "Loading participant data...",
       "noParticipant": "No active participant found",
@@ -180,7 +188,10 @@
       "participantsScored": "Participants Scored",
       "excellentPerformers": "Excellent Performers",
       "topThreeComparison": "Top 3 Comparison",
-      "topThreeComparisonDesc": "Category breakdown of top performers"
+      "topThreeComparisonDesc": "Category breakdown of top performers",
+      "noParticipantsFound": "No Participants Found",
+      "noParticipantsWithScores": "There are no participants with scores to display",
+      "noParticipantsInCategory": "There are no participants in Category {{category}} with scores to display"
     }
   },
   "admin": {
