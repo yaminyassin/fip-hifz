@@ -29,6 +29,11 @@
     "title": "Jury Panel",
     "question": "Question",
     "page": "Page",
+    "viewer": {
+      "nextPage": "Next page",
+      "previousPage": "Previous page",
+      "resetPage": "Back to main page"
+    },
     "login": {
       "title": "Jury Login",
       "subtitle": "Enter your jury ID to continue",
@@ -103,6 +108,7 @@
     "generateQuestion": "Generate Question",
     "generating": "Generating...",
     "questionLabel": "Question {{number}}",
+    "questionLabelWithPage": "Question {{question}} - Page {{page}}",
     "categoryLabel": "Category",
     "questionsCount": "Number of Questions",
     "noParticipant": "No active participant selected. Please select a participant first.",
@@ -223,6 +229,7 @@
     "delete": "Delete",
     "edit": "Edit",
     "submit": "Submit",
-    "close": "Close"
+    "close": "Close",
+    "reset": "Reset"
   }
 } 

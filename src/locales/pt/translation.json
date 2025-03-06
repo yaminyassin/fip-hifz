@@ -27,6 +27,11 @@
     "title": "Painel do Júri",
     "question": "Questão",
     "page": "Página",
+    "viewer": {
+      "nextPage": "Próxima página",
+      "previousPage": "Página anterior",
+      "resetPage": "Voltar à página principal"
+    },
     "login": {
       "title": "Login do Júri",
       "subtitle": "Digite seu ID de jurado para continuar",
@@ -100,6 +105,7 @@
     "generateQuestion": "Gerar Questão",
     "generating": "Gerando...",
     "questionLabel": "Questão {{number}}",
+    "questionLabelWithPage": "Questão {{question}} - Página {{page}}",
     "categoryLabel": "Categoria",
     "questionsCount": "Número de Questões",
     "noParticipant": "Nenhum participante ativo selecionado. Por favor, selecione um participante primeiro.",
@@ -214,6 +220,7 @@
     "delete": "Excluir",
     "edit": "Editar",
     "submit": "Enviar",
-    "close": "Fechar"
+    "close": "Fechar",
+    "reset": "Redefinir"
   }
 } 
