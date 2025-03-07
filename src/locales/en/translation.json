@@ -218,6 +218,52 @@
     "messages": {
       "participantUpdated": "Active participant updated",
       "participantRemoved": "Active participant removed"
+    },
+    "tabs": {
+      "control": "Control Panel",
+      "participants": "Participants Management"
+    },
+    "participants": {
+      "title": "Participants Management",
+      "addNew": "Add New Participant",
+      "editParticipant": "Edit Participant",
+      "addParticipant": "Add Participant",
+      "importExcel": "Import from Excel",
+      "importExcelPlaceholder": "This feature allows you to import participant data from an Excel file. This functionality is coming soon.",
+      "dropExcelFile": "Drop Excel file here or click to upload",
+      "search": "Search participants...",
+      "noParticipants": "No participants found",
+      "confirmDelete": "Are you sure you want to delete this participant? This action cannot be undone.",
+      "table": {
+        "name": "Name",
+        "age": "Age",
+        "country": "Country",
+        "category": "Category",
+        "school": "School",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "form": {
+        "name": "Name",
+        "age": "Age",
+        "country": "Country",
+        "category": "Category",
+        "school": "School",
+        "scheduled": "Scheduled Time",
+        "scheduledDate": "Scheduled Date",
+        "scheduledTime": "Scheduled Time",
+        "isDone": "Is Done",
+        "isActive": "Is Active",
+        "flag": "Country Flag Symbol",
+        "parentsName": "Parent's Name",
+        "phoneNum": "Phone Number"
+      },
+      "errors": {
+        "nameRequired": "Name is required",
+        "invalidAge": "Age must be a positive number",
+        "countryRequired": "Country is required",
+        "categoryRequired": "Category is required"
+      }
     }
   },
   "common": {
@@ -230,6 +276,13 @@
     "edit": "Edit",
     "submit": "Submit",
     "close": "Close",
-    "reset": "Reset"
+    "reset": "Reset",
+    "create": "Create",
+    "import": "Import",
+    "active": "Active",
+    "inactive": "Inactive",
+    "completed": "Completed",
+    "pickDate": "Pick a date",
+    "pickTime": "Pick a time"
   }
 } 
