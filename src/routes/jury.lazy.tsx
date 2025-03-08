@@ -7,15 +7,31 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { Check, ArrowLeft, ArrowRight, RotateCcw } from "lucide-react";
-import { doc, setDoc, collection, query, where, getDocs, deleteDoc, updateDoc } from "firebase/firestore";
+import {
+  doc,
+  setDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  deleteDoc,
+  updateDoc,
+} from "firebase/firestore";
 import { firestore } from "@/main";
 
 import { QuranViewer } from "@/components/ui/QuranViewer";
 import { useActiveParticipant } from "../hooks/useActiveParticipant";
 import { updateJuryProgress, getJuryMember } from "../services/jury";
-import { getAuthenticatedJury, clearAuthenticatedJury } from "@/services/juryAuth";
+import {
+  getAuthenticatedJury,
+  clearAuthenticatedJury,
+} from "@/services/juryAuth";
 import { JuryLogin } from "@/components/ui/JuryLogin";
-import { getErrorPenalty, getSectionWeight, getMaxDeductionPerQuestion } from "@/utils/scoreUtils";
+import {
+  getErrorPenalty,
+  getSectionWeight,
+  getMaxDeductionPerQuestion,
+} from "@/utils/scoreUtils";
 
 import { QuestionFields, Jury } from "../models/models";
 import { Card } from "../components/shadcn/card";
@@ -53,27 +69,35 @@ export const ScoreCategory = ({
   const { data: participant } = useActiveParticipant();
   const totalQuestions = participant?.assignedQuestions?.length || 1;
 
-  const getSectionForCategory = (categoryTitle: string): 'hifz' | 'tajweed' | 'waqf' | 'fluency' => {
-    if (categoryTitle === t("jury.categories.hifz")) return 'hifz';
-    if (categoryTitle === t("jury.categories.tajweed")) return 'tajweed';
-    if (categoryTitle === t("jury.categories.waqf")) return 'waqf';
-    return 'fluency';
+  const getSectionForCategory = (
+    categoryTitle: string
+  ): "hifz" | "tajweed" | "waqf" | "fluency" => {
+    if (categoryTitle === t("jury.categories.hifz")) return "hifz";
+    if (categoryTitle === t("jury.categories.tajweed")) return "tajweed";
+    if (categoryTitle === t("jury.categories.waqf")) return "waqf";
+    return "fluency";
   };
 
   const section = getSectionForCategory(title);
-  const maxDeduction = section !== 'fluency' ? getMaxDeductionPerQuestion(section, totalQuestions) : 0;
+  const maxDeduction =
+    section !== "fluency"
+      ? getMaxDeductionPerQuestion(section, totalQuestions)
+      : 0;
 
   return (
     <Card className="p-4">
       <div className="flex flex-col mb-4">
         <h3 className="text-lg font-semibold">{title}</h3>
-        {subtitle && <span className="text-sm text-muted-foreground">{subtitle}</span>}
-        {section !== 'fluency' && (
+        {subtitle && (
+          <span className="text-sm text-muted-foreground">{subtitle}</span>
+        )}
+        {section !== "fluency" && (
           <span className="text-xs text-muted-foreground mt-1">
-            {t("jury.categories.maxDeduction")}: {maxDeduction.toFixed(1)}% {t("jury.categories.perQuestion")}
+            {t("jury.categories.maxDeduction")}: {maxDeduction.toFixed(1)}%{" "}
+            {t("jury.categories.perQuestion")}
           </span>
         )}
-        {section === 'fluency' && (
+        {section === "fluency" && (
           <span className="text-xs text-muted-foreground mt-1">
             {t("jury.categories.maxBonus")}: +5% {t("jury.categories.total")}
           </span>
@@ -100,49 +124,54 @@ export const ScoreCategory = ({
 
 function RouteComponent() {
   const [selectedQuestion, setSelectedQuestion] = useState(1);
-  const [currentScores, setCurrentScores] = useState<QuestionFields>(defaultScores);
-  const [allScores, setAllScores] = useState<{ [questionNumber: number]: QuestionFields }>({});
+  const [currentScores, setCurrentScores] =
+    useState<QuestionFields>(defaultScores);
+  const [allScores, setAllScores] = useState<{
+    [questionNumber: number]: QuestionFields;
+  }>({});
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   // Track global fluency bonus separately to persist across questions
   const [globalFluencyBonus, setGlobalFluencyBonus] = useState(0);
-  
+
   // Keep track of the last participant ID to detect changes
-  const [lastParticipantId, setLastParticipantId] = useState<string | null>(null);
-  
+  const [lastParticipantId, setLastParticipantId] = useState<string | null>(
+    null
+  );
+
   // Track the participant's assigned questions for change detection
-  const previousQuestionsRef = useRef<string>('');
-  
+  const previousQuestionsRef = useRef<string>("");
+
   const { data: participant } = useActiveParticipant();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  
+
   // Determine the total number of questions
   const totalQuestions = useMemo(() => {
     return participant?.assignedQuestions?.length || 0;
   }, [participant]);
-  
-  const currentPage = participant?.assignedQuestions?.[selectedQuestion - 1];
-  
+
   // Check authentication on mount and when auth state changes
   useEffect(() => {
     const juryId = getAuthenticatedJury();
     setIsAuthenticated(!!juryId);
   }, []);
-  
+
   const juryId = getAuthenticatedJury();
 
   // Listen for jury ID changes and refresh data
   useEffect(() => {
     if (juryId && participant?.id) {
-      console.log(`Jury ID changed to ${juryId}, refreshing data for participant ${participant.id}`);
+      console.log(
+        `Jury ID changed to ${juryId}, refreshing data for participant ${participant.id}`
+      );
       // Reset scores when jury changes
       setCurrentScores(defaultScores);
       setAllScores({});
       setGlobalFluencyBonus(0);
       setSelectedQuestion(1);
-      
+
       // Invalidate and reload data
       queryClient.invalidateQueries({ queryKey: ["juryScores"] });
       queryClient.invalidateQueries({ queryKey: ["jury", juryId] });
@@ -156,13 +185,13 @@ function RouteComponent() {
   });
 
   // Track the current assigned questions to detect changes
-  const currentQuestionsKey = participant?.assignedQuestions?.join(',') || '';
-  
+  const currentQuestionsKey = participant?.assignedQuestions?.join(",") || "";
+
   // Define updateJuryMutation first before using it in effects
   const updateJuryMutation = useMutation({
     mutationFn: async ({
       currentQuestion,
-      hasFinishedEvaluating
+      hasFinishedEvaluating,
     }: {
       currentQuestion: number;
       hasFinishedEvaluating: boolean;
@@ -174,76 +203,104 @@ function RouteComponent() {
       queryClient.invalidateQueries({ queryKey: ["jury"] });
     },
   });
-  
+
   // Reset all scores when participant changes
   useEffect(() => {
     if (participant?.id && participant.id !== lastParticipantId && juryId) {
-      console.log('Participant changed, resetting scores');
-      
+      console.log("Participant changed, resetting scores");
+
       // Reset scores when a new participant is selected
       setCurrentScores(defaultScores);
       setAllScores({});
       setGlobalFluencyBonus(0);
       setSelectedQuestion(1); // Reset to question 1
       setLastParticipantId(participant.id);
-      
+
       // Also reset the jury progress if needed
-      if (juryMember && (juryMember.currentQuestion > 1 || juryMember.hasFinishedEvaluating)) {
-        updateJuryMutation.mutate({
-          currentQuestion: 1,
-          hasFinishedEvaluating: false,
-        }, {
-          onSuccess: () => {
-            // Force refresh jury member data
-            queryClient.invalidateQueries({ queryKey: ["jury", juryId] });
-            queryClient.refetchQueries({ queryKey: ["jury", juryId] });
+      if (
+        juryMember &&
+        (juryMember.currentQuestion > 1 || juryMember.hasFinishedEvaluating)
+      ) {
+        updateJuryMutation.mutate(
+          {
+            currentQuestion: 1,
+            hasFinishedEvaluating: false,
+          },
+          {
+            onSuccess: () => {
+              // Force refresh jury member data
+              queryClient.invalidateQueries({ queryKey: ["jury", juryId] });
+              queryClient.refetchQueries({ queryKey: ["jury", juryId] });
+            },
           }
-        });
+        );
       }
     }
-  }, [participant?.id, lastParticipantId, juryId, juryMember, updateJuryMutation, queryClient]);
-  
+  }, [
+    participant?.id,
+    lastParticipantId,
+    juryId,
+    juryMember,
+    updateJuryMutation,
+    queryClient,
+  ]);
+
   // Detect when questions have been reassigned to the same participant
   useEffect(() => {
     if (!participant?.id || !juryId) return;
-    
+
     // Check if questions have changed for the same participant
-    if (currentQuestionsKey && 
-        previousQuestionsRef.current !== currentQuestionsKey &&
-        previousQuestionsRef.current !== '') {
-      console.log('Questions changed for participant, clearing old scores');
-      
+    if (
+      currentQuestionsKey &&
+      previousQuestionsRef.current !== currentQuestionsKey &&
+      previousQuestionsRef.current !== ""
+    ) {
+      console.log("Questions changed for participant, clearing old scores");
+
       // Reset component state
       setCurrentScores(defaultScores);
       setAllScores({});
       setGlobalFluencyBonus(0);
       setSelectedQuestion(1);
-      
+
       // Reset the jury member's evaluation status FIRST to ensure UI updates correctly
-      if (juryMember && (juryMember.currentQuestion > 1 || juryMember.hasFinishedEvaluating)) {
-        updateJuryMutation.mutate({
-          currentQuestion: 1,
-          hasFinishedEvaluating: false,
-        }, {
-          onSuccess: () => {
-            // After updating the jury status, clear old scores
-            clearPreviousScores(participant.id, juryId);
-            
-            // Force refresh jury member data
-            queryClient.invalidateQueries({ queryKey: ["jury", juryId] });
-            queryClient.refetchQueries({ queryKey: ["jury", juryId] });
+      if (
+        juryMember &&
+        (juryMember.currentQuestion > 1 || juryMember.hasFinishedEvaluating)
+      ) {
+        updateJuryMutation.mutate(
+          {
+            currentQuestion: 1,
+            hasFinishedEvaluating: false,
+          },
+          {
+            onSuccess: () => {
+              // After updating the jury status, clear old scores
+              clearPreviousScores(participant.id, juryId);
+
+              // Force refresh jury member data
+              queryClient.invalidateQueries({ queryKey: ["jury", juryId] });
+              queryClient.refetchQueries({ queryKey: ["jury", juryId] });
+            },
           }
-        });
+        );
       } else {
         // If jury status doesn't need updating, just clear scores
         clearPreviousScores(participant.id, juryId);
       }
     }
-    
+
     // Update reference to current questions
     previousQuestionsRef.current = currentQuestionsKey;
-  }, [currentQuestionsKey, participant?.id, juryId, juryMember, updateJuryMutation, queryClient]);
-  
+  }, [
+    currentQuestionsKey,
+    participant?.id,
+    juryId,
+    juryMember,
+    updateJuryMutation,
+    queryClient,
+  ]);
+
   /**
    * Clear all previous scores for this participant and jury member
    * This handles both the old and new document ID formats
@@ -257,29 +314,31 @@ function RouteComponent() {
         where("participantId", "==", participantId),
         where("juryId", "==", juryId)
       );
-      
+
       const snapshot = await getDocs(q);
-      
+
       // Delete each score document
-      const deletePromises = snapshot.docs.map(doc => {
+      const deletePromises = snapshot.docs.map((doc) => {
         return deleteDoc(doc.ref);
       });
-      
+
       await Promise.all(deletePromises);
-      
+
       // Reset jury progress directly in the database
       const juryRef = doc(firestore, "jury", juryId);
       await updateDoc(juryRef, {
         currentQuestion: 1,
-        hasFinishedEvaluating: false
+        hasFinishedEvaluating: false,
       });
-      
+
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ["juryScores"] });
       queryClient.invalidateQueries({ queryKey: ["jury", juryId] });
       queryClient.refetchQueries({ queryKey: ["jury", juryId] });
-      
-      console.log(`Cleared ${deletePromises.length} previous scores for participant ${participantId}`);
+
+      console.log(
+        `Cleared ${deletePromises.length} previous scores for participant ${participantId}`
+      );
       toast({
         title: t("jury.messages.scoreReset"),
         description: t("jury.messages.scoreResetDesc"),
@@ -288,14 +347,16 @@ function RouteComponent() {
       console.error("Error clearing previous scores:", error);
     }
   };
-  
+
   // Get all scores for this participant from all jury members
   useEffect(() => {
     const fetchAllScores = async () => {
       if (!participant?.id || !participant.assignedQuestions?.length) return;
-      
-      console.log(`Fetching scores for participant ${participant.id} and jury ${juryId}`);
-      
+
+      console.log(
+        `Fetching scores for participant ${participant.id} and jury ${juryId}`
+      );
+
       try {
         const scoresRef = collection(firestore, "scores");
         const q = query(
@@ -303,60 +364,60 @@ function RouteComponent() {
           where("participantId", "==", participant.id),
           where("juryId", "==", juryId)
         );
-        
+
         const snapshot = await getDocs(q);
-        const scoresByQuestion: { [questionNumber: number]: QuestionFields } = {};
+        const scoresByQuestion: { [questionNumber: number]: QuestionFields } =
+          {};
         let totalFluencyBonus = 0;
-        
+
         // Map of current assigned page numbers to detect relevant scores
         const currentPages = new Set(participant.assignedQuestions);
-        
-        snapshot.forEach(doc => {
+
+        snapshot.forEach((doc) => {
           const data = doc.data();
-          const questionNumber = data.questionNumber;
           const pageNumber = data.pageNumber;
-          
+
           // Skip scores that don't belong to the current set of assigned pages
           if (pageNumber === undefined || !currentPages.has(pageNumber)) {
             return;
           }
-          
+
           // Find the question number for this page in the current assignment
-          const currentQuestionIndex = participant.assignedQuestions.indexOf(pageNumber);
+          const currentQuestionIndex =
+            participant.assignedQuestions.indexOf(pageNumber);
           if (currentQuestionIndex === -1) {
             return; // Page not found in current assignment
           }
-          
+
           const currentQuestionNumber = currentQuestionIndex + 1;
-          
+
           if (!scoresByQuestion[currentQuestionNumber]) {
             scoresByQuestion[currentQuestionNumber] = { ...defaultScores };
           }
-          
+
           // Merge scores from all jury members (using the highest value for each field)
-          Object.keys(data.scores).forEach(key => {
+          Object.keys(data.scores).forEach((key) => {
             const fieldKey = key as keyof QuestionFields;
-            const currentValue = scoresByQuestion[currentQuestionNumber][fieldKey];
             const newValue = data.scores[fieldKey];
-            
+
             // Only use scores from the current jury
-            if (fieldKey === 'fluency_bonus') {
+            if (fieldKey === "fluency_bonus") {
               totalFluencyBonus += newValue;
-            } 
+            }
             // For errors, use the scores from the current jury
             else {
               scoresByQuestion[currentQuestionNumber][fieldKey] = newValue;
             }
           });
         });
-        
+
         setAllScores(scoresByQuestion);
         setGlobalFluencyBonus(totalFluencyBonus);
       } catch (error) {
         console.error("Error fetching all scores:", error);
       }
     };
-    
+
     fetchAllScores();
   }, [participant, juryId, participant?.id]);
 
@@ -367,13 +428,13 @@ function RouteComponent() {
       const fluencyValue = currentScores.fluency_bonus;
       setCurrentScores({
         ...allScores[selectedQuestion],
-        fluency_bonus: fluencyValue
+        fluency_bonus: fluencyValue,
       });
     } else {
       // Reset scores except fluency
-      setCurrentScores(prev => ({
+      setCurrentScores((prev) => ({
         ...defaultScores,
-        fluency_bonus: prev.fluency_bonus
+        fluency_bonus: prev.fluency_bonus,
       }));
     }
   }, [selectedQuestion, allScores]);
@@ -383,63 +444,63 @@ function RouteComponent() {
   const liveScores = useMemo(() => {
     // Make a copy of the fetched scores
     const updatedScores = { ...allScores };
-    
+
     // Set the fluency_bonus to 0 for all questions to avoid double-counting
-    Object.keys(updatedScores).forEach(questionKey => {
+    Object.keys(updatedScores).forEach((questionKey) => {
       const questionNum = parseInt(questionKey);
       updatedScores[questionNum] = {
         ...updatedScores[questionNum],
-        fluency_bonus: 0
+        fluency_bonus: 0,
       };
     });
-    
+
     // Add or update the current question's scores with the latest unsaved changes
     // but without the fluency bonus
     if (selectedQuestion) {
       const scoresWithoutFluency = { ...currentScores, fluency_bonus: 0 };
       updatedScores[selectedQuestion] = scoresWithoutFluency;
     }
-    
+
     // For the first question, add the global fluency bonus
     // (The calculateFinalScore function will sum all fluency bonuses, so we only add it once)
     if (Object.keys(updatedScores).length > 0) {
       const firstQuestion = Math.min(...Object.keys(updatedScores).map(Number));
       updatedScores[firstQuestion] = {
         ...updatedScores[firstQuestion],
-        fluency_bonus: globalFluencyBonus // Use only the global value
+        fluency_bonus: globalFluencyBonus, // Use only the global value
       };
     } else if (selectedQuestion) {
       // If no scores yet, create an entry for current question with just fluency
       updatedScores[selectedQuestion] = {
         ...defaultScores,
-        fluency_bonus: globalFluencyBonus // Use only the global value
+        fluency_bonus: globalFluencyBonus, // Use only the global value
       };
     }
-    
+
     return updatedScores;
   }, [allScores, currentScores, selectedQuestion, globalFluencyBonus]);
 
   // Memoized calculation to track which questions have SAVED scores (after Done button)
   const questionsWithSavedScores = useMemo(() => {
     const result = new Set<number>();
-    
+
     // Only consider questions that exist in allScores (these are saved scores)
-    Object.keys(allScores).forEach(key => {
+    Object.keys(allScores).forEach((key) => {
       const qNum = parseInt(key);
       if (!isNaN(qNum)) {
         // Only add questions that have actual scores (not just default values)
         const scores = allScores[qNum];
         const hasRealScores = Object.entries(scores).some(([key, value]) => {
-          if (key === 'fluency_bonus') return false; // Skip fluency as it's handled separately
+          if (key === "fluency_bonus") return false; // Skip fluency as it's handled separately
           return value !== defaultScores[key as keyof QuestionFields];
         });
-        
+
         if (hasRealScores) {
           result.add(qNum);
         }
       }
     });
-    
+
     return result;
   }, [allScores]);
 
@@ -475,7 +536,7 @@ function RouteComponent() {
             tajweed_khafi: currentScores.tajweed_khafi,
             waqf_ibtida: currentScores.waqf_ibtida,
             // Fluency bonus is stored in a separate field
-            fluency_bonus: 0
+            fluency_bonus: 0,
           },
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -503,7 +564,7 @@ function RouteComponent() {
           questionNumber: 1,
           pageNumber: firstPageNumber,
           scores: {
-            fluency_bonus: globalFluencyBonus
+            fluency_bonus: globalFluencyBonus,
           },
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -515,22 +576,25 @@ function RouteComponent() {
 
   const handleScoreChange = (field: keyof QuestionFields, value: number) => {
     // For fluency_bonus, cap the value at 5
-    if (field === 'fluency_bonus') {
+    if (field === "fluency_bonus") {
       const cappedValue = Math.min(value, Math.max(0, 5));
-      
+
       // Only update the global fluency bonus, don't touch currentScores.fluency_bonus
       setGlobalFluencyBonus(cappedValue);
-      
+
       // Show toast if value was capped
       if (value > 5) {
         toast({
           title: t("jury.messages.fluencyCapped"),
-          description: t("jury.messages.fluencyCappedDesc", { max: 5, current: cappedValue }),
+          description: t("jury.messages.fluencyCappedDesc", {
+            max: 5,
+            current: cappedValue,
+          }),
         });
       }
     } else {
       // For other fields, update normally
-      setCurrentScores(prev => ({
+      setCurrentScores((prev) => ({
         ...prev,
         [field]: value,
       }));
@@ -539,70 +603,82 @@ function RouteComponent() {
 
   const handleDone = async () => {
     if (!participant?.assignedQuestions) return;
-    
-    const isLastQuestion = selectedQuestion === participant.assignedQuestions.length;
+
+    const isLastQuestion =
+      selectedQuestion === participant.assignedQuestions.length;
 
     try {
       // First save the scores
       await saveScoresMutation.mutateAsync();
 
       // Then update jury progress - ensure hasFinishedEvaluating is only true for the last question
-      updateJuryMutation.mutate({
-        currentQuestion: isLastQuestion ? selectedQuestion : selectedQuestion + 1,
-        hasFinishedEvaluating: isLastQuestion,
-      }, {
-        onSuccess: () => {
-          // Move to next question if not on the last one
-          if (!isLastQuestion) {
-            const nextQuestion = selectedQuestion + 1;
-            setSelectedQuestion(nextQuestion);
-            // Reset scores for next question, but keep fluency
-            setCurrentScores(prev => ({
-              ...defaultScores,
-              fluency_bonus: 0 // Reset fluency input for new question
-            }));
-            toast({
-              title: t("jury.messages.questionComplete"),
-              description: t("jury.messages.movingToQuestion", { number: nextQuestion }),
-            });
-          } else {
-            // For last question, ensure current fluency bonus is not double-counted
-            setCurrentScores(prev => ({ ...prev, fluency_bonus: 0 }));
-            toast({
-              title: t("jury.messages.evaluationComplete"),
-              description: t("jury.messages.evaluationCompleteDesc"),
-            });
-          }
-          
-          // Update allScores state: for current question, set fluency_bonus to 0,
-          // and update question 1 with global bonus plus current bonus only if not last question
-          setAllScores(prev => {
-            const updatedScores = { ...prev };
-            updatedScores[selectedQuestion] = {
-              ...currentScores,
-              fluency_bonus: 0
-            };
-            if (updatedScores[1]) {
-              updatedScores[1] = {
-                ...updatedScores[1],
-                fluency_bonus: globalFluencyBonus + (isLastQuestion ? 0 : currentScores.fluency_bonus)
-              };
-            } else {
-              updatedScores[1] = {
+      updateJuryMutation.mutate(
+        {
+          currentQuestion: isLastQuestion
+            ? selectedQuestion
+            : selectedQuestion + 1,
+          hasFinishedEvaluating: isLastQuestion,
+        },
+        {
+          onSuccess: () => {
+            // Move to next question if not on the last one
+            if (!isLastQuestion) {
+              const nextQuestion = selectedQuestion + 1;
+              setSelectedQuestion(nextQuestion);
+              // Reset scores for next question, but keep fluency
+              setCurrentScores(() => ({
                 ...defaultScores,
-                fluency_bonus: globalFluencyBonus + (isLastQuestion ? 0 : currentScores.fluency_bonus)
-              };
+                fluency_bonus: 0, // Reset fluency input for new question
+              }));
+              toast({
+                title: t("jury.messages.questionComplete"),
+                description: t("jury.messages.movingToQuestion", {
+                  number: nextQuestion,
+                }),
+              });
+            } else {
+              // For last question, ensure current fluency bonus is not double-counted
+              setCurrentScores((prev) => ({ ...prev, fluency_bonus: 0 }));
+              toast({
+                title: t("jury.messages.evaluationComplete"),
+                description: t("jury.messages.evaluationCompleteDesc"),
+              });
             }
-            return updatedScores;
-          });
-          
-          // Invalidate queries to refresh the data
-          queryClient.invalidateQueries({ queryKey: ["juryScores"] });
-          queryClient.invalidateQueries({ queryKey: ["jury", juryId] });
-          queryClient.refetchQueries({ queryKey: ["jury", juryId] });
+
+            // Update allScores state: for current question, set fluency_bonus to 0,
+            // and update question 1 with global bonus plus current bonus only if not last question
+            setAllScores((prev) => {
+              const updatedScores = { ...prev };
+              updatedScores[selectedQuestion] = {
+                ...currentScores,
+                fluency_bonus: 0,
+              };
+              if (updatedScores[1]) {
+                updatedScores[1] = {
+                  ...updatedScores[1],
+                  fluency_bonus:
+                    globalFluencyBonus +
+                    (isLastQuestion ? 0 : currentScores.fluency_bonus),
+                };
+              } else {
+                updatedScores[1] = {
+                  ...defaultScores,
+                  fluency_bonus:
+                    globalFluencyBonus +
+                    (isLastQuestion ? 0 : currentScores.fluency_bonus),
+                };
+              }
+              return updatedScores;
+            });
+
+            // Invalidate queries to refresh the data
+            queryClient.invalidateQueries({ queryKey: ["juryScores"] });
+            queryClient.invalidateQueries({ queryKey: ["jury", juryId] });
+            queryClient.refetchQueries({ queryKey: ["jury", juryId] });
+          },
         }
-      });
-    } catch (error) {
+      );
+    } catch {
       toast({
         title: t("common.error"),
         description: t("jury.messages.errorSavingScores"),
@@ -613,22 +689,22 @@ function RouteComponent() {
 
   const handleQuestionChange = (questionNumber: number) => {
     // No need to save current fluency bonus as it's stored globally
-    
+
     setSelectedQuestion(questionNumber);
-    
+
     // Set scores for the new question, don't carry over fluency bonus
     if (allScores[questionNumber]) {
       setCurrentScores({
         ...allScores[questionNumber],
-        fluency_bonus: 0 // Set to 0 as we use globalFluencyBonus for display
+        fluency_bonus: 0, // Set to 0 as we use globalFluencyBonus for display
       });
     } else {
       setCurrentScores({
         ...defaultScores,
-        fluency_bonus: 0 // Set to 0 as we use globalFluencyBonus for display
+        fluency_bonus: 0, // Set to 0 as we use globalFluencyBonus for display
       });
     }
-    
+
     updateJuryMutation.mutate({
       currentQuestion: questionNumber,
       hasFinishedEvaluating: false,
@@ -642,26 +718,19 @@ function RouteComponent() {
     navigate({ to: "/" });
   };
 
-  // Add arrow navigation functions inside RouteComponent, e.g., right after handleQuestionChange
-  const handlePreviousPage = () => {
-    if (participant?.assignedQuestions && selectedQuestion > 1) {
-      handleQuestionChange(selectedQuestion - 1);
-    }
-  };
-
-  const handleNextPage = () => {
-    if (participant?.assignedQuestions && selectedQuestion < participant.assignedQuestions.length) {
-      handleQuestionChange(selectedQuestion + 1);
-    }
-  };
-
   // Add new state for viewerPage at the top of RouteComponent, after selectedQuestion declaration
   const [viewerPage, setViewerPage] = useState<number | undefined>(undefined);
-  const [originalViewerPage, setOriginalViewerPage] = useState<number | undefined>(undefined);
-  
+  const [originalViewerPage, setOriginalViewerPage] = useState<
+    number | undefined
+  >(undefined);
+
   /* Add useEffect to sync viewerPage with selectedQuestion when participant changes */
   useEffect(() => {
-    if (participant && participant.assignedQuestions && participant.assignedQuestions.length >= selectedQuestion) {
+    if (
+      participant &&
+      participant.assignedQuestions &&
+      participant.assignedQuestions.length >= selectedQuestion
+    ) {
       const initialPage = participant.assignedQuestions[selectedQuestion - 1];
       setViewerPage(initialPage);
       setOriginalViewerPage(initialPage);
@@ -700,9 +769,7 @@ function RouteComponent() {
           <div className="flex items-center gap-4">
             <h1 className="text-xl font-bold">{t("jury.title")}</h1>
             {juryMember && (
-              <span className="text-muted-foreground">
-                | {juryMember.name}
-              </span>
+              <span className="text-muted-foreground">| {juryMember.name}</span>
             )}
           </div>
           <Button
@@ -729,67 +796,84 @@ function RouteComponent() {
                 <div className="grid grid-cols-2 gap-4">
                   <ScoreCategory
                     title={t("jury.categories.hifz")}
-                    subtitle={`${getSectionWeight('hifz')} ${t("jury.categories.ofTotalScore")}`}
-                    labels={[t("jury.categories.hifz_fath"), t("jury.categories.hifz_tannin"), t("jury.categories.hifz_taraddud")]}
-                    fields={['hifz_fath', 'hifz_tannin', 'hifz_taraddud']}
+                    subtitle={`${getSectionWeight("hifz")} ${t("jury.categories.ofTotalScore")}`}
+                    labels={[
+                      t("jury.categories.hifz_fath"),
+                      t("jury.categories.hifz_tannin"),
+                      t("jury.categories.hifz_taraddud"),
+                    ]}
+                    fields={["hifz_fath", "hifz_tannin", "hifz_taraddud"]}
                     scores={currentScores}
                     onScoreChange={handleScoreChange}
                   />
                   <ScoreCategory
                     title={t("jury.categories.tajweed")}
-                    subtitle={`${getSectionWeight('tajweed')} ${t("jury.categories.ofTotalScore")}`}
-                    labels={[t("jury.categories.tajweed_jali"), t("jury.categories.tajweed_khafi")]}
-                    fields={['tajweed_jali', 'tajweed_khafi']}
+                    subtitle={`${getSectionWeight("tajweed")} ${t("jury.categories.ofTotalScore")}`}
+                    labels={[
+                      t("jury.categories.tajweed_jali"),
+                      t("jury.categories.tajweed_khafi"),
+                    ]}
+                    fields={["tajweed_jali", "tajweed_khafi"]}
                     scores={currentScores}
                     onScoreChange={handleScoreChange}
                   />
                   <ScoreCategory
                     title={t("jury.categories.waqf")}
-                    subtitle={`${getSectionWeight('waqf')} ${t("jury.categories.ofTotalScore")}`}
+                    subtitle={`${getSectionWeight("waqf")} ${t("jury.categories.ofTotalScore")}`}
                     labels={[t("jury.categories.waqf_ibtida")]}
-                    fields={['waqf_ibtida']}
+                    fields={["waqf_ibtida"]}
                     scores={currentScores}
                     onScoreChange={handleScoreChange}
                   />
                   <ScoreCategory
                     title={t("jury.categories.fluency")}
-                    subtitle={`${getSectionWeight('fluency')} ${t("jury.messages.overallPerformance")}`}
+                    subtitle={`${getSectionWeight("fluency")} ${t("jury.messages.overallPerformance")}`}
                     labels={[t("jury.categories.fluency_bonus")]}
-                    fields={['fluency_bonus']}
-                    scores={{ ...currentScores, fluency_bonus: globalFluencyBonus }}
+                    fields={["fluency_bonus"]}
+                    scores={{
+                      ...currentScores,
+                      fluency_bonus: globalFluencyBonus,
+                    }}
                     onScoreChange={handleScoreChange}
                   />
                 </div>
                 <div className="mt-6">
-                  <ScoreSummary 
+                  <ScoreSummary
                     allScores={
-                      Object.keys(liveScores).length > 0 
+                      Object.keys(liveScores).length > 0
                         ? (() => {
                             // Create a copy of liveScores with all fluency_bonus values set to 0
                             const scoresWithoutFluency = Object.fromEntries(
-                              Object.entries(liveScores).map(([qNum, scores]) => [
-                                qNum,
-                                { ...scores, fluency_bonus: 0 }
-                              ])
+                              Object.entries(liveScores).map(
+                                ([qNum, scores]) => [
+                                  qNum,
+                                  { ...scores, fluency_bonus: 0 },
+                                ]
+                              )
                             );
-                            
+
                             // Add the global fluency bonus to the first question only
                             if (Object.keys(scoresWithoutFluency).length > 0) {
-                              const firstQuestionKey = Object.keys(scoresWithoutFluency).sort((a, b) => 
-                                parseInt(a) - parseInt(b)
-                              )[0];
-                              
+                              const firstQuestionKey = Object.keys(
+                                scoresWithoutFluency
+                              ).sort((a, b) => parseInt(a) - parseInt(b))[0];
+
                               scoresWithoutFluency[firstQuestionKey] = {
                                 ...scoresWithoutFluency[firstQuestionKey],
-                                fluency_bonus: globalFluencyBonus
+                                fluency_bonus: globalFluencyBonus,
                               };
                             }
-                            
+
                             return scoresWithoutFluency;
                           })()
-                        : { [selectedQuestion]: { ...defaultScores, fluency_bonus: globalFluencyBonus } }
-                    } 
-                    totalQuestions={totalQuestions} 
+                        : {
+                            [selectedQuestion]: {
+                              ...defaultScores,
+                              fluency_bonus: globalFluencyBonus,
+                            },
+                          }
+                    }
+                    totalQuestions={totalQuestions}
                   />
                 </div>
               </>
@@ -798,43 +882,51 @@ function RouteComponent() {
             {/* Bottom Navigation Bar */}
             <div className="flex flex-row items-center bg-gray-300 p-4 gap-4 mt-auto">
               <div className="flex flex-row gap-4">
-                {participant?.assignedQuestions && Array.from(
-                  { length: participant.assignedQuestions.length },
-                  (_, i) => i + 1
-                ).map((q) => {
-                  // A question is considered completed ONLY if:
-                  // 1. It has SAVED scores (after clicking Done)
-                  // 2. OR The jury's current question is greater than q (meaning we've moved past it)
-                  // 3. OR It's the current question AND hasFinishedEvaluating is true (for the last question)
-                  const isCompleted = questionsWithSavedScores.has(q) || 
-                                      (juryMember?.currentQuestion ?? 0) > q ||
-                                      ((juryMember?.currentQuestion ?? 0) === q && juryMember?.hasFinishedEvaluating === true);
-                  
-                  const isCurrent = selectedQuestion === q;
+                {participant?.assignedQuestions &&
+                  Array.from(
+                    { length: participant.assignedQuestions.length },
+                    (_, i) => i + 1
+                  ).map((q) => {
+                    // A question is considered completed ONLY if:
+                    // 1. It has SAVED scores (after clicking Done)
+                    // 2. OR The jury's current question is greater than q (meaning we've moved past it)
+                    // 3. OR It's the current question AND hasFinishedEvaluating is true (for the last question)
+                    const isCompleted =
+                      questionsWithSavedScores.has(q) ||
+                      (juryMember?.currentQuestion ?? 0) > q ||
+                      ((juryMember?.currentQuestion ?? 0) === q &&
+                        juryMember?.hasFinishedEvaluating === true);
 
-                  return (
-                    <div key={q} className="relative">
-                      <Button
-                        className={`h-12 w-20 rounded-lg ${isCompleted
-                          ? "bg-green-600 hover:bg-green-500"
-                          : isCurrent
-                            ? "bg-blue-600 hover:bg-blue-500"
-                            : "bg-gray-600 hover:bg-gray-500"
-                          } text-white font-bold transition-colors relative ${isCompleted ? "opacity-90" : ""
+                    const isCurrent = selectedQuestion === q;
+
+                    return (
+                      <div key={q} className="relative">
+                        <Button
+                          className={`h-12 w-20 rounded-lg ${
+                            isCompleted
+                              ? "bg-green-600 hover:bg-green-500"
+                              : isCurrent
+                                ? "bg-blue-600 hover:bg-blue-500"
+                                : "bg-gray-600 hover:bg-gray-500"
+                          } text-white font-bold transition-colors relative ${
+                            isCompleted ? "opacity-90" : ""
                           }`}
-                        onClick={() => handleQuestionChange(q)}
-                        disabled={updateJuryMutation.isPending || saveScoresMutation.isPending}
-                      >
-                        Q{q}
-                        {isCompleted && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 rounded-lg">
-                            <Check className="w-6 h-6 text-white" />
-                          </div>
-                        )}
-                      </Button>
-                    </div>
-                  );
-                })}
+                          onClick={() => handleQuestionChange(q)}
+                          disabled={
+                            updateJuryMutation.isPending ||
+                            saveScoresMutation.isPending
+                          }
+                        >
+                          Q{q}
+                          {isCompleted && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 rounded-lg">
+                              <Check className="w-6 h-6 text-white" />
+                            </div>
+                          )}
+                        </Button>
+                      </div>
+                    );
+                  })}
               </div>
               <div className="flex-grow" />
               <Button
@@ -844,16 +936,16 @@ function RouteComponent() {
                   !participant?.id ||
                   updateJuryMutation.isPending ||
                   saveScoresMutation.isPending ||
-                  (juryMember?.hasFinishedEvaluating === true && 
-                   participant?.assignedQuestions && 
-                   selectedQuestion === participant.assignedQuestions.length)
+                  (juryMember?.hasFinishedEvaluating === true &&
+                    participant?.assignedQuestions &&
+                    selectedQuestion === participant.assignedQuestions.length)
                 }
               >
                 {updateJuryMutation.isPending || saveScoresMutation.isPending
                   ? t("jury.actions.saving")
-                  : juryMember?.hasFinishedEvaluating && 
-                    participant?.assignedQuestions && 
-                    selectedQuestion === participant.assignedQuestions.length
+                  : juryMember?.hasFinishedEvaluating &&
+                      participant?.assignedQuestions &&
+                      selectedQuestion === participant.assignedQuestions.length
                     ? t("jury.actions.completed")
                     : t("jury.actions.done")}
               </Button>
@@ -866,9 +958,9 @@ function RouteComponent() {
           {viewerPage !== undefined && (
             <div className="flex flex-col h-[900px]">
               <div className="flex-grow">
-                <QuranViewer 
-                  pageNumber={viewerPage} 
-                  questionNumber={selectedQuestion} 
+                <QuranViewer
+                  pageNumber={viewerPage}
+                  questionNumber={selectedQuestion}
                 />
               </div>
               <div className="h-[80px] flex items-center">
@@ -877,20 +969,24 @@ function RouteComponent() {
                     <Button variant="outline" onClick={handleViewerNext}>
                       <ArrowLeft className="w-5 h-5" />
                     </Button>
-                    <span className="text-xs mt-1 text-muted-foreground">{t("jury.viewer.nextPage")}</span>
+                    <span className="text-xs mt-1 text-muted-foreground">
+                      {t("jury.viewer.nextPage")}
+                    </span>
                   </div>
-                  
+
                   <div className="flex flex-col items-center relative h-[70px] w-[120px] flex-shrink-0">
-                    <div 
+                    <div
                       className={`
                         absolute left-1/2 transform -translate-x-1/2 
-                        ${viewerPage !== originalViewerPage 
-                          ? 'opacity-100 scale-100 translate-y-0 transition-all duration-300 ease-out' 
-                          : 'opacity-0 scale-90 translate-y-2 transition-all duration-200 ease-in pointer-events-none'}
+                        ${
+                          viewerPage !== originalViewerPage
+                            ? "opacity-100 scale-100 translate-y-0 transition-all duration-300 ease-out"
+                            : "opacity-0 scale-90 translate-y-2 transition-all duration-200 ease-in pointer-events-none"
+                        }
                       `}
                     >
-                      <Button 
-                        variant="secondary" 
+                      <Button
+                        variant="secondary"
                         onClick={handleViewerReset}
                         className="bg-blue-100 hover:bg-blue-200 border border-blue-300"
                       >
@@ -902,12 +998,18 @@ function RouteComponent() {
                       </span>
                     </div>
                   </div>
-                  
+
                   <div className="flex flex-col items-center">
-                    <Button variant="outline" onClick={handleViewerPrevious} disabled={viewerPage <= 1}>
+                    <Button
+                      variant="outline"
+                      onClick={handleViewerPrevious}
+                      disabled={viewerPage <= 1}
+                    >
                       <ArrowRight className="w-5 h-5" />
                     </Button>
-                    <span className="text-xs mt-1 text-muted-foreground">{t("jury.viewer.previousPage")}</span>
+                    <span className="text-xs mt-1 text-muted-foreground">
+                      {t("jury.viewer.previousPage")}
+                    </span>
                   </div>
                 </div>
               </div>
