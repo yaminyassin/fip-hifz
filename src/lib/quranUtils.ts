@@ -54,7 +54,7 @@ export const categoryConfigs: Record<string, CategoryConfig> = {
     numQuestions: 2,
     questionRanges: [
       { name: "B1", juzRange: [1, 10], numParts: 2 },
-      { name: "B2", juzRange: [20, 30], numParts: 2 },
+      { name: "B2", juzRange: [21, 30], numParts: 2 },
     ],
   },
   C: {
