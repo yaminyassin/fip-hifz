@@ -8,6 +8,11 @@ export const useJuryMembers = () => {
     const queryClient = useQueryClient();
 
     useEffect(() => {
+        // Initialize the query cache with an empty array if it doesn't exist yet
+        if (!queryClient.getQueryData(["juryMembers"])) {
+            queryClient.setQueryData(["juryMembers"], []);
+        }
+
         const juryRef = collection(firestore, "jury");
 
         const unsubscribe = onSnapshot(juryRef, (snapshot) => {
@@ -15,6 +20,8 @@ export const useJuryMembers = () => {
                 id: doc.id,
                 ...doc.data()
             } as Jury));
+            
+            // Update the query cache with the fresh jury members
             queryClient.setQueryData(["juryMembers"], juryMembers);
         }, (error) => {
             console.error("Error fetching jury members:", error);
@@ -25,7 +32,10 @@ export const useJuryMembers = () => {
 
     return useQuery<Jury[]>({
         queryKey: ["juryMembers"],
-        queryFn: () => [], // Initial value, will be updated by the listener
+        queryFn: () => {
+            // Get current jury members from cache or return empty array
+            return queryClient.getQueryData<Jury[]>(["juryMembers"]) || [];
+        },
         staleTime: Infinity, // Never mark as stale since we're using real-time updates
     });
 }; 
