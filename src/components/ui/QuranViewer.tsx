@@ -16,7 +16,7 @@ export function QuranViewer({
 }: QuranViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [imageWidth, setImageWidth] = useState<number>(800);
-  const [_ , setImageHeight] = useState<number>(1000);
+  const [_, setImageHeight] = useState<number>(1000);
   const { t } = useTranslation();
 
   const { data: pageData, isLoading, error } = useQuranPage(pageNumber);
@@ -54,15 +54,13 @@ export function QuranViewer({
           t("randomizer.questionLabel", { number: pageNumber })
         )}
       </Label>
-      
+
       {isLoading && (
         <div className="flex items-center justify-center h-full w-full">
-          <div className="text-center">
-            {t("common.loading")}
-          </div>
+          <div className="text-center">{t("common.loading")}</div>
         </div>
       )}
-      
+
       {error && (
         <div className="flex items-center justify-center h-full w-full text-red-500">
           {t("common.error")}
