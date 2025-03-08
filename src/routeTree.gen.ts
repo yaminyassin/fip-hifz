@@ -143,22 +143,22 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-  | '/'
-  | '/admin'
-  | '/big-screen'
-  | '/jury'
-  | '/participants'
-  | '/randomizer'
+    | '/'
+    | '/admin'
+    | '/big-screen'
+    | '/jury'
+    | '/participants'
+    | '/randomizer'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/admin' | '/big-screen' | '/jury' | '/participants' | '/randomizer'
   id:
-  | '__root__'
-  | '/'
-  | '/admin'
-  | '/big-screen'
-  | '/jury'
-  | '/participants'
-  | '/randomizer'
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/big-screen'
+    | '/jury'
+    | '/participants'
+    | '/randomizer'
   fileRoutesById: FileRoutesById
 }
 

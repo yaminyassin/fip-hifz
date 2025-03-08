@@ -14,6 +14,7 @@ import { MagicCard } from "@/components/shadcn/magic-card";
 import { cn } from "@/lib/utils";
 import BlurIn from "@/components/shadcn/blur-in";
 import { useTranslation } from "react-i18next";
+import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
 
 const Home = () => {
   const navigation = useNavigate();
@@ -77,6 +78,9 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted p-6 md:p-12">
+      <div className="fixed top-4 right-4 z-50">
+        <LanguageSwitcher />
+      </div>
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="space-y-2">
           <BlurIn
