@@ -27,6 +27,11 @@
     "title": "Painel do Júri",
     "question": "Questão",
     "page": "Página",
+    "viewer": {
+      "nextPage": "Próxima página",
+      "previousPage": "Página anterior",
+      "resetPage": "Voltar à página principal"
+    },
     "login": {
       "title": "Login do Júri",
       "subtitle": "Digite seu ID de jurado para continuar",
@@ -43,10 +48,34 @@
       "hifz": "Hifz",
       "hifz_reminder": "Lembrete",
       "hifz_assistance": "Assistido",
+      "hifz_fath": "Fath",
+      "hifz_tannin": "Tannin",
+      "hifz_taraddud": "Taraddud",
       "tajweed": "Tajweed",
       "tajweed_minor": "Erros Menores",
       "tajweed_major": "Erros Maiores",
-      "fluency": "Fluência"
+      "tajweed_jali": "Jali",
+      "tajweed_khafi": "Khafi",
+      "waqf": "Waqf",
+      "waqf_ibtida": "Ibtida",
+      "fluency": "Fluência",
+      "fluency_bonus": "Bônus de Fluência",
+      "ofTotalScore": "do total",
+      "maxDeduction": "Dedução Máxima",
+      "perQuestion": "por questão",
+      "maxBonus": "Bônus Máximo",
+      "total": "total",
+      "perfectPerformance": "Desempenho Perfeito"
+    },
+    "scoreSummary": {
+      "title": "Resumo da Pontuação",
+      "totalScore": "Pontuação Total",
+      "totalScoreExplanation": "Este resumo mostra a pontuação combinada de todas as questões.",
+      "fluencyExplanation": "Os pontos de fluência são cumulativos para o desempenho geral do participante e persistem em todas as questões.",
+      "hifzScore": "Pontuação Hifz",
+      "tajweedScore": "Pontuação Tajweed",
+      "waqfScore": "Pontuação Waqf",
+      "fluencyBonus": "Bônus de Fluência"
     },
     "actions": {
       "logout": "Sair",
@@ -57,24 +86,35 @@
       "increase": "Aumentar pontuação"
     },
     "messages": {
-      "evaluationComplete": "Avaliação Concluída",
+      "evaluationComplete": "Avaliação Completa",
       "evaluationCompleteDesc": "Você concluiu a avaliação de todas as questões para este participante.",
       "questionComplete": "Questão Concluída",
-      "movingToQuestion": "Indo para Questão {{number}}",
-      "inProgress": "Em Andamento"
+      "movingToQuestion": "Passando para a Questão {{number}}",
+      "errorSavingScores": "Houve um erro ao salvar as pontuações. Por favor, tente novamente.",
+      "inProgress": "Em Andamento",
+      "scoreReset": "Pontuações Redefinidas",
+      "scoreResetDesc": "Pontuações anteriores foram apagadas para as novas questões deste participante.",
+      "fluencyCapped": "Bônus de Fluência Limitado",
+      "fluencyCappedDesc": "O bônus total de fluência não pode exceder {{max}} pontos. Total atual: {{current}} pontos.",
+      "overallPerformance": "bônus de desempenho geral"
     }
   },
   "randomizer": {
     "title": "Sorteador de Questões",
-    "generateQuestions": "Gerar Questões",
+    "generateQuestions": "Gerar Todas as Questões",
+    "generateQuestion": "Gerar Questão",
     "generating": "Gerando...",
     "questionLabel": "Questão {{number}}",
+    "questionLabelWithPage": "Questão {{question}} - Página {{page}}",
+    "categoryLabel": "Categoria",
+    "questionsCount": "Número de Questões",
+    "noParticipant": "Nenhum participante ativo selecionado. Por favor, selecione um participante primeiro.",
     "messages": {
       "noParticipant": "Nenhum participante ativo encontrado",
       "success": "Sucesso",
-      "successDesc": "As questões foram geradas e atribuídas",
+      "successDesc": "A questão foi gerada e atribuída",
       "error": "Erro",
-      "errorDesc": "Falha ao atualizar questões"
+      "errorDesc": "Falha ao atualizar questão"
     }
   },
   "participants": {
@@ -89,6 +129,14 @@
       "title": "Participantes",
       "subtitle": "Gerenciar e visualizar todos os participantes"
     },
+    "filter": {
+      "by_category": "Filtrar por Categoria",
+      "all_categories": "Todas as Categorias",
+      "category_a": "Categoria A (A1 & A2)",
+      "category_b": "Categoria B (B1 & B2)",
+      "category_c": "Categoria C (C1 & C2)",
+      "category_d": "Categoria D (D1 & D2)"
+    },
     "banner": {
       "loading": "Carregando dados do participante...",
       "noParticipant": "Nenhum participante ativo encontrado",
@@ -99,7 +147,9 @@
     },
     "actions": {
       "setActive": "Definir como Ativo",
-      "activating": "Ativando..."
+      "activating": "Ativando...",
+      "details": "Detalhes",
+      "viewDetails": "Ver detalhes da pontuação"
     },
     "table": {
       "name": "Nome",
@@ -107,14 +157,38 @@
       "country": "País",
       "category": "Categoria",
       "school": "Escola",
-      "schedule": "Horário",
+      "scheduled": "Horário",
       "status": "Status",
       "actions": "Ações",
-      "q1Total": "Total Q1",
-      "q2Total": "Total Q2",
-      "q3Total": "Total Q3",
+      "q1Score": "Pontuação Q1",
+      "q2Score": "Pontuação Q2",
+      "q3Score": "Pontuação Q3",
+      "totalScore": "Pontuação Total",
       "statusComplete": "Concluído",
       "statusPending": "Pendente"
+    },
+    "visualizations": {
+      "title": "Visualizações de Pontuação",
+      "topPerformers": "Melhores Desempenhos",
+      "topPerformersDesc": "Participantes com maior pontuação",
+      "categoryPerformance": "Desempenho por Categoria",
+      "categoryPerformanceDesc": "Pontuações médias por categoria",
+      "scoreDistribution": "Distribuição de Pontuações",
+      "scoreDistributionDesc": "Participantes por faixa de pontuação",
+      "excellent": "Excelente",
+      "veryGood": "Muito Bom",
+      "good": "Bom",
+      "average": "Médio",
+      "belowAverage": "Abaixo da Média",
+      "averageScore": "Pontuação Média",
+      "highestScore": "Maior Pontuação",
+      "participantsScored": "Participantes Avaliados",
+      "excellentPerformers": "Desempenhos Excelentes",
+      "topThreeComparison": "Comparação Top 3",
+      "topThreeComparisonDesc": "Detalhamento por categoria dos melhores participantes",
+      "noParticipantsFound": "Nenhum Participante Encontrado",
+      "noParticipantsWithScores": "Não há participantes com pontuações para exibir",
+      "noParticipantsInCategory": "Não há participantes na Categoria {{category}} com pontuações para exibir"
     }
   },
   "admin": {
@@ -145,6 +219,8 @@
     "cancel": "Cancelar",
     "delete": "Excluir",
     "edit": "Editar",
-    "submit": "Enviar"
+    "submit": "Enviar",
+    "close": "Fechar",
+    "reset": "Redefinir"
   }
 } 

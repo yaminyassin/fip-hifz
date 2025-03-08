@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import {
     Table,
     TableBody,
@@ -7,21 +6,12 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/shadcn/table";
-import { Jury } from "@/models/models";
-import { collection, getDocs } from "firebase/firestore";
-import { firestore } from "@/main";
 import { useTranslation } from "react-i18next";
+import { useJuryMembers } from "@/hooks/useJuryMembers";
 
 export const JuryTable = () => {
     const { t } = useTranslation();
-    const { data: juryMembers, isLoading } = useQuery({
-        queryKey: ["jury"],
-        queryFn: async () => {
-            const juryRef = collection(firestore, "jury");
-            const snapshot = await getDocs(juryRef);
-            return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Jury));
-        },
-    });
+    const { data: juryMembers, isLoading } = useJuryMembers();
 
     if (isLoading) {
         return (
@@ -53,8 +43,8 @@ export const JuryTable = () => {
                                         : "bg-yellow-100 text-yellow-800"
                                         }`}
                                 >
-                                    {jury.hasFinishedEvaluating 
-                                        ? t("jury.actions.completed") 
+                                    {jury.hasFinishedEvaluating
+                                        ? t("jury.actions.completed")
                                         : t("jury.messages.inProgress")}
                                 </span>
                             </TableCell>

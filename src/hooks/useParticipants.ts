@@ -1,69 +1,129 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { collection, onSnapshot, query } from "firebase/firestore";
 import { firestore } from "@/main";
 import { Participant, QuestionFields } from "@/models/models";
-import { useQuery } from "@tanstack/react-query";
-import { collection, getDocs } from "firebase/firestore";
+import { useEffect } from "react";
+import { calculateAverageScores, createEmptyQuestionFields } from "./useParticipantScores";
+
+// Extended Scores type with pageNumber
+interface ExtendedScores {
+  id: string;
+  participantId: string;
+  juryId: string;
+  questionNumber: number;
+  pageNumber?: number;
+  scores: QuestionFields;
+}
 
 type ParticipantWithScores = Participant & {
   questionScores: {
-    [key: number]: QuestionFields;
+    byJury: Record<string, { [questionNumber: number]: QuestionFields }>;
+    average: { [questionNumber: number]: QuestionFields };
+    juryIds: string[];
   };
 };
 
 export const useParticipants = () => {
-  return useQuery({
-    queryKey: ["participants"],
-    queryFn: async () => {
-      const participantsRef = collection(firestore, "participants");
-      const participantsSnapshot = await getDocs(participantsRef);
+  const queryClient = useQueryClient();
 
-      const participants: ParticipantWithScores[] = [];
+  useEffect(() => {
+    // Set up real-time listener for participants
+    const participantsRef = collection(firestore, "participants");
+    const participantsUnsubscribe = onSnapshot(participantsRef, (participantsSnapshot) => {
+      const participants = participantsSnapshot.docs.map(doc => {
+        const participantData = doc.data() as Omit<Participant, 'id'>;
+        return {
+          id: doc.id,
+          ...participantData,
+          questionScores: {
+            byJury: {},
+            average: {},
+            juryIds: []
+          },
+        } as ParticipantWithScores;
+      });
 
-      for (const doc of participantsSnapshot.docs) {
-        const participant = doc.data() as Participant;
-        const questionScores: { [key: number]: QuestionFields } = {};
+      // Update React Query cache with the participants data
+      queryClient.setQueryData(["participants"], participants);
 
-        // Fetch scores for each assigned question
-        for (const questionNumber of participant.assignedQuestions) {
-          const scoresRef = collection(firestore, "scores");
-          const scoresSnapshot = await getDocs(scoresRef);
+      // Set up real-time listener for scores
+      const scoresRef = collection(firestore, "scores");
+      const scoresQuery = query(scoresRef);
 
-          const questionScore: QuestionFields = {
-            hifz_reminder: 0,
-            hifz_assistance: 0,
-            tajweed_minor: 0,
-            tajweed_major: 0,
-            fluency: 0,
-          };
+      const scoresUnsubscribe = onSnapshot(scoresQuery, (scoresSnapshot) => {
+        // Get current participants from cache
+        const currentParticipants = queryClient.getQueryData<ParticipantWithScores[]>(["participants"]) || [];
 
+        // Create a new array with updated scores
+        const updatedParticipants = currentParticipants.map(participant => {
+          // Group scores by jury
+          const scoresByJury: Record<string, { [questionNumber: number]: QuestionFields }> = {};
+          const allJuryIds: string[] = [];
+          
+          // Process scores for this participant
           scoresSnapshot.docs.forEach((scoreDoc) => {
-            const scoreData = scoreDoc.data();
-            // Map array index to question number (0->1, 1->2, 2->3)
-            const mappedQuestionNumber = participant.assignedQuestions.indexOf(questionNumber) + 1;
-            if (
-              scoreData.participantId === participant.id &&
-              scoreData.questionNumber === mappedQuestionNumber
-            ) {
-              Object.keys(scoreData.scores).forEach((field) => {
-                if (typeof scoreData.scores[field] === 'number') {
-                  questionScore[field as keyof QuestionFields] = 
-                    scoreData.scores[field];
+            const scoreData = scoreDoc.data() as ExtendedScores;
+            
+            if (scoreData.participantId === participant.id && scoreData.scores) {
+              const { juryId, questionNumber, scores } = scoreData;
+              
+              // Initialize jury scores object if needed
+              if (!scoresByJury[juryId]) {
+                scoresByJury[juryId] = {};
+                allJuryIds.push(juryId);
+              }
+              
+              // Make sure we have all question numbers initialized
+              // Some scores might use the new pageNumber field, others might use questionNumber
+              const actualPage = scoreData.pageNumber !== undefined ? scoreData.pageNumber : questionNumber;
+              const questionIndex = participant.assignedQuestions.indexOf(actualPage);
+              
+              // Only include scores for questions that are still assigned to this participant
+              if (questionIndex !== -1) {
+                const mappedQuestionNumber = questionIndex + 1;
+                
+                // Store scores for this jury and question
+                if (!scoresByJury[juryId][mappedQuestionNumber]) {
+                  scoresByJury[juryId][mappedQuestionNumber] = createEmptyQuestionFields();
                 }
-              });
+                
+                // Merge in the scores
+                Object.keys(scores).forEach(field => {
+                  const fieldKey = field as keyof QuestionFields;
+                  if (typeof scores[fieldKey] === 'number') {
+                    scoresByJury[juryId][mappedQuestionNumber][fieldKey] = scores[fieldKey];
+                  }
+                });
+              }
             }
           });
-
-          // Store using the mapped question number
-          const mappedQuestionNumber = participant.assignedQuestions.indexOf(questionNumber) + 1;
-          questionScores[mappedQuestionNumber] = questionScore;
-        }
-
-        participants.push({
-          ...participant,
-          questionScores,
+          
+          // Calculate average scores across all juries
+          const averageScores = calculateAverageScores(scoresByJury);
+          
+          return {
+            ...participant,
+            questionScores: {
+              byJury: scoresByJury,
+              average: averageScores,
+              juryIds: allJuryIds
+            }
+          };
         });
-      }
 
-      return participants;
-    },
+        // Update React Query cache with the updated scores
+        queryClient.setQueryData(["participants"], updatedParticipants);
+      });
+
+      return () => scoresUnsubscribe();
+    });
+
+    return () => participantsUnsubscribe();
+  }, [queryClient]);
+
+  return useQuery<ParticipantWithScores[]>({
+    queryKey: ["participants"],
+    queryFn: () => [], // Initial value, will be updated by the listener
+    staleTime: Infinity, // Never mark as stale since we're using real-time updates
   });
 };
