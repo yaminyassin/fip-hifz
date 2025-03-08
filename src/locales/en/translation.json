@@ -221,7 +221,8 @@
     },
     "tabs": {
       "control": "Control Panel",
-      "participants": "Participants Management"
+      "participants": "Participants Management",
+      "jury": "Jury Management"
     },
     "participants": {
       "title": "Participants Management",
@@ -263,6 +264,27 @@
         "invalidAge": "Age must be a positive number",
         "countryRequired": "Country is required",
         "categoryRequired": "Category is required"
+      }
+    },
+    "jury": {
+      "title": "Jury Management",
+      "addNew": "Add New Jury Member",
+      "addNewJury": "Add New Jury Member",
+      "editJury": "Edit Jury Member",
+      "addJuryDescription": "Add a new jury member to the system.",
+      "editJuryDescription": "Update the details of the jury member.",
+      "search": "Search jury members...",
+      "noJuryMembers": "No jury members found",
+      "confirmDelete": "Are you sure you want to delete this jury member? This action cannot be undone.",
+      "table": {
+        "name": "Name",
+        "currentQuestion": "Current Question",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "form": {
+        "name": "Name",
+        "namePlaceholder": "Enter jury member name"
       }
     }
   },

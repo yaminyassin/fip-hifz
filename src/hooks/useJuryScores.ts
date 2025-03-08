@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { firestore } from "@/main";
 import { QuestionFields, Scores } from "@/models/models";
