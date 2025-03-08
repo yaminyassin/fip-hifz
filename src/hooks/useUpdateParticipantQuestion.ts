@@ -52,7 +52,7 @@ export const useUpdateParticipantQuestion = () => {
       // Return the previous value so we can roll back if something goes wrong
       return { previousParticipant };
     },
-    onError: (error, variables, context) => {
+    onError: (error, _variables, context) => {
       console.error("Error in updateParticipantQuestion mutation:", error);
       
       // If we have a previous value, roll back to it

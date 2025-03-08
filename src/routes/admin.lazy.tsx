@@ -2,6 +2,7 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 import { JuryTable } from "@/components/ui/JuryTable";
 import { ParticipantSelector } from "@/components/ui/ParticipantSelector";
 import { ParticipantManagement } from "@/components/ui/ParticipantManagement";
+import { JuryManagement } from "@/components/ui/JuryManagement";
 import { Card } from "@/components/shadcn/card";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
@@ -13,7 +14,7 @@ export const Route = createLazyFileRoute("/admin")({
 
 function AdminPanel() {
     const { t } = useTranslation();
-    const [activeTab, setActiveTab] = useState<'control' | 'participants'>('control');
+    const [activeTab, setActiveTab] = useState<'control' | 'participants' | 'jury'>('control');
 
     return (
         <div className="container mx-auto p-8 space-y-8">
@@ -36,6 +37,13 @@ function AdminPanel() {
                     >
                         {t("admin.tabs.participants")}
                     </Button>
+                    <Button
+                        variant={activeTab === 'jury' ? "default" : "outline"}
+                        onClick={() => setActiveTab('jury')}
+                        className={`pb-2 ${activeTab === 'jury' ? 'border-2 border-primary shadow-sm' : 'border-2'}`}
+                    >
+                        {t("admin.tabs.jury", "Jury Management")}
+                    </Button>
                 </div>
             </div>
 
@@ -52,9 +60,13 @@ function AdminPanel() {
                         <ParticipantSelector />
                     </Card>
                 </div>
-            ) : (
+            ) : activeTab === 'participants' ? (
                 <Card className="p-6">
                     <ParticipantManagement />
+                </Card>
+            ) : (
+                <Card className="p-6">
+                    <JuryManagement />
                 </Card>
             )}
         </div>

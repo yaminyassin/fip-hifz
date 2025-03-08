@@ -11,7 +11,7 @@ type QuranViewerProps = {
 export function QuranViewer({ pageNumber, questionNumber }: QuranViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [imageWidth, setImageWidth] = useState<number>(800);
-  const [imageHeight, setImageHeight] = useState<number>(1000);
+  const [_ , setImageHeight] = useState<number>(1000);
   const { t } = useTranslation();
 
   const { data: pageData, isLoading, error } = useQuranPage(pageNumber);
