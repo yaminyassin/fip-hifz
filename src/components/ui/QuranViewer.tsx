@@ -6,9 +6,14 @@ import { useTranslation } from "react-i18next";
 type QuranViewerProps = {
   pageNumber?: number;
   questionNumber?: number;
+  hasAssignedQuestions?: boolean;
 };
 
-export function QuranViewer({ pageNumber, questionNumber }: QuranViewerProps) {
+export function QuranViewer({ 
+  pageNumber, 
+  questionNumber, 
+  hasAssignedQuestions = true 
+}: QuranViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [imageWidth, setImageWidth] = useState<number>(800);
   const [_ , setImageHeight] = useState<number>(1000);
@@ -38,12 +43,16 @@ export function QuranViewer({ pageNumber, questionNumber }: QuranViewerProps) {
       className="flex flex-col items-center justify-center bg-slate-300 border-2 border-slate-800 p-1 h-[800px]"
     >
       <Label className="pb-2">
-        {questionNumber 
-          ? t("randomizer.questionLabelWithPage", { 
-              question: questionNumber, 
-              page: pageNumber 
-            })
-          : t("randomizer.questionLabel", { number: pageNumber })}
+        {!hasAssignedQuestions ? (
+          t("jury.waitingForQuestions")
+        ) : questionNumber && pageNumber ? (
+          t("randomizer.questionLabelWithPage", { 
+            question: questionNumber, 
+            page: pageNumber 
+          })
+        ) : (
+          t("randomizer.questionLabel", { number: pageNumber })
+        )}
       </Label>
       
       {isLoading && (
@@ -60,13 +69,19 @@ export function QuranViewer({ pageNumber, questionNumber }: QuranViewerProps) {
         </div>
       )}
       
-      {!isLoading && !error && !pageData?.page && (
+      {!hasAssignedQuestions && (
+        <div className="flex items-center justify-center h-full w-full text-gray-600 text-xl font-medium">
+          {t("jury.noQuestionsAssignedYet")}
+        </div>
+      )}
+      
+      {!isLoading && !error && !pageData?.page && hasAssignedQuestions && (
         <div className="flex items-center justify-center h-full w-full">
           {t("randomizer.messages.noParticipant")}
         </div>
       )}
       
-      {!isLoading && !error && pageData?.page && (
+      {!isLoading && !error && pageData?.page && hasAssignedQuestions && (
         <div className="border-2 border-slate-800 h-full flex items-center justify-center">
           <img
             src={`data:image/png;base64,${pageData.page}`}
