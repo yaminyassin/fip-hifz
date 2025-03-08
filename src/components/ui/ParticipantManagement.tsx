@@ -21,10 +21,10 @@ export const ParticipantManagement = () => {
   const [showExcelImportPlaceholder, setShowExcelImportPlaceholder] = useState(false);
   
   const filteredParticipants = participants.filter((participant) =>
-    participant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    participant.country.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    participant.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    participant.school.toLowerCase().includes(searchQuery.toLowerCase())
+    (participant.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+    (participant.country?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+    (participant.category?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+    (participant.school?.toLowerCase() || '').includes(searchQuery.toLowerCase())
   );
   
   const handleAddNewClick = () => {
