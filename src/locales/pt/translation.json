@@ -29,6 +29,9 @@
     "title": "Painel do Júri",
     "question": "Questão",
     "page": "Página",
+    "noQuestionsAssigned": "Nenhuma Questão Atribuída Ainda",
+    "noQuestionsAssignedYet": "Aguardando questões serem atribuídas",
+    "waitingForQuestions": "Aguardando questões",
     "viewer": {
       "nextPage": "Próxima página",
       "previousPage": "Página anterior",
