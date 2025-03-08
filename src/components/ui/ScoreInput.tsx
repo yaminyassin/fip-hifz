@@ -9,12 +9,14 @@ export interface ScoreInputProps {
   field: keyof QuestionFields;
   value: number;
   onChange: (value: number) => void;
+  disabled?: boolean;
 }
 
 export const ScoreInput = ({
   label,
   value,
   onChange,
+  disabled = false,
 }: ScoreInputProps) => {
   const { t } = useTranslation();
 
@@ -31,7 +33,7 @@ export const ScoreInput = ({
   };
 
   return (
-    <Card className="w-36 p-2">
+    <Card className={`w-36 p-2 ${disabled ? 'opacity-60' : ''}`}>
       <div className="flex flex-col gap-y-4 justify-center">
         <div className="flex text-center justify-center w-full">
           <Label className="flex items-center justify-center px-1 text-muted-foreground">
@@ -42,7 +44,7 @@ export const ScoreInput = ({
           <Button
             size="sm"
             onClick={handleDecrement}
-            disabled={value <= 0}
+            disabled={value <= 0 || disabled}
             aria-label={t("jury.actions.decrease")}
           >
             -
@@ -57,7 +59,7 @@ export const ScoreInput = ({
           <Button
             size="sm"
             onClick={handleIncrement}
-            disabled={value >= 10}
+            disabled={value >= 10 || disabled}
             aria-label={t("jury.actions.increase")}
           >
             +

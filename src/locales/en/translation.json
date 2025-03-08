@@ -26,13 +26,18 @@
     "getStarted": "Get Started"
   },
   "jury": {
-    "title": "Jury Panel",
+    "title": "Jury Evaluation",
     "question": "Question",
     "page": "Page",
+    "noQuestionsAssigned": "No Questions Assigned Yet",
+    "noQuestionsAssignedYet": "Waiting for questions to be assigned",
+    "waitingForQuestions": "Waiting for questions",
     "viewer": {
-      "nextPage": "Next page",
-      "previousPage": "Previous page",
-      "resetPage": "Back to main page"
+      "nextPage": "Next Page",
+      "previousPage": "Previous Page",
+      "resetPage": "Reset Page",
+      "jury": "Jury",
+      "currentlyViewing": "Currently viewing"
     },
     "login": {
       "title": "Jury Login",

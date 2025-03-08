@@ -55,6 +55,7 @@ interface ScoreCategoryProps {
   fields: (keyof QuestionFields)[];
   scores: QuestionFields;
   onScoreChange: (field: keyof QuestionFields, value: number) => void;
+  disabled?: boolean;
 }
 
 export const ScoreCategory = ({
@@ -64,6 +65,7 @@ export const ScoreCategory = ({
   fields,
   scores,
   onScoreChange,
+  disabled = false,
 }: ScoreCategoryProps) => {
   const { t } = useTranslation();
   const { data: participant } = useActiveParticipant();
@@ -99,20 +101,22 @@ export const ScoreCategory = ({
         )}
         {section === "fluency" && (
           <span className="text-xs text-muted-foreground mt-1">
-            {t("jury.categories.maxBonus")}: +5% {t("jury.categories.total")}
+            {t("jury.categories.maxBonus")}: 5%{" "}
+            {t("jury.categories.total")}
           </span>
         )}
       </div>
-      <div className="flex flex-wrap gap-4">
+      <div className="grid grid-cols-3 gap-4">
         {fields.map((field, index) => (
-          <div key={field} className="flex flex-col">
+          <div key={field} className="flex flex-col items-center">
             <ScoreInput
               label={labels[index]}
               field={field}
               value={scores[field]}
               onChange={(value) => onScoreChange(field, value)}
+              disabled={disabled}
             />
-            <span className="text-xs text-center mt-1 font-medium text-muted-foreground">
+            <span className="text-xs text-center mt-1 font-medium text-muted-foreground w-full">
               {getErrorPenalty(field)}
             </span>
           </div>
@@ -734,6 +738,10 @@ function RouteComponent() {
       const initialPage = participant.assignedQuestions[selectedQuestion - 1];
       setViewerPage(initialPage);
       setOriginalViewerPage(initialPage);
+    } else {
+      // Reset viewer page when participant has no assigned questions
+      setViewerPage(undefined);
+      setOriginalViewerPage(undefined);
     }
   }, [participant, selectedQuestion]);
 
@@ -787,55 +795,115 @@ function RouteComponent() {
           <div className="p-4 space-y-4 flex-grow">
             <ParticipantBanner />
             <h2 className="text-2xl font-bold mb-4">
-              {t("jury.question")} {selectedQuestion} - {t("jury.page")}{" "}
-              {participant?.assignedQuestions?.[selectedQuestion - 1]}
+              {participant?.assignedQuestions && 
+               participant.assignedQuestions.length > 0 ? (
+                <>
+                  {t("jury.question")} {selectedQuestion} - {t("jury.page")}{" "}
+                  {participant?.assignedQuestions?.[selectedQuestion - 1]}
+                </>
+              ) : (
+                <span className="text-gray-600">
+                  {t("jury.noQuestionsAssigned")}
+                </span>
+              )}
             </h2>
 
             {participant && juryId && (
               <>
                 <div className="grid grid-cols-2 gap-4">
-                  <ScoreCategory
-                    title={t("jury.categories.hifz")}
-                    subtitle={`${getSectionWeight("hifz")} ${t("jury.categories.ofTotalScore")}`}
-                    labels={[
-                      t("jury.categories.hifz_fath"),
-                      t("jury.categories.hifz_tannin"),
-                      t("jury.categories.hifz_taraddud"),
-                    ]}
-                    fields={["hifz_fath", "hifz_tannin", "hifz_taraddud"]}
-                    scores={currentScores}
-                    onScoreChange={handleScoreChange}
-                  />
-                  <ScoreCategory
-                    title={t("jury.categories.tajweed")}
-                    subtitle={`${getSectionWeight("tajweed")} ${t("jury.categories.ofTotalScore")}`}
-                    labels={[
-                      t("jury.categories.tajweed_jali"),
-                      t("jury.categories.tajweed_khafi"),
-                    ]}
-                    fields={["tajweed_jali", "tajweed_khafi"]}
-                    scores={currentScores}
-                    onScoreChange={handleScoreChange}
-                  />
-                  <ScoreCategory
-                    title={t("jury.categories.waqf")}
-                    subtitle={`${getSectionWeight("waqf")} ${t("jury.categories.ofTotalScore")}`}
-                    labels={[t("jury.categories.waqf_ibtida")]}
-                    fields={["waqf_ibtida"]}
-                    scores={currentScores}
-                    onScoreChange={handleScoreChange}
-                  />
-                  <ScoreCategory
-                    title={t("jury.categories.fluency")}
-                    subtitle={`${getSectionWeight("fluency")} ${t("jury.messages.overallPerformance")}`}
-                    labels={[t("jury.categories.fluency_bonus")]}
-                    fields={["fluency_bonus"]}
-                    scores={{
-                      ...currentScores,
-                      fluency_bonus: globalFluencyBonus,
-                    }}
-                    onScoreChange={handleScoreChange}
-                  />
+                  {participant?.assignedQuestions && 
+                   participant.assignedQuestions.length > 0 ? (
+                    <>
+                      <ScoreCategory
+                        title={t("jury.categories.hifz")}
+                        subtitle={`${getSectionWeight("hifz")} ${t("jury.categories.ofTotalScore")}`}
+                        labels={[
+                          t("jury.categories.hifz_fath"),
+                          t("jury.categories.hifz_tannin"),
+                          t("jury.categories.hifz_taraddud"),
+                        ]}
+                        fields={["hifz_fath", "hifz_tannin", "hifz_taraddud"]}
+                        scores={currentScores}
+                        onScoreChange={handleScoreChange}
+                      />
+                      <ScoreCategory
+                        title={t("jury.categories.tajweed")}
+                        subtitle={`${getSectionWeight("tajweed")} ${t("jury.categories.ofTotalScore")}`}
+                        labels={[
+                          t("jury.categories.tajweed_jali"),
+                          t("jury.categories.tajweed_khafi"),
+                        ]}
+                        fields={["tajweed_jali", "tajweed_khafi"]}
+                        scores={currentScores}
+                        onScoreChange={handleScoreChange}
+                      />
+                      <ScoreCategory
+                        title={t("jury.categories.waqf")}
+                        subtitle={`${getSectionWeight("waqf")} ${t("jury.categories.ofTotalScore")}`}
+                        labels={[t("jury.categories.waqf_ibtida")]}
+                        fields={["waqf_ibtida"]}
+                        scores={currentScores}
+                        onScoreChange={handleScoreChange}
+                      />
+                      <ScoreCategory
+                        title={t("jury.categories.fluency")}
+                        subtitle={`${getSectionWeight("fluency")} ${t("jury.messages.overallPerformance")}`}
+                        labels={[t("jury.categories.fluency_bonus")]}
+                        fields={["fluency_bonus"]}
+                        scores={{
+                          ...currentScores,
+                          fluency_bonus: globalFluencyBonus,
+                        }}
+                        onScoreChange={handleScoreChange}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <ScoreCategory
+                        title={t("jury.categories.hifz")}
+                        subtitle={`${getSectionWeight("hifz")} ${t("jury.categories.ofTotalScore")}`}
+                        labels={[
+                          t("jury.categories.hifz_fath"),
+                          t("jury.categories.hifz_tannin"),
+                          t("jury.categories.hifz_taraddud"),
+                        ]}
+                        fields={["hifz_fath", "hifz_tannin", "hifz_taraddud"]}
+                        scores={defaultScores}
+                        onScoreChange={() => {}}
+                        disabled={true}
+                      />
+                      <ScoreCategory
+                        title={t("jury.categories.tajweed")}
+                        subtitle={`${getSectionWeight("tajweed")} ${t("jury.categories.ofTotalScore")}`}
+                        labels={[
+                          t("jury.categories.tajweed_jali"),
+                          t("jury.categories.tajweed_khafi"),
+                        ]}
+                        fields={["tajweed_jali", "tajweed_khafi"]}
+                        scores={defaultScores}
+                        onScoreChange={() => {}}
+                        disabled={true}
+                      />
+                      <ScoreCategory
+                        title={t("jury.categories.waqf")}
+                        subtitle={`${getSectionWeight("waqf")} ${t("jury.categories.ofTotalScore")}`}
+                        labels={[t("jury.categories.waqf_ibtida")]}
+                        fields={["waqf_ibtida"]}
+                        scores={defaultScores}
+                        onScoreChange={() => {}}
+                        disabled={true}
+                      />
+                      <ScoreCategory
+                        title={t("jury.categories.fluency")}
+                        subtitle={`${getSectionWeight("fluency")} ${t("jury.messages.overallPerformance")}`}
+                        labels={[t("jury.categories.fluency_bonus")]}
+                        fields={["fluency_bonus"]}
+                        scores={defaultScores}
+                        onScoreChange={() => {}}
+                        disabled={true}
+                      />
+                    </>
+                  )}
                 </div>
                 <div className="mt-6">
                   <ScoreSummary
@@ -934,6 +1002,8 @@ function RouteComponent() {
                 onClick={handleDone}
                 disabled={
                   !participant?.id ||
+                  !participant?.assignedQuestions ||
+                  participant.assignedQuestions.length === 0 ||
                   updateJuryMutation.isPending ||
                   saveScoresMutation.isPending ||
                   (juryMember?.hasFinishedEvaluating === true &&
@@ -955,18 +1025,26 @@ function RouteComponent() {
 
         <div className="flex flex-col w-2/6 overflow-hidden">
           {/* Quran Viewer */}
-          {viewerPage !== undefined && (
+          {participant && (
             <div className="flex flex-col h-[900px]">
               <div className="flex-grow">
                 <QuranViewer
                   pageNumber={viewerPage}
                   questionNumber={selectedQuestion}
+                  hasAssignedQuestions={
+                    participant.assignedQuestions && 
+                    participant.assignedQuestions.length > 0
+                  }
                 />
               </div>
               <div className="h-[80px] flex items-center">
                 <div className={`flex w-full justify-between mt-2 p-2`}>
                   <div className="flex flex-col items-center">
-                    <Button variant="outline" onClick={handleViewerNext}>
+                    <Button
+                      variant="outline"
+                      onClick={handleViewerNext}
+                      disabled={viewerPage === undefined}
+                    >
                       <ArrowLeft className="w-5 h-5" />
                     </Button>
                     <span className="text-xs mt-1 text-muted-foreground">
@@ -980,30 +1058,31 @@ function RouteComponent() {
                         absolute left-1/2 transform -translate-x-1/2 
                         ${
                           viewerPage !== originalViewerPage
-                            ? "opacity-100 scale-100 translate-y-0 transition-all duration-300 ease-out"
-                            : "opacity-0 scale-90 translate-y-2 transition-all duration-200 ease-in pointer-events-none"
+                            ? "text-amber-600 font-bold"
+                            : "text-muted-foreground"
                         }
                       `}
                     >
-                      <Button
-                        variant="secondary"
-                        onClick={handleViewerReset}
-                        className="bg-blue-100 hover:bg-blue-200 border border-blue-300"
-                      >
-                        <RotateCcw className="w-4 h-4 mr-1" />
-                        <span>{t("common.reset")}</span>
-                      </Button>
-                      <span className="text-xs mt-1 text-muted-foreground text-center block">
-                        {t("jury.viewer.resetPage")}
-                      </span>
+                      {viewerPage !== undefined && (
+                        <Button
+                          variant="outline"
+                          onClick={handleViewerReset}
+                          disabled={viewerPage === originalViewerPage}
+                        >
+                          <RotateCcw className="w-5 h-5" />
+                        </Button>
+                      )}
                     </div>
+                    <span className="text-xs mt-[50px] text-muted-foreground">
+                      {t("jury.viewer.resetPage")}
+                    </span>
                   </div>
 
                   <div className="flex flex-col items-center">
                     <Button
                       variant="outline"
                       onClick={handleViewerPrevious}
-                      disabled={viewerPage <= 1}
+                      disabled={viewerPage === undefined || viewerPage <= 1}
                     >
                       <ArrowRight className="w-5 h-5" />
                     </Button>
