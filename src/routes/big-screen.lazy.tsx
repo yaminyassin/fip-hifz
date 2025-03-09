@@ -120,10 +120,10 @@ const BigScreen = () => {
                     </div>
                     <div className="flex flex-col items-end">
                       <div className="text-base md:text-lg font-semibold">
-                        {t("participants.age")}: {participant.age}
+                        {t("participants.banner.age")}: {participant.age}
                       </div>
                       <div className="text-base md:text-lg">
-                        {t("participants.category")}: {participant.category}
+                        {t("participants.banner.category")}: {participant.category}
                       </div>
                     </div>
                   </div>
@@ -132,7 +132,7 @@ const BigScreen = () => {
                   <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200">
                     <div>
                       <div className="text-sm text-slate-500 font-medium">
-                        {t("participants.school")}
+                        {t("participants.table.school")}
                       </div>
                       <div className="font-medium text-base md:text-lg">
                         {participant.school || "-"}
@@ -140,7 +140,7 @@ const BigScreen = () => {
                     </div>
                     <div>
                       <div className="text-sm text-slate-500 font-medium">
-                        {t("participants.questions")}
+                        {t("participants.table.questions")}
                       </div>
                       <div className="font-medium text-base md:text-lg">
                         {participant.assignedQuestions?.join(", ") || "-"}
