@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, ChangeEvent } from "react";
 import { Participant } from "@/models/models";
 import { useTranslation } from "react-i18next";
 import { createParticipant, updateParticipant } from "@/services/participants";
@@ -40,11 +40,22 @@ export const ParticipantForm = ({
     flag: participant?.flag || "",
     parentsName: participant?.parentsName || "",
     phoneNum: participant?.phoneNum || "",
+    email: participant?.email || "",
+    photo: participant?.photo || "",
   });
 
   // Date and time pickers state
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<string>("");
+
+  // Photo preview state
+  const [photoPreview, setPhotoPreview] = useState<string | null>(() => {
+    // If participant has a photo, create a proper data URL
+    if (participant?.photo) {
+      return `data:image/jpeg;base64,${participant.photo}`;
+    }
+    return null;
+  });
 
   // Parse the initial scheduled time if exists
   useEffect(() => {
@@ -98,6 +109,55 @@ export const ParticipantForm = ({
     }
   };
 
+  // Function to convert file to base64
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        const base64String = result.split(',')[1];
+        resolve(base64String);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Handle photo upload
+  const handlePhotoUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      // Check if file is an image
+      if (!file.type.startsWith('image/')) {
+        alert(t("admin.participants.errors.invalidImageType"));
+        return;
+      }
+      
+      // Check file size (limit to 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        alert(t("admin.participants.errors.imageTooLarge"));
+        return;
+      }
+      
+      // Convert to base64
+      const base64String = await convertFileToBase64(file);
+      
+      // Update form data with just the base64 string (no data URL prefix)
+      setFormData(prev => ({
+        ...prev,
+        photo: base64String
+      }));
+      
+      // Set photo preview with full data URL for display
+      setPhotoPreview(`data:${file.type};base64,${base64String}`);
+    } catch (error) {
+      console.error("Error processing image:", error);
+      alert(t("admin.participants.errors.imageProcessingError"));
+    }
+  };
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
@@ -115,6 +175,11 @@ export const ParticipantForm = ({
 
     if (!formData.category.trim()) {
       newErrors.category = t("admin.participants.errors.categoryRequired");
+    }
+    
+    // Validate email if provided
+    if (formData.email && !/^\S+@\S+\.\S+$/.test(formData.email)) {
+      newErrors.email = t("admin.participants.errors.invalidEmail");
     }
 
     setErrors(newErrors);
@@ -186,6 +251,20 @@ export const ParticipantForm = ({
             className={errors.age ? "border-red-500" : ""}
           />
           {errors.age && <p className="text-red-500 text-sm">{errors.age}</p>}
+        </div>
+
+        {/* Email - New Field */}
+        <div className="space-y-2">
+          <Label htmlFor="email">{t("admin.participants.form.email")}</Label>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            value={formData.email || ""}
+            onChange={handleChange}
+            className={errors.email ? "border-red-500" : ""}
+          />
+          {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
         </div>
 
         {/* Country */}
@@ -269,6 +348,37 @@ export const ParticipantForm = ({
             onChange={handleChange}
           />
         </div>
+
+        {/* Participant Photo - New Field */}
+        <div className="space-y-2 col-span-2">
+          <Label htmlFor="photo">{t("admin.participants.form.photo")}</Label>
+          <Input
+            id="photo"
+            name="photo"
+            type="file"
+            accept="image/*"
+            onChange={handlePhotoUpload}
+            className="cursor-pointer"
+            aria-label={t("admin.participants.form.photoUpload")}
+          />
+          <div className="text-xs text-gray-500 mt-1">
+            {t("admin.participants.form.photoSizeLimit")}
+          </div>
+        </div>
+
+        {/* Photo Preview */}
+        {photoPreview && (
+          <div className="col-span-2 mt-2">
+            <div className="text-sm font-medium mb-2">{t("admin.participants.form.photoPreview")}</div>
+            <div className="w-32 h-32 border rounded-md overflow-hidden">
+              <img
+                src={photoPreview}
+                alt={t("admin.participants.form.participantPhoto")}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Scheduled Date */}
         <div className="space-y-2">
