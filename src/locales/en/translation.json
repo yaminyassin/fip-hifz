@@ -262,13 +262,23 @@
         "isActive": "Is Active",
         "flag": "Country Flag Symbol",
         "parentsName": "Parent's Name",
-        "phoneNum": "Phone Number"
+        "phoneNum": "Phone Number",
+        "email": "Email Address",
+        "photo": "Photo",
+        "photoUpload": "Upload participant photo",
+        "photoSizeLimit": "Maximum file size: 2MB. Supported formats: JPEG, PNG, GIF.",
+        "photoPreview": "Photo Preview",
+        "participantPhoto": "Participant Photo"
       },
       "errors": {
         "nameRequired": "Name is required",
         "invalidAge": "Age must be a positive number",
         "countryRequired": "Country is required",
-        "categoryRequired": "Category is required"
+        "categoryRequired": "Category is required",
+        "invalidEmail": "Please enter a valid email address",
+        "invalidImageType": "Please upload a valid image file (JPEG, PNG, GIF)",
+        "imageTooLarge": "Image is too large. Maximum size is 2MB",
+        "imageProcessingError": "Error processing the image. Please try again"
       }
     },
     "jury": {

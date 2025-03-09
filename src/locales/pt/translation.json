@@ -264,7 +264,29 @@
         "nameRequired": "Nome é obrigatório",
         "ageRequired": "Idade é obrigatória",
         "countryRequired": "País é obrigatório",
-        "categoryRequired": "Categoria é obrigatória"
+        "categoryRequired": "Categoria é obrigatória",
+        "flag": "Bandeira do País",
+        "parentsName": "Nome do Responsável",
+        "phoneNum": "Número de Telefone",
+        "scheduled": "Horário Programado",
+        "scheduledDate": "Data Programada",
+        "scheduledTime": "Hora Programada",
+        "email": "Email",
+        "photo": "Foto",
+        "photoUpload": "Carregar foto do participante",
+        "photoSizeLimit": "Tamanho máximo: 2MB. Formatos suportados: JPEG, PNG, GIF.",
+        "photoPreview": "Visualização da Foto",
+        "participantPhoto": "Foto do Participante"
+      },
+      "errors": {
+        "nameRequired": "Nome é obrigatório",
+        "invalidAge": "A idade deve ser um número positivo",
+        "countryRequired": "País é obrigatório",
+        "categoryRequired": "Categoria é obrigatória",
+        "invalidEmail": "Digite um endereço de email válido",
+        "invalidImageType": "Carregue um arquivo de imagem válido (JPEG, PNG, GIF)",
+        "imageTooLarge": "Imagem muito grande. Tamanho máximo é 2MB",
+        "imageProcessingError": "Erro ao processar a imagem. Tente novamente"
       }
     },
     "jury": {
