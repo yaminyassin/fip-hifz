@@ -49,6 +49,8 @@ export type Participant = {
   flag: string; // flag symbol of the country
   parentsName: string;
   phoneNum: string;
+  email?: string; // Email address of the participant
+  photo?: string; // Base64 encoded photo of the participant
   assignedQuestions: number[]; // Array of 3 random numbers between 1-600
 };
 
