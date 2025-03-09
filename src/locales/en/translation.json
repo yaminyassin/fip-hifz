@@ -174,7 +174,8 @@
       "totalScore": "Total Score",
       "juryCount": "Jury Evaluations",
       "statusComplete": "Complete",
-      "statusPending": "Pending"
+      "statusPending": "Pending",
+      "questions": "Questions"
     },
     "visualizations": {
       "title": "Score Visualizations",
@@ -320,6 +321,8 @@
     "inactive": "Inactive",
     "completed": "Completed",
     "pickDate": "Pick a date",
-    "pickTime": "Pick a time"
+    "pickTime": "Pick a time",
+    "previous": "Previous",
+    "next": "Next"
   }
 } 
