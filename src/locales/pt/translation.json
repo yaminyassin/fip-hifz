@@ -172,7 +172,8 @@
       "totalScore": "Pontuação Total",
       "juryCount": "Avaliações do Júri",
       "statusComplete": "Concluído",
-      "statusPending": "Pendente"
+      "statusPending": "Pendente",
+      "questions": "Questões"
     },
     "visualizations": {
       "title": "Visualizações de Pontuação",
@@ -326,6 +327,10 @@
     "saving": "Salvando...",
     "active": "Ativo",
     "inactive": "Inativo",
-    "completed": "Concluído"
+    "completed": "Concluído",
+    "previous": "Anterior",
+    "next": "Próximo",
+    "pickDate": "Escolha uma data",
+    "pickTime": "Escolha um horário"
   }
 } 
