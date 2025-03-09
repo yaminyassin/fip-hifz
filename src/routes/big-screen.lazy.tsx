@@ -13,12 +13,17 @@ const BigScreen = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerHeight, setContainerHeight] = useState<number>(0);
+  const [imageContainerHeight, setImageContainerHeight] = useState<number>(0);
 
   // Update container height on resize
   useEffect(() => {
     const updateHeight = () => {
       if (containerRef.current) {
-        setContainerHeight(window.innerHeight - 48); // 48px for padding (24px top + 24px bottom)
+        const height = window.innerHeight - 48; // 48px for padding (24px top + 24px bottom)
+        setContainerHeight(height);
+        // Calculate image container height (approximately 60% of available height)
+        // Leave space for participant details (around 40% of height)
+        setImageContainerHeight(Math.floor(height * 0.6) - 24); // 24px for gap
       }
     };
 
@@ -47,24 +52,39 @@ const BigScreen = () => {
   return (
     <div
       ref={containerRef}
-      className="min-h-screen bg-gray-200 p-6"
+      className="min-h-screen bg-gray-200 p-6 overflow-hidden"
       style={{ height: `${containerHeight}px` }}
     >
       <div className="max-w-[1800px] mx-auto h-full">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
           {/* Left side - Participant info */}
-          <div className="flex flex-col gap-6 h-full">
+          <div className="flex flex-col gap-6 h-full overflow-hidden">
             {/* Participant image */}
-            <div className="bg-white rounded-lg border-2 border-slate-800 overflow-hidden shadow-lg flex items-center justify-center flex-grow">
-              <div className="w-3/4 h-full flex items-center justify-center bg-slate-100 py-8">
+            <div
+              className="bg-white rounded-lg border-2 border-slate-800 overflow-hidden shadow-lg flex items-center justify-center"
+              style={{ height: `${imageContainerHeight}px` }}
+            >
+              <div className="w-3/4 h-full flex items-center justify-center bg-slate-100 p-4">
                 {isLoadingParticipant ? (
                   <div className="text-center text-slate-500">
                     {t("common.loading")}
                   </div>
                 ) : participant ? (
-                  <div className="flex items-center justify-center w-full h-full">
-                    <User className="h-48 w-48 text-slate-300 md:h-32 md:w-32 lg:h-40 lg:w-40 xl:h-48 xl:w-48" />
-                  </div>
+                  participant.photo ? (
+                    <img
+                      src={`data:image/jpeg;base64,${participant.photo}`}
+                      alt={participant.name}
+                      className="max-w-full max-h-full object-contain"
+                      style={{ maxHeight: `${imageContainerHeight - 32}px` }} // 32px for padding
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center w-full h-full">
+                      <User className="h-48 w-48 text-slate-300 md:h-32 md:w-32 lg:h-40 lg:w-40 xl:h-48 xl:w-48" />
+                      <p className="mt-4 text-slate-500 text-center">
+                        No photo available
+                      </p>
+                    </div>
+                  )
                 ) : (
                   <div className="flex items-center justify-center w-full h-full">
                     <User className="h-48 w-48 text-slate-200 opacity-50 md:h-32 md:w-32 lg:h-40 lg:w-40 xl:h-48 xl:w-48" />
@@ -74,7 +94,7 @@ const BigScreen = () => {
             </div>
 
             {/* Participant details */}
-            <div className="bg-white rounded-lg border-2 border-slate-800 p-4 md:p-6 shadow-lg">
+            <div className="bg-white rounded-lg border-2 border-slate-800 p-4 md:p-6 shadow-lg overflow-auto">
               {isLoadingParticipant ? (
                 <div className="text-center text-slate-500">
                   {t("common.loading")}
@@ -167,8 +187,8 @@ const BigScreen = () => {
           </div>
 
           {/* Right side - Quran viewer */}
-          <div className="flex flex-col gap-4 items-center h-full">
-            <div className="bg-white rounded-lg border-2 border-slate-800 p-4 shadow-lg w-full md:w-4/5 flex-grow">
+          <div className="flex flex-col gap-4 items-center h-full overflow-hidden">
+            <div className="bg-white rounded-lg border-2 border-slate-800 p-4 shadow-lg w-full md:w-4/5 flex-grow overflow-auto">
               <div className="mb-2 text-center">
                 <div className="inline-block px-4 py-1 bg-primary/10 rounded-full text-primary font-medium">
                   Question {currentQuestionIndex + 1}
