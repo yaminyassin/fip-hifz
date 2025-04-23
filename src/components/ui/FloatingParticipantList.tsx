@@ -1,12 +1,13 @@
-import { Participant } from "@/models/models";
+// import { Participant } from "@/models/models";
 import { useState } from "react";
 import { ChevronUp, ChevronDown, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/shadcn/card";
 import { useTranslation } from "react-i18next";
+import { ParticipantWithScore } from "@/hooks/useParticipantsWithScores";
 
 interface FloatingParticipantListProps {
-  participants: Participant[];
+  participants: ParticipantWithScore[];
 }
 
 export const FloatingParticipantList = ({
@@ -29,7 +30,9 @@ export const FloatingParticipantList = ({
         >
           <div className="flex items-center gap-2">
             <User className="w-4 h-4" />
-            <span className="font-semibold">{t("participants.nextParticipants")}</span>
+            <span className="font-semibold">
+              {t("participants.nextParticipants")}
+            </span>
           </div>
           {isExpanded ? (
             <ChevronDown className="w-4 h-4" />
