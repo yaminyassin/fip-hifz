@@ -4,13 +4,20 @@ import { firestore } from "@/main";
 import { QuestionFields, Scores } from "@/models/models";
 
 const defaultScores: QuestionFields = {
-  hifz_fath: 0,
-  hifz_tannin: 0,
-  hifz_taraddud: 0,
-  tajweed_jali: 0,
-  tajweed_khafi: 0,
-  waqf_ibtida: 0,
-  fluency_bonus: 0,
+  // Hifdh
+  hifdh_judge_correction: 0,
+  hifdh_self_correction: 0,
+  hifdh_stuck_count: 0,
+  // Tajweed
+  tajweed_major: 0,
+  tajweed_minor: 0,
+  // Waqf & Ibtida
+  waqf_ibtida_incorrect: 0,
+  waqf_ibtida_meaning: 0,
+  // Husn al-Ada
+  husn_al_ada_score: 0,
+  // Bonus
+  overall_bonus: 0,
 };
 
 export const useJuryScores = (
