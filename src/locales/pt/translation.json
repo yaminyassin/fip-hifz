@@ -32,11 +32,6 @@
     "noQuestionsAssigned": "Nenhuma Questão Atribuída Ainda",
     "noQuestionsAssignedYet": "Aguardando questões serem atribuídas",
     "waitingForQuestions": "Aguardando questões",
-    "viewer": {
-      "nextPage": "Próxima página",
-      "previousPage": "Página anterior",
-      "resetPage": "Voltar à página principal"
-    },
     "login": {
       "title": "Login do Júri",
       "subtitle": "Digite seu ID de júri para continuar",
@@ -75,13 +70,9 @@
     "scoreSummary": {
       "title": "Resumo da Pontuação",
       "totalScore": "Pontuação Total",
-      "totalScoreExplanation": "Este resumo mostra a pontuação combinada de todas as questões.",
-      "fluencyExplanation": "Os pontos de fluência são cumulativos para o desempenho geral do participante e persistem em todas as questões.",
-      "selectJury": "Selecionar Júri",
       "averageOfAll": "Média de Todos os Júris",
       "juryMember": "Júri #{id}",
-      "jury": "Júri",
-      "currentlyViewing": "Visualizando atualmente"
+      "jury": "Júri"
     },
     "actions": {
       "logout": "Sair",
@@ -93,16 +84,19 @@
     },
     "messages": {
       "evaluationComplete": "Avaliação Concluída",
-      "evaluationCompleteDesc": "Você concluiu a avaliação de todas as questões para este participante.",
-      "questionComplete": "Questão Concluída",
-      "movingToQuestion": "Avançando para a Questão {{number}}",
       "errorSavingScores": "Ocorreu um erro ao salvar as pontuações. Por favor, tente novamente.",
       "inProgress": "Em Andamento",
       "scoreReset": "Pontuações Redefinidas",
       "scoreResetDesc": "As pontuações anteriores foram apagadas para as novas questões deste participante.",
-      "fluencyCapped": "Bônus de Fluência Limitado",
-      "fluencyCappedDesc": "O bônus total de fluência não pode exceder {{max}} pontos. Total atual: {{current}} pontos.",
-      "overallPerformance": "bônus de desempenho geral"
+      "scoreCappedTitle": "[FALTA] jury.messages.scoreCappedTitle",
+      "scoreCappedDesc": "[FALTA] jury.messages.scoreCappedDesc",
+      "evaluationCompleteDescDone": "[FALTA] jury.messages.evaluationCompleteDescDone",
+      "questionScoresSavedTitle": "[FALTA] jury.messages.questionScoresSavedTitle",
+      "questionScoresSavedDesc": "[FALTA] jury.messages.questionScoresSavedDesc",
+      "errorUpdatingProgress": "[FALTA] jury.messages.errorUpdatingProgress",
+      "scoresSavedTitle": "[FALTA] jury.messages.scoresSavedTitle",
+      "scoresSavedNavDesc": "[FALTA] jury.messages.scoresSavedNavDesc",
+      "errorSavingScoresNav": "[FALTA] jury.messages.errorSavingScoresNav"
     }
   },
   "randomizer": {
@@ -126,11 +120,6 @@
   "participants": {
     "title": "Participantes",
     "searchPlaceholder": "Buscar participantes...",
-    "currentActive": "Participante Ativo Atual",
-    "noActive": "Nenhum participante ativo",
-    "selectNew": "Selecionar Novo Participante",
-    "selectPlaceholder": "Selecione um participante",
-    "nextParticipants": "Próximos Participantes",
     "header": {
       "title": "Participantes",
       "subtitle": "Gerenciar e visualizar todos os participantes"
@@ -153,7 +142,6 @@
     },
     "actions": {
       "setActive": "Definir como Ativo",
-      "activating": "Ativando...",
       "details": "Detalhes",
       "viewDetails": "Ver detalhes da pontuação"
     },
@@ -166,9 +154,6 @@
       "scheduled": "Horário",
       "status": "Status",
       "actions": "Ações",
-      "q1Score": "Pontuação Q1",
-      "q2Score": "Pontuação Q2",
-      "q3Score": "Pontuação Q3",
       "totalScore": "Pontuação Total",
       "juryCount": "Avaliações do Júri",
       "statusComplete": "Concluído",
@@ -202,27 +187,39 @@
       "noParticipantsFound": "Nenhum Participante Encontrado",
       "noParticipantsWithScores": "Não há participantes com pontuações para exibir",
       "noParticipantsInCategory": "Não há participantes na Categoria {{category}} com pontuações para exibir"
-    }
+    },
+    "progress": "Progresso",
+    "questions": "Questões",
+    "setActive": "Definir como Ativo",
+    "currentlyActive": "Ativo Atualmente",
+    "setActiveAria": "Definir participante como ativo"
   },
   "admin": {
     "title": "Painel Administrativo",
     "juryStatus": "Status do Júri",
-    "activeParticipant": "Participante Ativo",
+    "participantStatus": "Status dos Participantes",
+    "sceneControl": "Controle de Cena",
+    "question": "Questão",
+    "page": "Página",
+    "filter": {
+      "category": "Categoria",
+      "allCategories": "Todas as Categorias"
+    },
+    "participant": {
+      "category": "Categoria",
+      "age": "Idade"
+    },
     "table": {
       "juryName": "Nome do Jurado",
       "currentQuestion": "Questão Atual",
-      "status": "Status",
-      "actions": "Ações"
+      "status": "Status"
     },
     "actions": {
-      "select": "Selecionar",
-      "remove": "Remover",
-      "save": "Salvar Alterações"
+      "save": "Salvar Alterações",
+      "prevQuestion": "Questão Anterior",
+      "nextQuestion": "Próxima Questão"
     },
-    "messages": {
-      "participantUpdated": "Participante ativo atualizado",
-      "participantRemoved": "Participante ativo removido"
-    },
+    "messages": {},
     "tabs": {
       "control": "Painel de Controle",
       "participants": "Gerenciamento de Participantes",
@@ -234,10 +231,12 @@
       "editParticipant": "Editar Participante",
       "addParticipant": "Adicionar Participante",
       "importExcel": "Importar do Excel",
-      "importExcelPlaceholder": "Esta funcionalidade permite importar dados de participantes de um arquivo Excel. Esta funcionalidade estará disponível em breve.",
-      "dropExcelFile": "Solte o arquivo Excel aqui ou clique para fazer upload",
       "search": "Pesquisar participantes...",
       "noParticipants": "Nenhum participante encontrado",
+      "name": "Nome",
+      "category": "Categoria",
+      "status": "Status",
+      "actions": "Ações",
       "confirmDelete": "Tem certeza de que deseja excluir este participante? Esta ação não pode ser desfeita.",
       "table": {
         "name": "Nome",
@@ -288,7 +287,18 @@
         "invalidImageType": "Carregue um arquivo de imagem válido (JPEG, PNG, GIF)",
         "imageTooLarge": "Imagem muito grande. Tamanho máximo é 2MB",
         "imageProcessingError": "Erro ao processar a imagem. Tente novamente"
-      }
+      },
+      "confirmReset": "[FALTA] admin.participants.confirmReset",
+      "resetStatusesAria": "[FALTA] admin.participants.resetStatusesAria",
+      "resettingStatuses": "[FALTA] admin.participants.resettingStatuses",
+      "resetStatuses": "[FALTA] admin.participants.resetStatuses",
+      "noSearchResults": "[FALTA] admin.participants.noSearchResults",
+      "progress": "Progresso",
+      "questions": "Questões",
+      "setActive": "Definir como Ativo",
+      "currentlyActive": "Ativo Atualmente",
+      "setActiveAria": "Definir participante como ativo",
+      "markDoneAria": "[FALTA] admin.participants.markDoneAria"
     },
     "jury": {
       "title": "Gerenciamento de Jurados",
@@ -310,6 +320,15 @@
         "name": "Nome",
         "namePlaceholder": "Digite o nome do jurado"
       }
+    },
+    "activeQuestion": {
+      "label": "Questão Ativa",
+      "page": "Página"
+    },
+    "activeParticipant": {
+      "current": "Participante Atual",
+      "setInstruction": "Selecione um participante para começar",
+      "noneSet": "Nenhum participante selecionado"
     }
   },
   "common": {
@@ -331,6 +350,16 @@
     "previous": "Anterior",
     "next": "Próximo",
     "pickDate": "Escolha uma data",
-    "pickTime": "Escolha um horário"
+    "pickTime": "Escolha um horário",
+    "unnamed": "Sem Nome",
+    "markingDone": "Marcando como concluído...",
+    "markDone": "Marcar como Concluído",
+    "settingActive": "Definindo como ativo..."
+  },
+  "validation": {
+    "required": "Este campo é obrigatório"
+  },
+  "error": {
+    "general": "Ocorreu um erro. Por favor, tente novamente."
   }
-} 
+}
