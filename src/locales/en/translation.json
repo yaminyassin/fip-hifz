@@ -32,13 +32,6 @@
     "noQuestionsAssigned": "No Questions Assigned Yet",
     "noQuestionsAssignedYet": "Waiting for questions to be assigned",
     "waitingForQuestions": "Waiting for questions",
-    "viewer": {
-      "nextPage": "Next Page",
-      "previousPage": "Previous Page",
-      "resetPage": "Reset Page",
-      "jury": "Jury",
-      "currentlyViewing": "Currently viewing"
-    },
     "login": {
       "title": "Jury Login",
       "subtitle": "Enter your jury ID to continue",
@@ -82,13 +75,9 @@
     "scoreSummary": {
       "title": "Score Summary",
       "totalScore": "Total Score",
-      "totalScoreExplanation": "This summary shows the combined score across all questions.",
-      "fluencyExplanation": "Fluency points are cumulative for the participant's overall performance and persist across all questions.",
-      "selectJury": "Select Jury",
       "averageOfAll": "Average of All Juries",
       "juryMember": "Jury #{id}",
-      "jury": "Jury",
-      "currentlyViewing": "Currently viewing"
+      "jury": "Jury"
     },
     "actions": {
       "logout": "Logout",
@@ -100,16 +89,19 @@
     },
     "messages": {
       "evaluationComplete": "Evaluation Complete",
-      "evaluationCompleteDesc": "You have completed evaluating all questions for this participant.",
-      "questionComplete": "Question Complete",
-      "movingToQuestion": "Moving to Question {{number}}",
       "errorSavingScores": "There was an error saving the scores. Please try again.",
       "inProgress": "In Progress",
       "scoreReset": "Scores Reset",
       "scoreResetDesc": "Previous scores have been cleared for this participant's new questions.",
-      "fluencyCapped": "Fluency Bonus Capped",
-      "fluencyCappedDesc": "Total fluency bonus cannot exceed {{max}} points. Current total: {{current}} points.",
-      "overallPerformance": "overall performance bonus"
+      "scoreCappedTitle": "[MISSING] jury.messages.scoreCappedTitle",
+      "scoreCappedDesc": "[MISSING] jury.messages.scoreCappedDesc",
+      "evaluationCompleteDescDone": "You have completed scoring all questions for this participant. You can review and modify your scores if needed.",
+      "questionScoresSavedTitle": "Question Scores Saved",
+      "questionScoresSavedDesc": "Scores for question {{number}} have been saved successfully.",
+      "errorUpdatingProgress": "There was an error updating your progress. Please try again.",
+      "scoresSavedTitle": "[MISSING] jury.messages.scoresSavedTitle",
+      "scoresSavedNavDesc": "[MISSING] jury.messages.scoresSavedNavDesc",
+      "errorSavingScoresNav": "Error saving scores for question {{number}}. Please try again."
     }
   },
   "randomizer": {
@@ -133,11 +125,6 @@
   "participants": {
     "title": "Participants",
     "searchPlaceholder": "Search participants...",
-    "currentActive": "Current Active Participant",
-    "noActive": "No active participant",
-    "selectNew": "Select New Participant",
-    "selectPlaceholder": "Select a participant",
-    "nextParticipants": "Next Participants",
     "header": {
       "title": "Participants",
       "subtitle": "Manage and view all participants"
@@ -160,7 +147,6 @@
     },
     "actions": {
       "setActive": "Set Active",
-      "activating": "Activating...",
       "details": "Details",
       "viewDetails": "View score details"
     },
@@ -173,9 +159,6 @@
       "scheduled": "Schedule",
       "status": "Status",
       "actions": "Actions",
-      "q1Score": "Q1 Score",
-      "q2Score": "Q2 Score",
-      "q3Score": "Q3 Score",
       "totalScore": "Total Score",
       "juryCount": "Jury Evaluations",
       "statusComplete": "Complete",
@@ -215,6 +198,18 @@
     "title": "Admin Panel",
     "juryStatus": "Jury Status",
     "activeParticipant": "Active Participant",
+    "participantStatus": "Participant Status",
+    "sceneControl": "Scene Control",
+    "question": "Question",
+    "page": "Page",
+    "filter": {
+      "category": "Category",
+      "allCategories": "All Categories"
+    },
+    "participant": {
+      "category": "Category",
+      "age": "Age"
+    },
     "table": {
       "juryName": "Jury Name",
       "currentQuestion": "Current Question",
@@ -222,14 +217,11 @@
       "actions": "Actions"
     },
     "actions": {
-      "select": "Select",
-      "remove": "Remove",
-      "save": "Save Changes"
+      "save": "Save Changes",
+      "prevQuestion": "[MISSING] admin.actions.prevQuestion",
+      "nextQuestion": "[MISSING] admin.actions.nextQuestion"
     },
-    "messages": {
-      "participantUpdated": "Active participant updated",
-      "participantRemoved": "Active participant removed"
-    },
+    "messages": {},
     "tabs": {
       "control": "Control Panel",
       "participants": "Participants Management",
@@ -241,8 +233,6 @@
       "editParticipant": "Edit Participant",
       "addParticipant": "Add Participant",
       "importExcel": "Import from Excel",
-      "importExcelPlaceholder": "This feature allows you to import participant data from an Excel file. This functionality is coming soon.",
-      "dropExcelFile": "Drop Excel file here or click to upload",
       "search": "Search participants...",
       "noParticipants": "No participants found",
       "confirmDelete": "Are you sure you want to delete this participant? This action cannot be undone.",
@@ -285,7 +275,22 @@
         "invalidImageType": "Please upload a valid image file (JPEG, PNG, GIF)",
         "imageTooLarge": "Image is too large. Maximum size is 2MB",
         "imageProcessingError": "Error processing the image. Please try again"
-      }
+      },
+      "confirmReset": "[MISSING] admin.participants.confirmReset",
+      "resetStatusesAria": "[MISSING] admin.participants.resetStatusesAria",
+      "resettingStatuses": "[MISSING] admin.participants.resettingStatuses",
+      "resetStatuses": "[MISSING] admin.participants.resetStatuses",
+      "noSearchResults": "[MISSING] admin.participants.noSearchResults",
+      "progress": "Progress",
+      "questions": "Questions",
+      "setActive": "Set as Active",
+      "currentlyActive": "Currently Active",
+      "setActiveAria": "Set participant as active",
+      "markDoneAria": "Set as complete",
+      "name": "Name",
+      "category": "Category",
+      "status": "Status",
+      "actions": "Actions"
     },
     "jury": {
       "title": "Jury Management",
@@ -307,6 +312,15 @@
         "name": "Name",
         "namePlaceholder": "Enter jury member name"
       }
+    },
+    "activeQuestion": {
+      "label": "Active Question",
+      "page": "Page"
+    },
+    "activeParticipant": {
+      "current": "Current Participant",
+      "setInstruction": "Select a participant to begin",
+      "noneSet": "No participant selected"
     }
   },
   "common": {
@@ -328,6 +342,18 @@
     "pickDate": "Pick a date",
     "pickTime": "Pick a time",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "update": "Update",
+    "saving": "Saving...",
+    "unnamed": "Unnamed",
+    "markingDone": "Marking as complete...",
+    "markDone": "Mark as Complete",
+    "settingActive": "Setting as active..."
+  },
+  "validation": {
+    "required": "This field is required"
+  },
+  "error": {
+    "general": "An error occurred. Please try again."
   }
 }
