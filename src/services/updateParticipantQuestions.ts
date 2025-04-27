@@ -26,7 +26,7 @@ export const updateParticipantQuestion = async (
 ) => {
   try {
     const participantRef = doc(firestore, "participants", participantId);
-    
+
     // Get the current questions
     const participantDoc = await getDoc(participantRef);
     if (!participantDoc.exists()) {
@@ -34,28 +34,30 @@ export const updateParticipantQuestion = async (
       console.error(error);
       throw error;
     }
-    
+
     const data = participantDoc.data();
-    let questions = Array.isArray(data.assignedQuestions) ? [...data.assignedQuestions] : [];
-    
+    const questions = Array.isArray(data.assignedQuestions)
+      ? [...data.assignedQuestions]
+      : [];
+
     // Ensure the array is large enough
     while (questions.length <= questionIndex) {
       questions.push(0); // Fill with 0 (no page assigned)
     }
-    
+
     // Update the specific question
     questions[questionIndex] = pageNumber;
-    
+
     // Update the document - explicitly set isActive to true to ensure it remains active
     await updateDoc(participantRef, {
       assignedQuestions: questions,
       isActive: true, // Explicitly set isActive to true
       updatedAt: serverTimestamp(),
     });
-    
+
     return questions;
   } catch (error) {
     console.error("Error updating participant question:", error);
     throw error;
   }
-}; 
+};
