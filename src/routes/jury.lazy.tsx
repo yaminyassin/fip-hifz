@@ -5,7 +5,6 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, ArrowRight, RotateCcw } from "lucide-react";
 import {
   doc,
   setDoc,
@@ -134,9 +133,6 @@ function RouteComponent() {
   const [viewerPage, setViewerPage] = useState<number | undefined>(
     initialParticipant?.assignedQuestions?.[0] ?? 1
   );
-  const [originalViewerPage, setOriginalViewerPage] = useState<
-    number | undefined
-  >(initialParticipant?.assignedQuestions?.[0] ?? 1);
 
   // Check authentication on mount and when auth state changes
   useEffect(() => {
@@ -693,25 +689,6 @@ function RouteComponent() {
     navigate({ to: "/" });
   };
 
-  /* Replace the existing handlePreviousPage and handleNextPage with new functions for viewer navigation */
-  const handleViewerPrevious = () => {
-    if (viewerPage && viewerPage > 1) {
-      setViewerPage(viewerPage - 1);
-    }
-  };
-
-  const handleViewerNext = () => {
-    if (viewerPage !== undefined) {
-      setViewerPage(viewerPage + 1);
-    }
-  };
-
-  const handleViewerReset = () => {
-    if (originalViewerPage !== undefined) {
-      setViewerPage(originalViewerPage);
-    }
-  };
-
   // Re-added and corrected useEffect to sync viewerPage
   useEffect(() => {
     if (
@@ -721,11 +698,8 @@ function RouteComponent() {
     ) {
       const currentPage = participant.assignedQuestions[selectedQuestion - 1];
       setViewerPage(currentPage);
-      setOriginalViewerPage(currentPage); // Setter is used here
     } else {
-      // If no participant or no questions for the selected number, set/reset to page 1
       setViewerPage(1);
-      setOriginalViewerPage(1); // Setter is used here
     }
   }, [participant, selectedQuestion]);
 
@@ -954,66 +928,6 @@ function RouteComponent() {
                   )
                 }
               />
-            </div>
-            {/* Viewer Controls */}
-            <div className="h-[80px] flex items-center">
-              <div className={`flex w-full justify-between mt-2 p-2`}>
-                {/* Previous Page Button (Left Arrow) */}
-                <div className="flex flex-col items-center">
-                  <Button
-                    variant="outline"
-                    onClick={handleViewerPrevious}
-                    disabled={viewerPage === undefined || viewerPage <= 1}
-                  >
-                    <ArrowLeft className="w-5 h-5" />
-                  </Button>
-                  <span className="text-xs mt-1 text-muted-foreground">
-                    {t("jury.viewer.previousPage")}
-                  </span>
-                </div>
-
-                {/* Reset Button */}
-                <div className="flex flex-col items-center relative h-[70px] w-[120px] flex-shrink-0">
-                  {/* Only show reset button if there's a participant and an original page */}
-                  {participant && originalViewerPage !== undefined && (
-                    <div
-                      className={`
-                        absolute left-1/2 transform -translate-x-1/2
-                        ${
-                          viewerPage !== originalViewerPage
-                            ? "text-amber-600 font-bold"
-                            : "text-muted-foreground"
-                        }
-                      `}
-                    >
-                      <Button
-                        variant="outline"
-                        onClick={handleViewerReset}
-                        disabled={viewerPage === originalViewerPage}
-                      >
-                        <RotateCcw className="w-5 h-5" />
-                      </Button>
-                    </div>
-                  )}
-                  <span className="text-xs mt-[50px] text-muted-foreground">
-                    {t("jury.viewer.resetPage")}
-                  </span>
-                </div>
-
-                {/* Next Page Button (Right Arrow) */}
-                <div className="flex flex-col items-center">
-                  <Button
-                    variant="outline"
-                    onClick={handleViewerNext}
-                    disabled={viewerPage === undefined}
-                  >
-                    <ArrowRight className="w-5 h-5" />
-                  </Button>
-                  <span className="text-xs mt-1 text-muted-foreground">
-                    {t("jury.viewer.nextPage")}
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
         </div>

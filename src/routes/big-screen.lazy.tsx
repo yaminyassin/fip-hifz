@@ -1,19 +1,20 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { QuranViewer } from "@/components/ui/QuranViewer";
 import { useActiveParticipant } from "@/hooks/useActiveParticipant";
-import { Button } from "@/components/shadcn/button";
-import { ChevronLeft, ChevronRight, User } from "lucide-react";
+import { User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const BigScreen = () => {
   const { t } = useTranslation();
   const { data: participant, isLoading: isLoadingParticipant } =
     useActiveParticipant();
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerHeight, setContainerHeight] = useState<number>(0);
   const [imageContainerHeight, setImageContainerHeight] = useState<number>(0);
+
+  // State for Quran Viewer page navigation
+  const [viewerPage, setViewerPage] = useState<number | undefined>(undefined);
 
   // Update container height on resize
   useEffect(() => {
@@ -32,22 +33,36 @@ const BigScreen = () => {
     return () => window.removeEventListener("resize", updateHeight);
   }, []);
 
-  const handlePreviousQuestion = () => {
-    setCurrentQuestionIndex((prev) => (prev > 0 ? prev - 1 : prev));
-  };
-
-  const handleNextQuestion = () => {
-    if (
-      participant?.assignedQuestions &&
-      currentQuestionIndex < participant.assignedQuestions.length - 1
-    ) {
-      setCurrentQuestionIndex((prev) => prev + 1);
+  // Sync viewerPage with participant's activeQuestion
+  useEffect(() => {
+    const activeQuestionPage = participant?.activeQuestion;
+    if (activeQuestionPage !== undefined) {
+      setViewerPage(activeQuestionPage);
+    } else {
+      setViewerPage(undefined);
     }
-  };
+  }, [participant?.activeQuestion]); // Depend only on activeQuestion
 
-  const currentQuestionNumber =
-    participant?.assignedQuestions?.[currentQuestionIndex] || 0;
-  const hasAssignedQuestions = !!participant?.assignedQuestions?.length;
+  // Calculate current question index based on activeQuestion
+  const { currentQuestionIndex, totalQuestions } = useMemo(() => {
+    if (
+      !participant?.assignedQuestions ||
+      participant.assignedQuestions.length === 0 ||
+      participant.activeQuestion === undefined
+    ) {
+      return { currentQuestionIndex: -1, totalQuestions: 0 };
+    }
+    const idx = participant.assignedQuestions.indexOf(
+      participant.activeQuestion
+    );
+    return {
+      currentQuestionIndex: idx, // Will be -1 if activeQuestion isn't in assignedQuestions
+      totalQuestions: participant.assignedQuestions.length,
+    };
+  }, [participant?.assignedQuestions, participant?.activeQuestion]);
+
+  const hasAssignedQuestions = totalQuestions > 0;
+  const displayQuestionIndex = currentQuestionIndex + 1; // For display (1-based)
 
   return (
     <div
@@ -94,7 +109,7 @@ const BigScreen = () => {
             </div>
 
             {/* Participant details */}
-            <div className="bg-white rounded-lg border-2 border-slate-800 p-4 md:p-6 shadow-lg overflow-auto">
+            <div className="bg-white rounded-lg border-2 border-slate-800 p-4 md:p-6 shadow-lg overflow-auto flex-grow">
               {isLoadingParticipant ? (
                 <div className="text-center text-slate-500">
                   {t("common.loading")}
@@ -123,7 +138,8 @@ const BigScreen = () => {
                         {t("participants.banner.age")}: {participant.age}
                       </div>
                       <div className="text-base md:text-lg">
-                        {t("participants.banner.category")}: {participant.category}
+                        {t("participants.banner.category")}:{" "}
+                        {participant.category}
                       </div>
                     </div>
                   </div>
@@ -188,45 +204,15 @@ const BigScreen = () => {
 
           {/* Right side - Quran viewer */}
           <div className="flex flex-col gap-4 items-center h-full overflow-hidden">
-            <div className="bg-white rounded-lg border-2 border-slate-800 p-4 shadow-lg w-full md:w-4/5 flex-grow overflow-auto">
-              <div className="mb-2 text-center">
-                <div className="inline-block px-4 py-1 bg-primary/10 rounded-full text-primary font-medium">
-                  Question {currentQuestionIndex + 1}
-                </div>
-              </div>
+            {/* Quran Viewer */}
+            <div className="flex-grow overflow-hidden">
               <QuranViewer
-                pageNumber={currentQuestionNumber}
-                questionNumber={currentQuestionIndex + 1}
+                pageNumber={viewerPage ?? 1} // Default to 1 if undefined
+                questionNumber={
+                  displayQuestionIndex > 0 ? displayQuestionIndex : undefined
+                } // Pass 1-based index or undefined
                 hasAssignedQuestions={hasAssignedQuestions}
               />
-            </div>
-
-            {/* Navigation buttons */}
-            <div className="flex justify-center gap-4">
-              <Button
-                onClick={handlePreviousQuestion}
-                disabled={currentQuestionIndex === 0 || !hasAssignedQuestions}
-                className="flex items-center gap-2 px-4 md:px-6 py-1 md:py-2 text-base md:text-lg"
-                variant="outline"
-              >
-                <ChevronLeft className="h-4 w-4 md:h-5 md:w-5" />
-                {t("common.previous")}
-              </Button>
-
-              <Button
-                onClick={handleNextQuestion}
-                disabled={
-                  !hasAssignedQuestions ||
-                  (participant?.assignedQuestions &&
-                    currentQuestionIndex >=
-                      participant.assignedQuestions.length - 1)
-                }
-                className="flex items-center gap-2 px-4 md:px-6 py-1 md:py-2 text-base md:text-lg"
-                variant="outline"
-              >
-                {t("common.next")}
-                <ChevronRight className="h-4 w-4 md:h-5 md:w-5" />
-              </Button>
             </div>
           </div>
         </div>
