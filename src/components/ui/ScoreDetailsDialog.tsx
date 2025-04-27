@@ -103,9 +103,8 @@ export const ScoreDetailsDialog = ({
   }
 
   const questionNumbers = Object.keys(activeScores).map(Number);
-  const totalQuestions = questionNumbers.length;
 
-  const result = calculateFinalScore(activeScores, totalQuestions);
+  const result = calculateFinalScore(activeScores);
 
   // Get category names for display
   const getCategoryName = (key: keyof QuestionFields) => {
