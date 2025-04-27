@@ -1,4 +1,4 @@
-import React from "react";
+// import React from "react";
 import { Button } from "@/components/shadcn/button";
 import {
   Table,
@@ -95,7 +95,7 @@ export function ActiveParticipantSetter() {
         isDone: true,
       });
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (_, variables) => {
       console.log(
         `Successfully marked participant ${variables} as done. Cache update handled by listeners.`
       );

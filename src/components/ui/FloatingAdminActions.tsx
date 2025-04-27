@@ -20,7 +20,7 @@ export function FloatingAdminActions() {
       participantId: string;
       pageNumber: number;
     }) => updateActiveQuestion(participantId, pageNumber),
-    onSuccess: (data, variables) => {
+    onSuccess: (_, variables) => {
       console.log(
         `Successfully updated active question to ${variables.pageNumber} for participant ${variables.participantId}. Cache update handled by listeners.`
       );
