@@ -66,9 +66,7 @@ export const calculateFinalScore = (allScores: {
 
     // --- 1. Hifdh (50%) ---
     const hifdhMistakesCount =
-      scores.hifdh_judge_correction +
-      scores.hifdh_self_correction +
-      scores.hifdh_stuck_count;
+      scores.hifdh_judge_correction + scores.hifdh_self_correction;
 
     // Apply 4-Mistake Rule
     if (hifdhMistakesCount >= 4) {
@@ -78,8 +76,7 @@ export const calculateFinalScore = (allScores: {
       // Calculate Hifdh deduction
       const hifdhDeduction =
         scores.hifdh_judge_correction * 1.5 +
-        scores.hifdh_self_correction * 0.5 +
-        scores.hifdh_stuck_count * 0.5;
+        scores.hifdh_self_correction * 0.5;
       const cappedHifdhDeduction = Math.min(50, hifdhDeduction);
       questionScore -= cappedHifdhDeduction;
       totalHifdhScore += 50 - cappedHifdhDeduction; // Track score *contribution*
@@ -173,7 +170,7 @@ export const getErrorPenalty = (errorType: keyof QuestionFields): string => {
     // Hifdh
     hifdh_judge_correction: "-1.5%",
     hifdh_self_correction: "-0.5%",
-    hifdh_stuck_count: "-0.5%",
+    hifdh_stuck_count: "", // No deduction for stuck count in scoring logic
     // Tajweed
     tajweed_major: "-1%",
     tajweed_minor: "-0.5%",
@@ -273,9 +270,7 @@ export const calculateSingleJuryEvaluationScore = (allScores: {
 
     // --- 1. Hifdh (50%) ---
     const hifdhMistakesCount =
-      scores.hifdh_judge_correction +
-      scores.hifdh_self_correction +
-      scores.hifdh_stuck_count;
+      scores.hifdh_judge_correction + scores.hifdh_self_correction;
 
     // Apply 4-Mistake Rule
     if (hifdhMistakesCount >= 4) {
@@ -285,8 +280,7 @@ export const calculateSingleJuryEvaluationScore = (allScores: {
       // Calculate Hifdh deduction
       const hifdhDeduction =
         scores.hifdh_judge_correction * 1.5 +
-        scores.hifdh_self_correction * 0.5 +
-        scores.hifdh_stuck_count * 0.5;
+        scores.hifdh_self_correction * 0.5;
       const cappedHifdhDeduction = Math.min(50, hifdhDeduction);
       questionScore -= cappedHifdhDeduction;
       totalHifdhScore += 50 - cappedHifdhDeduction; // Track score *contribution*

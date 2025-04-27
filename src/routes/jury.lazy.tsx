@@ -770,16 +770,14 @@ function RouteComponent() {
                             labels={[
                               t("jury.categories.hifdh_judge_correction"),
                               t("jury.categories.hifdh_self_correction"),
-                              t("jury.categories.hifdh_stuck_count"),
                             ]}
                             fields={[
                               "hifdh_judge_correction",
                               "hifdh_self_correction",
-                              "hifdh_stuck_count",
                             ]}
                             scores={currentScores}
                             onScoreChange={handleScoreChange}
-                            cols={3}
+                            cols={2}
                             className={hifdhWarningClass}
                           />
                           {/* Tajweed Section */}
@@ -814,15 +812,18 @@ function RouteComponent() {
                           {/* Combined Performance & Bonus Section */}
                           <ScoreCategory
                             title={t("jury.categories.performance_bonus")}
-                            subtitle={`${getSectionWeight("husn_al_ada")} ${t("jury.categories.performance")} + ${getSectionWeight("overall_bonus")} ${t("jury.categories.bonus")}`}
+                            subtitle={`${getSectionWeight("husn_al_ada")} ${t("jury.categories.performance")}`}
                             labels={[
                               t("jury.categories.husn_al_ada_score"),
-                              t("jury.categories.overall_bonus"),
+                              // t("jury.categories.overall_bonus"),
                             ]}
-                            fields={["husn_al_ada_score", "overall_bonus"]}
+                            fields={[
+                              "husn_al_ada_score",
+                              // "overall_bonus"
+                            ]}
                             scores={currentScores}
                             onScoreChange={handleScoreChange}
-                            cols={2} // Use 2 columns
+                            cols={1} // Use 2 columns
                           />
                         </>
                       ) : (
@@ -840,12 +841,11 @@ function RouteComponent() {
                             fields={[
                               "hifdh_judge_correction",
                               "hifdh_self_correction",
-                              "hifdh_stuck_count",
                             ]}
                             scores={defaultScores}
                             onScoreChange={() => {}}
                             disabled={true}
-                            cols={3}
+                            cols={2}
                             className={hifdhWarningClass}
                           />
                           <ScoreCategory
