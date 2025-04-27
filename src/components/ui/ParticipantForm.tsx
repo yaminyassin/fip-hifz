@@ -37,6 +37,7 @@ export const ParticipantForm = ({
     scheduled: participant?.scheduled || "",
     isDone: participant?.isDone || false,
     isActive: participant?.isActive || false,
+    activeQuestion: participant?.activeQuestion || 0,
     flag: participant?.flag || "",
     parentsName: participant?.parentsName || "",
     phoneNum: participant?.phoneNum || "",
@@ -115,7 +116,7 @@ export const ParticipantForm = ({
       const reader = new FileReader();
       reader.onload = () => {
         const result = reader.result as string;
-        const base64String = result.split(',')[1];
+        const base64String = result.split(",")[1];
         resolve(base64String);
       };
       reader.onerror = reject;
@@ -127,29 +128,29 @@ export const ParticipantForm = ({
   const handlePhotoUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     try {
       // Check if file is an image
-      if (!file.type.startsWith('image/')) {
+      if (!file.type.startsWith("image/")) {
         alert(t("admin.participants.errors.invalidImageType"));
         return;
       }
-      
+
       // Check file size (limit to 2MB)
       if (file.size > 2 * 1024 * 1024) {
         alert(t("admin.participants.errors.imageTooLarge"));
         return;
       }
-      
+
       // Convert to base64
       const base64String = await convertFileToBase64(file);
-      
+
       // Update form data with just the base64 string (no data URL prefix)
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        photo: base64String
+        photo: base64String,
       }));
-      
+
       // Set photo preview with full data URL for display
       setPhotoPreview(`data:${file.type};base64,${base64String}`);
     } catch (error) {
@@ -176,7 +177,7 @@ export const ParticipantForm = ({
     if (!formData.category.trim()) {
       newErrors.category = t("admin.participants.errors.categoryRequired");
     }
-    
+
     // Validate email if provided
     if (formData.email && !/^\S+@\S+\.\S+$/.test(formData.email)) {
       newErrors.email = t("admin.participants.errors.invalidEmail");
@@ -264,7 +265,9 @@ export const ParticipantForm = ({
             onChange={handleChange}
             className={errors.email ? "border-red-500" : ""}
           />
-          {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+          {errors.email && (
+            <p className="text-red-500 text-sm">{errors.email}</p>
+          )}
         </div>
 
         {/* Country */}
@@ -369,7 +372,9 @@ export const ParticipantForm = ({
         {/* Photo Preview */}
         {photoPreview && (
           <div className="col-span-2 mt-2">
-            <div className="text-sm font-medium mb-2">{t("admin.participants.form.photoPreview")}</div>
+            <div className="text-sm font-medium mb-2">
+              {t("admin.participants.form.photoPreview")}
+            </div>
             <div className="w-32 h-32 border rounded-md overflow-hidden">
               <img
                 src={photoPreview}

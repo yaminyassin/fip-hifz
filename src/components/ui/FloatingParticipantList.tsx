@@ -4,10 +4,10 @@ import { ChevronUp, ChevronDown, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader } from "@/components/shadcn/card";
 import { useTranslation } from "react-i18next";
-import { ParticipantWithScore } from "@/hooks/useParticipantsWithScores";
+import { ParticipantWithScores } from "@/hooks/useParticipants";
 
 interface FloatingParticipantListProps {
-  participants: ParticipantWithScore[];
+  participants: ParticipantWithScores[];
 }
 
 export const FloatingParticipantList = ({
@@ -64,6 +64,11 @@ export const FloatingParticipantList = ({
                     <span className="text-sm">{participant.scheduled}</span>
                   </div>
                 ))}
+                {nextParticipants.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    {t("participants.noUpcoming")}
+                  </p>
+                )}
               </CardContent>
             </motion.div>
           )}

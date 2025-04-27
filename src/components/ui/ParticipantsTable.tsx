@@ -29,7 +29,8 @@ interface ParticipantsTableProps {
 
 export const ParticipantsTable = ({ participants }: ParticipantsTableProps) => {
   const { t } = useTranslation();
-  const [selectedParticipant, setSelectedParticipant] = useState<ParticipantWithScores | null>(null);
+  const [selectedParticipant, setSelectedParticipant] =
+    useState<ParticipantWithScores | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   const handleOpenDetails = (participant: ParticipantWithScores) => {
@@ -55,7 +56,9 @@ export const ParticipantsTable = ({ participants }: ParticipantsTableProps) => {
               <TableHead>{t("participants.table.school")}</TableHead>
               <TableHead>{t("participants.table.scheduled")}</TableHead>
               <TableHead>{t("participants.table.status")}</TableHead>
-              <TableHead className="font-bold">{t("participants.table.totalScore")}</TableHead>
+              <TableHead className="font-bold">
+                {t("participants.table.totalScore")}
+              </TableHead>
               <TableHead>{t("participants.table.juryCount")}</TableHead>
               <TableHead>{t("participants.table.actions")}</TableHead>
             </TableRow>
@@ -66,16 +69,21 @@ export const ParticipantsTable = ({ participants }: ParticipantsTableProps) => {
               const getFinalScore = () => {
                 if (!participant.questionScores) return 0;
                 if (!participant.questionScores.average) return 0;
-                
-                const totalQuestions = Object.keys(participant.questionScores.average).length;
+
+                const totalQuestions = Object.keys(
+                  participant.questionScores.average
+                ).length;
                 if (totalQuestions === 0) return 0;
-                
-                const result = calculateFinalScore(participant.questionScores.average, totalQuestions);
+
+                const result = calculateFinalScore(
+                  participant.questionScores.average
+                );
                 return result.percentage;
               };
 
               const finalScore = getFinalScore();
-              const juryCount = participant.questionScores?.juryIds?.length || 0;
+              const juryCount =
+                participant.questionScores?.juryIds?.length || 0;
 
               return (
                 <TableRow key={participant.id}>
@@ -86,23 +94,26 @@ export const ParticipantsTable = ({ participants }: ParticipantsTableProps) => {
                   <TableCell>{participant.school}</TableCell>
                   <TableCell>{participant.scheduled}</TableCell>
                   <TableCell>
-                    {participant.isDone 
-                      ? t("participants.table.statusComplete") 
+                    {participant.isDone
+                      ? t("participants.table.statusComplete")
                       : t("participants.table.statusPending")}
                   </TableCell>
                   <TableCell className="font-bold">
                     {finalScore > 0 ? `${finalScore.toFixed(1)}%` : "-"}
                   </TableCell>
+                  <TableCell>{juryCount > 0 ? juryCount : "-"}</TableCell>
                   <TableCell>
-                    {juryCount > 0 ? juryCount : "-"}
-                  </TableCell>
-                  <TableCell>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       className="flex items-center gap-1"
                       onClick={() => handleOpenDetails(participant)}
-                      disabled={!participant.questionScores || !participant.questionScores.average || Object.keys(participant.questionScores.average).length === 0}
+                      disabled={
+                        !participant.questionScores ||
+                        !participant.questionScores.average ||
+                        Object.keys(participant.questionScores.average)
+                          .length === 0
+                      }
                       aria-label={t("participants.actions.viewDetails")}
                     >
                       <Eye className="h-4 w-4" />
