@@ -106,63 +106,69 @@ export const ScoreDetailsDialog = ({
 
   const result = calculateFinalScore(activeScores);
 
-  // Get category names for display
+  // Map the new QuestionFields keys to their translation keys
   const getCategoryName = (key: keyof QuestionFields) => {
     const categories: Record<keyof QuestionFields, string> = {
-      hifz_fath: t("jury.categories.hifz_fath"),
-      hifz_tannin: t("jury.categories.hifz_tannin"),
-      hifz_taraddud: t("jury.categories.hifz_taraddud"),
-      tajweed_jali: t("jury.categories.tajweed_jali"),
-      tajweed_khafi: t("jury.categories.tajweed_khafi"),
-      waqf_ibtida: t("jury.categories.waqf_ibtida"),
-      fluency_bonus: t("jury.categories.fluency_bonus"),
+      hifdh_judge_correction: t("jury.categories.hifdh_judge_correction"),
+      hifdh_self_correction: t("jury.categories.hifdh_self_correction"),
+      hifdh_stuck_count: t("jury.categories.hifdh_stuck_count"),
+      tajweed_major: t("jury.categories.tajweed_major"),
+      tajweed_minor: t("jury.categories.tajweed_minor"),
+      waqf_ibtida_incorrect: t("jury.categories.waqf_ibtida_incorrect"),
+      waqf_ibtida_meaning: t("jury.categories.waqf_ibtida_meaning"),
+      husn_al_ada_score: t("jury.categories.husn_al_ada_score"),
+      overall_bonus: t("jury.categories.overall_bonus"),
     };
 
-    return categories[key];
+    return categories[key] || key; // Fallback to key name if translation missing
   };
 
-  // Calculate total deduction per question by category
-  const calculateTotalDeduction = (
+  // Calculate total *count* of mistakes per question by category (for display)
+  const calculateMistakeCount = (
     questionNumber: number,
-    category: "hifz" | "tajweed" | "waqf"
+    category: "hifdh" | "tajweed" | "waqf" // Use new aggregate names
   ) => {
     const scores = activeScores[questionNumber];
     if (!scores) return 0;
 
-    let deduction = 0;
+    let count = 0;
 
-    if (category === "hifz") {
-      deduction =
-        scores.hifz_fath * 2 +
-        scores.hifz_tannin * 1 +
-        scores.hifz_taraddud * 0.5;
+    if (category === "hifdh") {
+      // Summing up different types of hifdh issues
+      count =
+        scores.hifdh_judge_correction +
+        scores.hifdh_self_correction +
+        scores.hifdh_stuck_count;
     } else if (category === "tajweed") {
-      deduction = scores.tajweed_jali * 2 + scores.tajweed_khafi * 1;
+      count = scores.tajweed_major + scores.tajweed_minor;
     } else if (category === "waqf") {
-      deduction = scores.waqf_ibtida * 1;
+      // Summing up both types of waqf issues
+      count = scores.waqf_ibtida_incorrect + scores.waqf_ibtida_meaning;
     }
 
-    return deduction;
+    return count;
   };
 
   // Check if there are any errors in a specific category across all questions
   const hasErrorsInCategory = (
-    category: "hifz" | "tajweed" | "waqf"
+    category: "hifdh" | "tajweed" | "waqf" // Use new aggregate names
   ): boolean => {
     return questionNumbers.some((questionNumber) => {
       const scores = activeScores[questionNumber];
       if (!scores) return false;
 
-      if (category === "hifz") {
+      if (category === "hifdh") {
         return (
-          scores.hifz_fath > 0 ||
-          scores.hifz_tannin > 0 ||
-          scores.hifz_taraddud > 0
+          scores.hifdh_judge_correction > 0 ||
+          scores.hifdh_self_correction > 0 ||
+          scores.hifdh_stuck_count > 0
         );
       } else if (category === "tajweed") {
-        return scores.tajweed_jali > 0 || scores.tajweed_khafi > 0;
+        return scores.tajweed_major > 0 || scores.tajweed_minor > 0;
       } else if (category === "waqf") {
-        return scores.waqf_ibtida > 0;
+        return (
+          scores.waqf_ibtida_incorrect > 0 || scores.waqf_ibtida_meaning > 0
+        );
       }
       return false;
     });
@@ -176,13 +182,13 @@ export const ScoreDetailsDialog = ({
         <>
           <Card className="h-auto">
             <CardHeader>
-              <CardTitle>{t("jury.categories.hifz")}</CardTitle>
+              <CardTitle>{t("jury.categories.hifdh")}</CardTitle>
               <CardDescription>
-                {t("jury.categories.ofTotalScore", { percentage: "60%" })}
+                {t("jury.categories.ofTotalScore", { percentage: "50%" })}
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center">
-              {result.breakdownBySection.hifz < 1 ? (
+              {result.breakdownBySection.hifdh >= 50 ? (
                 <div className="flex items-center justify-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-emerald-600 dark:text-emerald-400 font-medium">
@@ -191,7 +197,7 @@ export const ScoreDetailsDialog = ({
                 </div>
               ) : (
                 <span className="text-black dark:text-white text-3xl font-bold">
-                  {result.breakdownBySection.hifz.toFixed(1)}%
+                  {result.breakdownBySection.hifdh.toFixed(1)}%
                 </span>
               )}
             </CardContent>
@@ -205,7 +211,7 @@ export const ScoreDetailsDialog = ({
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center">
-              {result.breakdownBySection.tajweed < 1 ? (
+              {result.breakdownBySection.tajweed >= 30 ? (
                 <div className="flex items-center justify-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-emerald-600 dark:text-emerald-400 font-medium">
@@ -228,7 +234,7 @@ export const ScoreDetailsDialog = ({
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center">
-              {result.breakdownBySection.waqf < 1 ? (
+              {result.breakdownBySection.waqf >= 10 ? (
                 <div className="flex items-center justify-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-emerald-600 dark:text-emerald-400 font-medium">
@@ -246,14 +252,14 @@ export const ScoreDetailsDialog = ({
       );
     } else {
       // Count errors by category to determine how many questions have errors
-      const hifzQuestionsWithErrors = questionNumbers.filter(
+      const hifdhQuestionsWithErrors = questionNumbers.filter(
         (questionNumber) => {
           const scores = activeScores[questionNumber];
           if (!scores) return false;
           return (
-            scores.hifz_fath > 0 ||
-            scores.hifz_tannin > 0 ||
-            scores.hifz_taraddud > 0
+            scores.hifdh_judge_correction > 0 ||
+            scores.hifdh_self_correction > 0 ||
+            scores.hifdh_stuck_count > 0
           );
         }
       ).length;
@@ -262,7 +268,7 @@ export const ScoreDetailsDialog = ({
         (questionNumber) => {
           const scores = activeScores[questionNumber];
           if (!scores) return false;
-          return scores.tajweed_jali > 0 || scores.tajweed_khafi > 0;
+          return scores.tajweed_major > 0 || scores.tajweed_minor > 0;
         }
       ).length;
 
@@ -270,7 +276,9 @@ export const ScoreDetailsDialog = ({
         (questionNumber) => {
           const scores = activeScores[questionNumber];
           if (!scores) return false;
-          return scores.waqf_ibtida > 0;
+          return (
+            scores.waqf_ibtida_incorrect > 0 || scores.waqf_ibtida_meaning > 0
+          );
         }
       ).length;
 
@@ -278,59 +286,62 @@ export const ScoreDetailsDialog = ({
       return (
         <>
           <Card
-            className={`h-auto ${hifzQuestionsWithErrors > 2 ? "row-span-2" : ""}`}
+            className={`h-auto ${hifdhQuestionsWithErrors > 2 ? "row-span-2" : ""}`}
           >
             <CardHeader>
               <CardTitle>
-                {t("jury.categories.hifz")} -{" "}
-                {result.breakdownBySection.hifz.toFixed(1)}%
+                {t("jury.categories.hifdh")} -{" "}
+                {result.breakdownBySection.hifdh.toFixed(1)}%
               </CardTitle>
               <CardDescription>
-                {t("jury.categories.ofTotalScore", { percentage: "60%" })}
+                {t("jury.categories.ofTotalScore", { percentage: "50%" })}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {hasErrorsInCategory("hifz") ? (
+              {hasErrorsInCategory("hifdh") ? (
                 <ul className="space-y-2">
                   {questionNumbers.map((questionNumber) => {
-                    const totalDeduction = calculateTotalDeduction(
-                      questionNumber,
-                      "hifz"
-                    );
                     const scores = activeScores[questionNumber];
+                    const mistakeCount = calculateMistakeCount(
+                      questionNumber,
+                      "hifdh"
+                    );
 
-                    if (!scores || totalDeduction === 0) return null;
+                    if (!scores || mistakeCount === 0) return null;
 
                     return (
                       <li
-                        key={`hifz-${questionNumber}`}
-                        className="border-b pb-2"
+                        key={`hifdh-${questionNumber}`}
+                        className="border-b pb-2 last:border-0"
                       >
-                        <div className="flex justify-between mb-2">
+                        <div className="flex justify-between mb-1">
                           <p className="font-semibold">
                             {t("jury.question")} {questionNumber}
                           </p>
-                          <p className="font-semibold text-destructive">
-                            -{totalDeduction.toFixed(1)}%
-                          </p>
                         </div>
-                        <ul className="ml-4 space-y-1">
-                          {scores.hifz_fath > 0 && (
-                            <li className="text-sm text-destructive">
-                              {getCategoryName("hifz_fath")}: {scores.hifz_fath}
-                              x
+                        <ul className="ml-4 space-y-1 text-sm text-muted-foreground">
+                          {scores.hifdh_judge_correction > 0 && (
+                            <li>
+                              {getCategoryName("hifdh_judge_correction")}:{" "}
+                              <span className="font-medium text-destructive">
+                                {scores.hifdh_judge_correction}x
+                              </span>
                             </li>
                           )}
-                          {scores.hifz_tannin > 0 && (
-                            <li className="text-sm text-destructive">
-                              {getCategoryName("hifz_tannin")}:{" "}
-                              {scores.hifz_tannin}x
+                          {scores.hifdh_self_correction > 0 && (
+                            <li>
+                              {getCategoryName("hifdh_self_correction")}:{" "}
+                              <span className="font-medium text-destructive">
+                                {scores.hifdh_self_correction}x
+                              </span>
                             </li>
                           )}
-                          {scores.hifz_taraddud > 0 && (
-                            <li className="text-sm text-destructive">
-                              {getCategoryName("hifz_taraddud")}:{" "}
-                              {scores.hifz_taraddud}x
+                          {scores.hifdh_stuck_count > 0 && (
+                            <li>
+                              {getCategoryName("hifdh_stuck_count")}:{" "}
+                              <span className="font-medium text-destructive">
+                                {scores.hifdh_stuck_count}x
+                              </span>
                             </li>
                           )}
                         </ul>
@@ -365,38 +376,39 @@ export const ScoreDetailsDialog = ({
               {hasErrorsInCategory("tajweed") ? (
                 <ul className="space-y-2">
                   {questionNumbers.map((questionNumber) => {
-                    const totalDeduction = calculateTotalDeduction(
+                    const scores = activeScores[questionNumber];
+                    const mistakeCount = calculateMistakeCount(
                       questionNumber,
                       "tajweed"
                     );
-                    const scores = activeScores[questionNumber];
 
-                    if (!scores || totalDeduction === 0) return null;
+                    if (!scores || mistakeCount === 0) return null;
 
                     return (
                       <li
                         key={`tajweed-${questionNumber}`}
-                        className="border-b pb-2"
+                        className="border-b pb-2 last:border-0"
                       >
-                        <div className="flex justify-between mb-2">
+                        <div className="flex justify-between mb-1">
                           <p className="font-semibold">
                             {t("jury.question")} {questionNumber}
                           </p>
-                          <p className="font-semibold text-destructive">
-                            -{totalDeduction.toFixed(1)}%
-                          </p>
                         </div>
-                        <ul className="ml-4 space-y-1">
-                          {scores.tajweed_jali > 0 && (
-                            <li className="text-sm text-destructive">
-                              {getCategoryName("tajweed_jali")}:{" "}
-                              {scores.tajweed_jali}x
+                        <ul className="ml-4 space-y-1 text-sm text-muted-foreground">
+                          {scores.tajweed_major > 0 && (
+                            <li>
+                              {getCategoryName("tajweed_major")}:{" "}
+                              <span className="font-medium text-destructive">
+                                {scores.tajweed_major}x
+                              </span>
                             </li>
                           )}
-                          {scores.tajweed_khafi > 0 && (
-                            <li className="text-sm text-destructive">
-                              {getCategoryName("tajweed_khafi")}:{" "}
-                              {scores.tajweed_khafi}x
+                          {scores.tajweed_minor > 0 && (
+                            <li>
+                              {getCategoryName("tajweed_minor")}:{" "}
+                              <span className="font-medium text-destructive">
+                                {scores.tajweed_minor}x
+                              </span>
                             </li>
                           )}
                         </ul>
@@ -431,32 +443,39 @@ export const ScoreDetailsDialog = ({
               {hasErrorsInCategory("waqf") ? (
                 <ul className="space-y-2">
                   {questionNumbers.map((questionNumber) => {
-                    const totalDeduction = calculateTotalDeduction(
+                    const scores = activeScores[questionNumber];
+                    const mistakeCount = calculateMistakeCount(
                       questionNumber,
                       "waqf"
                     );
-                    const scores = activeScores[questionNumber];
 
-                    if (!scores || totalDeduction === 0) return null;
+                    if (!scores || mistakeCount === 0) return null;
 
                     return (
                       <li
                         key={`waqf-${questionNumber}`}
-                        className="border-b pb-2"
+                        className="border-b pb-2 last:border-0"
                       >
-                        <div className="flex justify-between mb-2">
+                        <div className="flex justify-between mb-1">
                           <p className="font-semibold">
                             {t("jury.question")} {questionNumber}
                           </p>
-                          <p className="font-semibold text-destructive">
-                            -{totalDeduction.toFixed(1)}%
-                          </p>
                         </div>
-                        <ul className="ml-4 space-y-1">
-                          {scores.waqf_ibtida > 0 && (
-                            <li className="text-sm text-destructive">
-                              {getCategoryName("waqf_ibtida")}:{" "}
-                              {scores.waqf_ibtida}x
+                        <ul className="ml-4 space-y-1 text-sm text-muted-foreground">
+                          {scores.waqf_ibtida_incorrect > 0 && (
+                            <li>
+                              {getCategoryName("waqf_ibtida_incorrect")}:{" "}
+                              <span className="font-medium text-destructive">
+                                {scores.waqf_ibtida_incorrect}x
+                              </span>
+                            </li>
+                          )}
+                          {scores.waqf_ibtida_meaning > 0 && (
+                            <li>
+                              {getCategoryName("waqf_ibtida_meaning")}:{" "}
+                              <span className="font-medium text-destructive">
+                                {scores.waqf_ibtida_meaning}x
+                              </span>
                             </li>
                           )}
                         </ul>
@@ -479,28 +498,56 @@ export const ScoreDetailsDialog = ({
     }
   };
 
-  // The fluency card is the same for both views
-  const renderFluencyCard = () => (
+  // The Husn al-Ada card can be slightly modified
+  const renderHusnAlAdaCard = () => (
     <Card className="h-auto">
       <CardHeader>
         <CardTitle>
-          {t("jury.categories.fluency")} - +
-          {result.breakdownBySection.fluency.toFixed(1)}%
+          {t("jury.categories.husn_al_ada")} - +
+          {result.breakdownBySection.husn_al_ada.toFixed(1)}%
         </CardTitle>
         <CardDescription>
-          {t("jury.categories.maxBonus")} +5% {t("jury.categories.total")}
+          {t("jury.categories.maxBonus")} +10% {t("jury.categories.total")}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <p className="text-sm text-muted-foreground mb-3">
-          {t("jury.scoreSummary.fluencyExplanation")}
+          {t("jury.scoreSummary.husnAlAdaExplanation")}
         </p>
         <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-md border border-emerald-200 dark:border-emerald-800">
           <p className="text-sm text-emerald-600 dark:text-emerald-400">
             <span className="font-medium">
-              +{result.breakdownBySection.fluency.toFixed(1)}%
+              +{result.breakdownBySection.husn_al_ada.toFixed(1)}%
             </span>{" "}
             {t("jury.messages.overallPerformance")}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // Render Overall Bonus Card (New)
+  const renderOverallBonusCard = () => (
+    <Card className="h-auto">
+      <CardHeader>
+        <CardTitle>
+          {t("jury.categories.overall_bonus")} - +
+          {result.breakdownBySection.overall_bonus.toFixed(1)}%
+        </CardTitle>
+        <CardDescription>
+          {t("jury.categories.maxBonus")} +3% {t("jury.categories.total")}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground mb-3">
+          {t("jury.scoreSummary.overallBonusExplanation")}
+        </p>
+        <div className="p-3 bg-sky-50 dark:bg-sky-950/30 rounded-md border border-sky-200 dark:border-sky-800">
+          <p className="text-sm text-sky-600 dark:text-sky-400">
+            <span className="font-medium">
+              +{result.breakdownBySection.overall_bonus.toFixed(1)}%
+            </span>{" "}
+            {t("jury.messages.additionalPoints")}
           </p>
         </div>
       </CardContent>
@@ -571,7 +618,8 @@ export const ScoreDetailsDialog = ({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 auto-rows-auto">
         {renderCategoryCards()}
-        {renderFluencyCard()}
+        {renderHusnAlAdaCard()}
+        {renderOverallBonusCard()}
       </div>
 
       <div className="flex justify-center">
