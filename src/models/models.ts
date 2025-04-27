@@ -57,7 +57,8 @@ export type Participant = {
   phoneNum: string;
   email?: string; // Email address of the participant
   photo?: string; // Base64 encoded photo of the participant
-  assignedQuestions: number[]; // Array of 3 random numbers between 1-600
+  assignedQuestions: number[]; // Array of assigned question page numbers
+  activeQuestion: number; // The page number the participant is currently reciting
 };
 
 export type Jury = {
