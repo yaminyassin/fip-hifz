@@ -1,7 +1,7 @@
 import { Button } from "@/components/shadcn/button";
 import { ScoreInput } from "@/components/ui/ScoreInput";
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
@@ -133,6 +133,8 @@ function RouteComponent() {
   const [viewerPage, setViewerPage] = useState<number | undefined>(
     initialParticipant?.assignedQuestions?.[0] ?? 1
   );
+
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Added for debouncing score saves
 
   // Check authentication on mount and when auth state changes
   useEffect(() => {
@@ -406,32 +408,6 @@ function RouteComponent() {
     }
   }, [selectedQuestion, allScores]);
 
-  // Memoized calculation to track which questions have SAVED scores (after Done button)
-  const questionsWithSavedScores = useMemo(() => {
-    const result = new Set<number>();
-
-    // Only consider questions that exist in allScores (these are saved scores)
-    Object.keys(allScores).forEach((key) => {
-      const qNum = parseInt(key);
-      if (!isNaN(qNum)) {
-        // Only add questions that have actual scores (not just default values)
-        const scores = allScores[qNum];
-        const hasRealScores = Object.entries(scores).some(([key, value]) => {
-          // Check only error fields (not husn_al_ada or bonus)
-          if (key === "husn_al_ada_score" || key === "overall_bonus")
-            return false;
-          return value !== defaultScores[key as keyof QuestionFields];
-        });
-
-        if (hasRealScores) {
-          result.add(qNum);
-        }
-      }
-    });
-
-    return result;
-  }, [allScores]);
-
   // Modify mutationFn to accept arguments
   const saveScoresMutation = useMutation({
     mutationFn: async ({
@@ -475,10 +451,33 @@ function RouteComponent() {
       );
     },
     // Note: We might want global onSuccess/onError handlers here later
+    onSuccess: (_, variables) => {
+      // Update allScores locally after a successful save
+      // This ensures the checkmarks update correctly
+      setAllScores((prev) => ({
+        ...prev,
+        [variables.questionNumToSave]: variables.scoresToSave,
+      }));
+      // Re-validate related queries if needed, though local update might be sufficient
+      queryClient.invalidateQueries({ queryKey: ["juryScores"] });
+      queryClient.invalidateQueries({ queryKey: ["jury", juryId] });
+    },
+    onError: (error, variables) => {
+      console.error(
+        `Error saving scores for Q${variables.questionNumToSave}:`,
+        error
+      );
+      toast({
+        title: t("common.error"),
+        description: t("jury.messages.errorSavingScores"), // Generic error for now
+        variant: "destructive",
+      });
+    },
   });
 
   const handleScoreChange = (field: keyof QuestionFields, value: number) => {
     let cappedValue = value;
+    let newScores: QuestionFields | null = null; // Variable to hold the potential new state
 
     // Cap husn_al_ada_score between 0 and 10
     if (field === "husn_al_ada_score") {
@@ -513,21 +512,40 @@ function RouteComponent() {
     }
 
     // Update normally for all fields (including capped ones)
-    setCurrentScores((prev) => ({
-      ...prev,
-      [field]: Math.max(0, cappedValue), // Ensure non-negative count for errors
-    }));
+    setCurrentScores((prev) => {
+      newScores = {
+        ...prev,
+        [field]: Math.max(0, cappedValue), // Ensure non-negative count for errors
+      };
+      return newScores;
+    });
+
+    // --- Debounced Firestore Save ---
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    debounceTimeoutRef.current = setTimeout(() => {
+      // Use the 'newScores' captured in the outer scope
+      // Or read directly from state if preferred, but this ensures we save the exact state that was set
+      if (newScores && juryId && participant?.id) {
+        console.log(`Debounced save triggered for Q${selectedQuestion}`);
+        saveScoresMutation.mutate({
+          questionNumToSave: selectedQuestion,
+          scoresToSave: newScores, // Use the captured new scores
+        });
+      }
+    }, 500); // Debounce time (e.g., 750ms)
   };
 
   // Updated handleDone logic
   const handleDone = async () => {
     if (!participant?.assignedQuestions || !juryId) return;
 
-    const isLastQuestion =
-      selectedQuestion === participant.assignedQuestions.length;
+    const totalQuestions = participant.assignedQuestions.length; // Needed for setting final progress
 
     try {
-      // 1. Save the current question's scores
+      // 1. Save the current question's scores FIRST
       await saveScoresMutation.mutateAsync(
         {
           questionNumToSave: selectedQuestion,
@@ -542,41 +560,17 @@ function RouteComponent() {
             }));
 
             // 3. Update jury progress marker in Firestore
-            // Progress marker moves forward, but UI doesn't navigate
-            const nextProgressQuestion = isLastQuestion
-              ? selectedQuestion
-              : selectedQuestion + 1;
+            // Mark evaluation as fully finished
             updateJuryMutation.mutate(
               {
-                currentQuestion: nextProgressQuestion,
-                hasFinishedEvaluating: isLastQuestion,
+                currentQuestion: totalQuestions, // Set progress to the end
+                hasFinishedEvaluating: true, // Always mark as finished now
               },
               {
                 onSuccess: () => {
-                  // 4. Show appropriate toast
-                  if (isLastQuestion) {
-                    toast({
-                      title: t("jury.messages.evaluationComplete"),
-                      description: t(
-                        "jury.messages.evaluationCompleteDescDone"
-                      ), // New key needed
-                    });
-                  } else {
-                    toast({
-                      title: t("jury.messages.questionScoresSavedTitle"), // New key needed
-                      description: t("jury.messages.questionScoresSavedDesc", {
-                        number: selectedQuestion,
-                      }), // New key needed
-                    });
-                  }
-                  // 5. Invalidate queries to refresh jury state if needed
+                  // 4. Invalidate queries to refresh jury state if needed (Toast removed previously)
                   queryClient.invalidateQueries({ queryKey: ["juryScores"] });
                   queryClient.invalidateQueries({ queryKey: ["jury", juryId] });
-                  queryClient.refetchQueries({ queryKey: ["jury", juryId] });
-
-                  // 6. Do NOT navigate or reset currentScores
-                  // setSelectedQuestion(nextQuestion);
-                  // setCurrentScores(defaultScores);
                 },
                 onError: (error) => {
                   console.error("Error updating jury progress:", error);
@@ -584,7 +578,7 @@ function RouteComponent() {
                     title: t("common.error"),
                     description: t("jury.messages.errorUpdatingProgress"),
                     variant: "destructive",
-                  }); // New key needed
+                  }); // Keep error toast
                 },
               }
             );
@@ -596,7 +590,7 @@ function RouteComponent() {
             );
             toast({
               title: t("common.error"),
-              description: t("jury.messages.errorSavingScores"), // Keep existing key
+              description: t("jury.messages.errorSavingScores"),
               variant: "destructive",
             });
           },
@@ -613,64 +607,31 @@ function RouteComponent() {
     }
   };
 
-  // Updated handleQuestionChange with save-on-navigate logic
+  // Updated handleQuestionChange with save-on-navigate logic REMOVED
   const handleQuestionChange = async (questionNumber: number) => {
-    const previousQuestion = selectedQuestion;
-    const previousScores = currentScores;
-    const savedScores = allScores[previousQuestion];
+    // const previousQuestion = selectedQuestion; // No longer needed
+    // const previousScores = currentScores; // No longer needed
+    // const savedScores = allScores[previousQuestion]; // No longer needed
 
-    // Check if scores changed for the previous question
-    const scoresChanged =
-      JSON.stringify(previousScores) !==
-      JSON.stringify(savedScores ?? defaultScores);
+    // // Check if scores changed for the previous question // No longer needed
+    // const scoresChanged =
+    //   JSON.stringify(previousScores) !==
+    //   JSON.stringify(savedScores ?? defaultScores);
 
-    // 1. Save previous question's scores if they changed
-    if (scoresChanged && participant?.id) {
-      console.log(`Scores changed for Q${previousQuestion}, saving...`);
-      // Update allScores locally immediately to reflect the intent to save
-      setAllScores((prev) => ({ ...prev, [previousQuestion]: previousScores }));
+    // // 1. Save previous question's scores if they changed // REMOVED
+    // if (scoresChanged && participant?.id) { ... } // Entire block removed
 
-      saveScoresMutation.mutate(
-        { questionNumToSave: previousQuestion, scoresToSave: previousScores },
-        {
-          onSuccess: () => {
-            console.log(
-              `Scores saved successfully for Q${previousQuestion} on navigation.`
-            );
-            // Optional: confirmation toast (might be too noisy)
-            // toast({
-            //   title: t("jury.messages.scoresSavedTitle"),
-            //   description: t("jury.messages.scoresSavedNavDesc", { number: previousQuestion }),
-            // });
-            // Re-sync questionsWithSavedScores (though it should update via allScores)
-            queryClient.invalidateQueries({ queryKey: ["juryScores"] });
-          },
-          onError: (error) => {
-            console.error(
-              `Error saving scores for Q${previousQuestion} on navigation:`,
-              error
-            );
-            // Revert local state if save fails?
-            setAllScores((prev) => ({
-              ...prev,
-              [previousQuestion]: savedScores ?? defaultScores,
-            }));
-            toast({
-              title: t("common.error"),
-              description: t("jury.messages.errorSavingScoresNav", {
-                number: previousQuestion,
-              }),
-              variant: "destructive",
-            });
-          },
-        }
-      );
+    // Clear any pending debounced save from the previous question
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+      debounceTimeoutRef.current = null; // Reset ref
+      console.log("Cleared pending save on question change.");
     }
 
-    // 2. Update selected question state
+    // 1. Update selected question state (was step 2)
     setSelectedQuestion(questionNumber);
 
-    // 3. Update jury progress in Firestore (current question marker)
+    // 2. Update jury progress in Firestore (current question marker) (was step 3)
     if (juryMember && !juryMember.hasFinishedEvaluating) {
       // Don't update progress if already finished
       updateJuryMutation.mutate({
@@ -751,149 +712,98 @@ function RouteComponent() {
               <>
                 {/* Calculate Hifdh mistakes sum */}
                 {(() => {
-                  const hifdhMistakeSum =
-                    currentScores.hifdh_judge_correction +
-                    currentScores.hifdh_self_correction +
-                    currentScores.hifdh_stuck_count;
                   const hifdhWarningClass =
-                    hifdhMistakeSum >= 4 ? "border-2 border-red-500" : "";
+                    currentScores.hifdh_judge_correction >= 4
+                      ? "border-2 border-red-500"
+                      : "";
+
+                  // Determine if inputs should be disabled for the current question
+                  const isQuestionDone =
+                    !!juryMember &&
+                    (juryMember.currentQuestion > selectedQuestion ||
+                      juryMember.hasFinishedEvaluating);
 
                   return (
-                    <div className="grid grid-cols-2 gap-4">
-                      {participant?.assignedQuestions &&
-                      participant.assignedQuestions.length > 0 ? (
-                        <>
-                          {/* Hifdh Section - Apply conditional class */}
-                          <ScoreCategory
-                            title={t("jury.categories.hifdh")}
-                            subtitle={`${getSectionWeight("hifdh")} ${t("jury.categories.deduction")}`}
-                            labels={[
-                              t("jury.categories.hifdh_judge_correction"),
-                              t("jury.categories.hifdh_self_correction"),
-                            ]}
-                            fields={[
-                              "hifdh_judge_correction",
-                              "hifdh_self_correction",
-                            ]}
-                            scores={currentScores}
-                            onScoreChange={handleScoreChange}
-                            cols={2}
-                            className={hifdhWarningClass}
-                          />
-                          {/* Tajweed Section */}
-                          <ScoreCategory
-                            title={t("jury.categories.tajweed")}
-                            subtitle={`${getSectionWeight("tajweed")} ${t("jury.categories.deduction")}`}
-                            labels={[
-                              t("jury.categories.tajweed_major"),
-                              t("jury.categories.tajweed_minor"),
-                            ]}
-                            fields={["tajweed_major", "tajweed_minor"]}
-                            scores={currentScores}
-                            onScoreChange={handleScoreChange}
-                            cols={2} // Use 2 columns for Tajweed
-                          />
-                          {/* Waqf & Ibtida Section */}
-                          <ScoreCategory
-                            title={t("jury.categories.waqf")}
-                            subtitle={`${getSectionWeight("waqf")} ${t("jury.categories.deduction")}`}
-                            labels={[
-                              t("jury.categories.waqf_ibtida_incorrect"),
-                              t("jury.categories.waqf_ibtida_meaning"),
-                            ]}
-                            fields={[
-                              "waqf_ibtida_incorrect",
-                              "waqf_ibtida_meaning",
-                            ]}
-                            scores={currentScores}
-                            onScoreChange={handleScoreChange}
-                            cols={2} // Use 2 columns for Waqf
-                          />
-                          {/* Combined Performance & Bonus Section */}
-                          <ScoreCategory
-                            title={t("jury.categories.performance_bonus")}
-                            subtitle={`${getSectionWeight("husn_al_ada")} ${t("jury.categories.performance")}`}
-                            labels={[
-                              t("jury.categories.husn_al_ada_score"),
-                              // t("jury.categories.overall_bonus"),
-                            ]}
-                            fields={[
-                              "husn_al_ada_score",
-                              // "overall_bonus"
-                            ]}
-                            scores={currentScores}
-                            onScoreChange={handleScoreChange}
-                            cols={1} // Use 2 columns
-                          />
-                        </>
-                      ) : (
-                        // Disabled state - update fields and labels
-                        <>
-                          {/* Hifdh Section (Disabled) - Apply conditional class */}
-                          <ScoreCategory
-                            title={t("jury.categories.hifdh")}
-                            subtitle={`${getSectionWeight("hifdh")} ${t("jury.categories.deduction")}`}
-                            labels={[
-                              t("jury.categories.hifdh_judge_correction"),
-                              t("jury.categories.hifdh_self_correction"),
-                              t("jury.categories.hifdh_stuck_count"),
-                            ]}
-                            fields={[
-                              "hifdh_judge_correction",
-                              "hifdh_self_correction",
-                            ]}
-                            scores={defaultScores}
-                            onScoreChange={() => {}}
-                            disabled={true}
-                            cols={2}
-                            className={hifdhWarningClass}
-                          />
-                          <ScoreCategory
-                            title={t("jury.categories.tajweed")}
-                            subtitle={`${getSectionWeight("tajweed")} ${t("jury.categories.deduction")}`}
-                            labels={[
-                              t("jury.categories.tajweed_major"),
-                              t("jury.categories.tajweed_minor"),
-                            ]}
-                            fields={["tajweed_major", "tajweed_minor"]}
-                            scores={defaultScores}
-                            onScoreChange={() => {}}
-                            disabled={true}
-                            cols={2}
-                          />
-                          <ScoreCategory
-                            title={t("jury.categories.waqf")}
-                            subtitle={`${getSectionWeight("waqf")} ${t("jury.categories.deduction")}`}
-                            labels={[
-                              t("jury.categories.waqf_ibtida_incorrect"),
-                              t("jury.categories.waqf_ibtida_meaning"),
-                            ]}
-                            fields={[
-                              "waqf_ibtida_incorrect",
-                              "waqf_ibtida_meaning",
-                            ]}
-                            scores={defaultScores}
-                            onScoreChange={() => {}}
-                            disabled={true}
-                            cols={2}
-                          />
-                          {/* Combined Performance & Bonus Section (Disabled) */}
-                          <ScoreCategory
-                            title={t("jury.categories.performance_bonus")}
-                            subtitle={`${getSectionWeight("husn_al_ada")} ${t("jury.categories.performance")} + ${getSectionWeight("overall_bonus")} ${t("jury.categories.bonus")}`}
-                            labels={[
-                              t("jury.categories.husn_al_ada_score"),
-                              t("jury.categories.overall_bonus"),
-                            ]}
-                            fields={["husn_al_ada_score", "overall_bonus"]}
-                            scores={defaultScores}
-                            onScoreChange={() => {}}
-                            disabled={true}
-                            cols={2} // Use 2 columns
-                          />
-                        </>
-                      )}
-                    </div>
+                    <>
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Hifdh Section - Apply conditional class */}
+                        <ScoreCategory
+                          title={t("jury.categories.hifdh")}
+                          subtitle={`${getSectionWeight("hifdh")} ${t("jury.categories.deduction")}`}
+                          labels={[
+                            t("jury.categories.hifdh_judge_correction"),
+                            t("jury.categories.hifdh_self_correction"),
+                          ]}
+                          fields={[
+                            "hifdh_judge_correction",
+                            "hifdh_self_correction",
+                          ]}
+                          disabled={isQuestionDone}
+                          scores={currentScores}
+                          onScoreChange={handleScoreChange}
+                          cols={2}
+                          className={hifdhWarningClass}
+                        />
+                        {/* Tajweed Section */}
+                        <ScoreCategory
+                          title={t("jury.categories.tajweed")}
+                          subtitle={`${getSectionWeight("tajweed")} ${t("jury.categories.deduction")}`}
+                          labels={[
+                            t("jury.categories.tajweed_major"),
+                            t("jury.categories.tajweed_minor"),
+                          ]}
+                          fields={["tajweed_major", "tajweed_minor"]}
+                          disabled={isQuestionDone}
+                          scores={currentScores}
+                          onScoreChange={handleScoreChange}
+                          cols={2} // Use 2 columns for Tajweed
+                        />
+                        {/* Waqf & Ibtida Section */}
+                        <ScoreCategory
+                          title={t("jury.categories.waqf")}
+                          subtitle={`${getSectionWeight("waqf")} ${t("jury.categories.deduction")}`}
+                          disabled={isQuestionDone}
+                          labels={[
+                            t("jury.categories.waqf_ibtida_incorrect"),
+                            t("jury.categories.waqf_ibtida_meaning"),
+                          ]}
+                          fields={[
+                            "waqf_ibtida_incorrect",
+                            "waqf_ibtida_meaning",
+                          ]}
+                          scores={currentScores}
+                          onScoreChange={handleScoreChange}
+                          cols={2} // Use 2 columns for Waqf
+                        />
+                        {/* Combined Performance */}
+                        <ScoreCategory
+                          title={t("jury.categories.performance_bonus")}
+                          subtitle={`${getSectionWeight("husn_al_ada")} ${t("jury.categories.performance")}`}
+                          labels={[
+                            t("jury.categories.husn_al_ada_score"),
+                            // t("jury.categories.overall_bonus"),
+                          ]}
+                          disabled={isQuestionDone}
+                          fields={[
+                            "husn_al_ada_score",
+                            // "overall_bonus"
+                          ]}
+                          scores={currentScores}
+                          onScoreChange={handleScoreChange}
+                          cols={1} // Use 2 columns
+                        />
+                      </div>
+                      <ScoreCategory
+                        title={t("jury.categories.overall_bonus_title")}
+                        subtitle={`${getSectionWeight("overall_bonus")}. Bonus applies to the total overall score`}
+                        labels={[t("jury.categories.bonus")]}
+                        disabled={isQuestionDone}
+                        fields={["overall_bonus"]}
+                        scores={currentScores}
+                        onScoreChange={handleScoreChange}
+                        cols={1} // Use 2 columns
+                      />
+                    </>
                   );
                 })()}
               </>
@@ -902,7 +812,6 @@ function RouteComponent() {
             <JuryBottomNav
               participant={participant}
               selectedQuestion={selectedQuestion}
-              questionsWithSavedScores={questionsWithSavedScores}
               juryMember={juryMember}
               handleQuestionChange={handleQuestionChange}
               handleDone={handleDone}

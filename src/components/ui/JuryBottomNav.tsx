@@ -5,7 +5,6 @@ import { TFunction } from "i18next"; // Import TFunction type
 interface JuryBottomNavProps {
   participant: Participant | null | undefined;
   selectedQuestion: number;
-  questionsWithSavedScores: Set<number>;
   juryMember: Jury | null | undefined;
   handleQuestionChange: (questionNumber: number) => void;
   handleDone: () => void;
@@ -16,7 +15,6 @@ interface JuryBottomNavProps {
 export const JuryBottomNav = ({
   participant,
   selectedQuestion,
-  questionsWithSavedScores,
   juryMember,
   handleQuestionChange,
   handleDone,
@@ -24,10 +22,7 @@ export const JuryBottomNav = ({
   t,
 }: JuryBottomNavProps) => {
   // Determine if the evaluation is fully completed (for the 'Done' button state)
-  const isEvaluationComplete =
-    juryMember?.hasFinishedEvaluating === true &&
-    participant?.assignedQuestions &&
-    selectedQuestion === participant.assignedQuestions.length;
+  const isEvaluationComplete = juryMember?.hasFinishedEvaluating === true; // Simplified check
 
   return (
     <div className="flex flex-row items-center bg-gray-300 p-4 gap-4 mt-auto">
@@ -39,11 +34,11 @@ export const JuryBottomNav = ({
             (_, i) => i + 1
           ).map((q) => {
             // Completion logic using props
-            const isCompleted =
-              questionsWithSavedScores.has(q) ||
-              (juryMember?.currentQuestion ?? 0) > q ||
-              ((juryMember?.currentQuestion ?? 0) === q &&
-                juryMember?.hasFinishedEvaluating === true);
+            // const isCompleted = // Removed
+            //   questionsWithSavedScores.has(q) ||
+            //   (juryMember?.currentQuestion ?? 0) > q ||
+            //   ((juryMember?.currentQuestion ?? 0) === q &&
+            //     juryMember?.hasFinishedEvaluating === true);
 
             const isCurrent = selectedQuestion === q;
 
@@ -51,14 +46,12 @@ export const JuryBottomNav = ({
               <div key={q} className="relative">
                 <Button
                   className={`h-12 w-20 rounded-lg ${
-                    isCompleted
-                      ? "bg-green-600 hover:bg-green-500"
-                      : isCurrent
-                        ? "bg-blue-600 hover:bg-blue-500"
-                        : "bg-gray-600 hover:bg-gray-500"
+                    isCurrent
+                      ? "bg-blue-600 hover:bg-blue-500" // Active is blue
+                      : "bg-green-600 hover:bg-green-500" // Inactive is green
                   } text-white font-bold transition-colors`}
                   onClick={() => handleQuestionChange(q)}
-                  disabled={isSaving || juryMember?.hasFinishedEvaluating}
+                  disabled={isSaving} // Only disable while saving, allow navigation when complete
                 >
                   Q{q}
                 </Button>

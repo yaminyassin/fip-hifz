@@ -65,15 +65,12 @@ export const calculateFinalScore = (allScores: {
     let isVoid = false;
 
     // --- 1. Hifdh (50%) ---
-    const hifdhMistakesCount =
-      scores.hifdh_judge_correction + scores.hifdh_self_correction;
-
-    // Apply 4-Mistake Rule
-    if (hifdhMistakesCount >= 4) {
+    // Apply 4-Mistake Rule (ONLY based on Judge Corrections)
+    if (scores.hifdh_judge_correction >= 4) {
       questionScore = 0;
       isVoid = true;
     } else {
-      // Calculate Hifdh deduction
+      // Calculate Hifdh deduction only if the rule is not triggered
       const hifdhDeduction =
         scores.hifdh_judge_correction * 1.5 +
         scores.hifdh_self_correction * 0.5;
@@ -178,9 +175,9 @@ export const getErrorPenalty = (errorType: keyof QuestionFields): string => {
     waqf_ibtida_incorrect: "-0.5%",
     waqf_ibtida_meaning: "-1%",
     // Husn al-Adā’
-    husn_al_ada_score: "+ Score (0-10)", // Indicate it's a score input
+    husn_al_ada_score: "-1%", // Indicate it's a score input
     // Overall Bonus
-    overall_bonus: "+ Bonus (0-3)", // Indicate it's a bonus input
+    overall_bonus: "+(0-3)%", // Indicate it's a bonus input
   };
 
   return penalties[errorType] || "";
@@ -269,15 +266,12 @@ export const calculateSingleJuryEvaluationScore = (allScores: {
     let isVoid = false;
 
     // --- 1. Hifdh (50%) ---
-    const hifdhMistakesCount =
-      scores.hifdh_judge_correction + scores.hifdh_self_correction;
-
-    // Apply 4-Mistake Rule
-    if (hifdhMistakesCount >= 4) {
+    // Apply 4-Mistake Rule (ONLY based on Judge Corrections)
+    if (scores.hifdh_judge_correction >= 4) {
       questionScore = 0;
       isVoid = true;
     } else {
-      // Calculate Hifdh deduction
+      // Calculate Hifdh deduction only if the rule is not triggered
       const hifdhDeduction =
         scores.hifdh_judge_correction * 1.5 +
         scores.hifdh_self_correction * 0.5;
