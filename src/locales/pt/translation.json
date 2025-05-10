@@ -1,0 +1,365 @@
+{
+  "menu": {
+    "home": "Início",
+    "participants": "Participantes",
+    "participantsDesc": "Gerenciar competidores",
+    "jury": "Painel do Júri",
+    "juryDesc": "Avaliar participantes",
+    "randomizer": "Randomizador",
+    "randomizerDesc": "Gerar questões aleatórias",
+    "language": "Idioma",
+    "bigScreen": "Tela Grande",
+    "bigScreenDesc": "Ver exibição da competição",
+    "admin": "Painel Administrativo",
+    "adminDesc": "Gerenciar júri e participantes ativos",
+    "competition": "Competição",
+    "competitionDesc": "Visão geral do evento",
+    "schools": "Escolas",
+    "schoolsDesc": "Instituições participantes",
+    "results": "Resultados",
+    "resultsDesc": "Resultados da competição"
+  },
+  "home": {
+    "title": "Bem-vindo à Competição de Hifz",
+    "subtitle": "Uma plataforma para gerenciar competições de memorização do Alcorão",
+    "description": "Uma plataforma para gerenciar competições de memorização do Alcorão",
+    "getStarted": "Começar"
+  },
+  "jury": {
+    "title": "Painel do Júri",
+    "question": "Questão",
+    "page": "Página",
+    "noQuestionsAssigned": "Nenhuma Questão Atribuída Ainda",
+    "noQuestionsAssignedYet": "Aguardando questões serem atribuídas",
+    "waitingForQuestions": "Aguardando questões",
+    "login": {
+      "title": "Login do Júri",
+      "subtitle": "Digite seu ID de júri para continuar",
+      "placeholder": "Digite o ID do Júri",
+      "button": "Entrar",
+      "error": {
+        "invalid": "Autenticação Falhou",
+        "invalidDesc": "ID de júri inválido",
+        "failed": "Erro",
+        "failedDesc": "Falha na autenticação"
+      }
+    },
+    "categories": {
+      "hifz": "Hifz",
+      "hifz_reminder": "Lembrete",
+      "hifz_assistance": "Assistido",
+      "hifz_fath": "Fath",
+      "hifz_tannin": "Tannin",
+      "hifz_taraddud": "Taraddud",
+      "tajweed": "Tajweed",
+      "tajweed_minor": "Erros Menores",
+      "tajweed_major": "Erros Maiores",
+      "tajweed_jali": "Jali",
+      "tajweed_khafi": "Khafi",
+      "waqf": "Waqf",
+      "waqf_ibtida": "Ibtida",
+      "fluency": "Desempenho/Fluência",
+      "fluency_bonus": "Bônus de Fluência",
+      "ofTotalScore": "da pontuação total",
+      "maxDeduction": "Dedução Máxima",
+      "perQuestion": "por questão",
+      "maxBonus": "Bônus Máximo",
+      "total": "total",
+      "perfectPerformance": "Desempenho Perfeito"
+    },
+    "scoreSummary": {
+      "title": "Resumo da Pontuação",
+      "totalScore": "Pontuação Total",
+      "averageOfAll": "Média de Todos os Júris",
+      "juryMember": "Júri #{id}",
+      "jury": "Júri"
+    },
+    "actions": {
+      "logout": "Sair",
+      "done": "Concluído",
+      "saving": "Salvando...",
+      "completed": "Concluído",
+      "decrease": "Diminuir pontuação",
+      "increase": "Aumentar pontuação"
+    },
+    "messages": {
+      "evaluationComplete": "Avaliação Concluída",
+      "errorSavingScores": "Ocorreu um erro ao salvar as pontuações. Por favor, tente novamente.",
+      "inProgress": "Em Andamento",
+      "scoreReset": "Pontuações Redefinidas",
+      "scoreResetDesc": "As pontuações anteriores foram apagadas para as novas questões deste participante.",
+      "scoreCappedTitle": "[FALTA] jury.messages.scoreCappedTitle",
+      "scoreCappedDesc": "[FALTA] jury.messages.scoreCappedDesc",
+      "evaluationCompleteDescDone": "[FALTA] jury.messages.evaluationCompleteDescDone",
+      "questionScoresSavedTitle": "[FALTA] jury.messages.questionScoresSavedTitle",
+      "questionScoresSavedDesc": "[FALTA] jury.messages.questionScoresSavedDesc",
+      "errorUpdatingProgress": "[FALTA] jury.messages.errorUpdatingProgress",
+      "scoresSavedTitle": "[FALTA] jury.messages.scoresSavedTitle",
+      "scoresSavedNavDesc": "[FALTA] jury.messages.scoresSavedNavDesc",
+      "errorSavingScoresNav": "[FALTA] jury.messages.errorSavingScoresNav"
+    }
+  },
+  "randomizer": {
+    "title": "Randomizador de Questões",
+    "generateQuestions": "Gerar Todas as Questões",
+    "generateQuestion": "Gerar Questão",
+    "generating": "Gerando...",
+    "questionLabel": "Questão {{number}}",
+    "questionLabelWithPage": "Questão {{question}} - Página {{page}}",
+    "categoryLabel": "Categoria",
+    "questionsCount": "Número de Questões",
+    "noParticipant": "Nenhum participante ativo selecionado. Por favor, selecione um participante primeiro.",
+    "messages": {
+      "noParticipant": "Nenhum participante ativo encontrado",
+      "success": "Sucesso",
+      "successDesc": "A questão foi gerada e atribuída",
+      "error": "Erro",
+      "errorDesc": "Falha ao atualizar a questão"
+    }
+  },
+  "participants": {
+    "title": "Participantes",
+    "searchPlaceholder": "Buscar participantes...",
+    "header": {
+      "title": "Participantes",
+      "subtitle": "Gerenciar e visualizar todos os participantes"
+    },
+    "filter": {
+      "by_category": "Filtrar por Categoria",
+      "all_categories": "Todas as Categorias",
+      "category_a": "Categoria A (A1 & A2)",
+      "category_b": "Categoria B (B1 & B2)",
+      "category_c": "Categoria C (C1 & C2)",
+      "category_d": "Categoria D (D1 & D2)"
+    },
+    "banner": {
+      "loading": "Carregando dados do participante...",
+      "noParticipant": "Nenhum participante ativo encontrado",
+      "name": "Nome",
+      "age": "Idade",
+      "country": "País",
+      "category": "Categoria"
+    },
+    "actions": {
+      "setActive": "Definir como Ativo",
+      "details": "Detalhes",
+      "viewDetails": "Ver detalhes da pontuação"
+    },
+    "table": {
+      "name": "Nome",
+      "age": "Idade",
+      "country": "País",
+      "category": "Categoria",
+      "school": "Escola",
+      "scheduled": "Horário",
+      "status": "Status",
+      "actions": "Ações",
+      "totalScore": "Pontuação Total",
+      "juryCount": "Avaliações do Júri",
+      "statusComplete": "Concluído",
+      "statusPending": "Pendente",
+      "questions": "Questões"
+    },
+    "visualizations": {
+      "title": "Visualizações de Pontuação",
+      "topPerformers": "Melhores Desempenhos",
+      "topPerformersDesc": "Participantes com maior pontuação",
+      "categoryPerformance": "Desempenho por Categoria",
+      "categoryPerformanceDesc": "Pontuações médias por categoria",
+      "scoreDistribution": "Distribuição de Pontuação",
+      "scoreDistributionDesc": "Participantes por faixa de pontuação",
+      "excellent": "Excelente",
+      "veryGood": "Muito Bom",
+      "good": "Bom",
+      "average": "Médio",
+      "belowAverage": "Abaixo da Média",
+      "averageScore": "Pontuação Média",
+      "highestScore": "Maior Pontuação",
+      "evaluatedParticipants": "Participantes Avaliados",
+      "averageJuries": "Média de Júris por Participante",
+      "evaluationConsistency": "Consistência de Avaliação",
+      "strongestCategory": "Categoria Mais Forte",
+      "retentionRate": "taxa de retenção",
+      "participantsScored": "Participantes Pontuados",
+      "excellentPerformers": "Desempenhos Excelentes",
+      "topThreeComparison": "Comparação dos 3 Melhores",
+      "topThreeComparisonDesc": "Detalhamento por categoria dos melhores desempenhos",
+      "noParticipantsFound": "Nenhum Participante Encontrado",
+      "noParticipantsWithScores": "Não há participantes com pontuações para exibir",
+      "noParticipantsInCategory": "Não há participantes na Categoria {{category}} com pontuações para exibir"
+    },
+    "progress": "Progresso",
+    "questions": "Questões",
+    "setActive": "Definir como Ativo",
+    "currentlyActive": "Ativo Atualmente",
+    "setActiveAria": "Definir participante como ativo"
+  },
+  "admin": {
+    "title": "Painel Administrativo",
+    "juryStatus": "Status do Júri",
+    "participantStatus": "Status dos Participantes",
+    "sceneControl": "Controle de Cena",
+    "question": "Questão",
+    "page": "Página",
+    "filter": {
+      "category": "Categoria",
+      "allCategories": "Todas as Categorias"
+    },
+    "participant": {
+      "category": "Categoria",
+      "age": "Idade"
+    },
+    "table": {
+      "juryName": "Nome do Jurado",
+      "currentQuestion": "Questão Atual",
+      "status": "Status"
+    },
+    "actions": {
+      "save": "Salvar Alterações",
+      "prevQuestion": "Questão Anterior",
+      "nextQuestion": "Próxima Questão"
+    },
+    "messages": {},
+    "tabs": {
+      "control": "Painel de Controle",
+      "participants": "Gerenciamento de Participantes",
+      "jury": "Gerenciamento de Jurados"
+    },
+    "participants": {
+      "title": "Gerenciamento de Participantes",
+      "addNew": "Adicionar Novo Participante",
+      "editParticipant": "Editar Participante",
+      "addParticipant": "Adicionar Participante",
+      "importExcel": "Importar do Excel",
+      "search": "Pesquisar participantes...",
+      "noParticipants": "Nenhum participante encontrado",
+      "name": "Nome",
+      "category": "Categoria",
+      "status": "Status",
+      "actions": "Ações",
+      "confirmDelete": "Tem certeza de que deseja excluir este participante? Esta ação não pode ser desfeita.",
+      "table": {
+        "name": "Nome",
+        "age": "Idade",
+        "country": "País",
+        "category": "Categoria",
+        "school": "Escola",
+        "status": "Status",
+        "actions": "Ações"
+      },
+      "form": {
+        "name": "Nome",
+        "age": "Idade",
+        "country": "País",
+        "category": "Categoria",
+        "school": "Escola",
+        "namePlaceholder": "Digite o nome do participante",
+        "agePlaceholder": "Digite a idade",
+        "countryPlaceholder": "Selecione um país",
+        "categoryPlaceholder": "Selecione uma categoria",
+        "schoolPlaceholder": "Digite o nome da escola",
+        "flagPlaceholder": "Emoji da bandeira (opcional)",
+        "isActive": "Ativo",
+        "isDone": "Concluído",
+        "nameRequired": "Nome é obrigatório",
+        "ageRequired": "Idade é obrigatória",
+        "countryRequired": "País é obrigatório",
+        "categoryRequired": "Categoria é obrigatória",
+        "flag": "Bandeira do País",
+        "parentsName": "Nome do Responsável",
+        "phoneNum": "Número de Telefone",
+        "scheduled": "Horário Programado",
+        "scheduledDate": "Data Programada",
+        "scheduledTime": "Hora Programada",
+        "email": "Email",
+        "photo": "Foto",
+        "photoUpload": "Carregar foto do participante",
+        "photoSizeLimit": "Tamanho máximo: 2MB. Formatos suportados: JPEG, PNG, GIF.",
+        "photoPreview": "Visualização da Foto",
+        "participantPhoto": "Foto do Participante"
+      },
+      "errors": {
+        "nameRequired": "Nome é obrigatório",
+        "invalidAge": "A idade deve ser um número positivo",
+        "countryRequired": "País é obrigatório",
+        "categoryRequired": "Categoria é obrigatória",
+        "invalidEmail": "Digite um endereço de email válido",
+        "invalidImageType": "Carregue um arquivo de imagem válido (JPEG, PNG, GIF)",
+        "imageTooLarge": "Imagem muito grande. Tamanho máximo é 2MB",
+        "imageProcessingError": "Erro ao processar a imagem. Tente novamente"
+      },
+      "confirmReset": "[FALTA] admin.participants.confirmReset",
+      "resetStatusesAria": "[FALTA] admin.participants.resetStatusesAria",
+      "resettingStatuses": "[FALTA] admin.participants.resettingStatuses",
+      "resetStatuses": "[FALTA] admin.participants.resetStatuses",
+      "noSearchResults": "[FALTA] admin.participants.noSearchResults",
+      "progress": "Progresso",
+      "questions": "Questões",
+      "setActive": "Definir como Ativo",
+      "currentlyActive": "Ativo Atualmente",
+      "setActiveAria": "Definir participante como ativo",
+      "markDoneAria": "[FALTA] admin.participants.markDoneAria"
+    },
+    "jury": {
+      "title": "Gerenciamento de Jurados",
+      "addNew": "Adicionar Novo Jurado",
+      "addNewJury": "Adicionar Novo Jurado",
+      "editJury": "Editar Jurado",
+      "addJuryDescription": "Adicione um novo jurado ao sistema.",
+      "editJuryDescription": "Atualize os detalhes do jurado.",
+      "search": "Pesquisar jurados...",
+      "noJuryMembers": "Nenhum jurado encontrado",
+      "confirmDelete": "Tem certeza de que deseja excluir este jurado? Esta ação não pode ser desfeita.",
+      "table": {
+        "name": "Nome",
+        "currentQuestion": "Questão Atual",
+        "status": "Status",
+        "actions": "Ações"
+      },
+      "form": {
+        "name": "Nome",
+        "namePlaceholder": "Digite o nome do jurado"
+      }
+    },
+    "activeQuestion": {
+      "label": "Questão Ativa",
+      "page": "Página"
+    },
+    "activeParticipant": {
+      "current": "Participante Atual",
+      "setInstruction": "Selecione um participante para começar",
+      "noneSet": "Nenhum participante selecionado"
+    }
+  },
+  "common": {
+    "loading": "Carregando...",
+    "error": "Erro",
+    "success": "Sucesso",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "submit": "Enviar",
+    "close": "Fechar",
+    "reset": "Redefinir",
+    "update": "Atualizar",
+    "saving": "Salvando...",
+    "active": "Ativo",
+    "inactive": "Inativo",
+    "completed": "Concluído",
+    "previous": "Anterior",
+    "next": "Próximo",
+    "pickDate": "Escolha uma data",
+    "pickTime": "Escolha um horário",
+    "unnamed": "Sem Nome",
+    "markingDone": "Marcando como concluído...",
+    "markDone": "Marcar como Concluído",
+    "settingActive": "Definindo como ativo..."
+  },
+  "validation": {
+    "required": "Este campo é obrigatório"
+  },
+  "error": {
+    "general": "Ocorreu um erro. Por favor, tente novamente."
+  }
+}
