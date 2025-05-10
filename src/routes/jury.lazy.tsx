@@ -1,7 +1,7 @@
 import { Button } from "@/components/shadcn/button";
 import { ScoreInput } from "@/components/ui/ScoreInput";
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
@@ -17,7 +17,6 @@ import {
 } from "firebase/firestore";
 import { firestore } from "@/main";
 
-import { QuranViewer } from "@/components/ui/QuranViewer";
 import { useActiveParticipant } from "../hooks/useActiveParticipant";
 import { updateJuryProgress, getJuryMember } from "../services/jury";
 import {
@@ -33,7 +32,11 @@ import { ParticipantBanner } from "../components/ui/ParticipantBanner";
 import { useToast } from "@/components/shadcn/use-toast";
 import { JuryBottomNav } from "../components/ui/JuryBottomNav";
 
-const defaultScores: QuestionFields = {
+// Define a type for scores that don't include overall_bonus
+type QuestionOnlyFields = Omit<QuestionFields, "overall_bonus">;
+
+// Define default scores for question-specific fields
+const defaultQuestionScores: QuestionOnlyFields = {
   // Hifdh
   hifdh_judge_correction: 0,
   hifdh_self_correction: 0,
@@ -46,8 +49,6 @@ const defaultScores: QuestionFields = {
   waqf_ibtida_meaning: 0,
   // Husn al-Ada
   husn_al_ada_score: 0,
-  // Overall Bonus
-  overall_bonus: 0,
 };
 
 interface ScoreCategoryProps {
@@ -55,7 +56,7 @@ interface ScoreCategoryProps {
   subtitle?: string;
   labels: string[];
   fields: (keyof QuestionFields)[];
-  scores: QuestionFields;
+  scores: Partial<QuestionFields>;
   onScoreChange: (field: keyof QuestionFields, value: number) => void;
   disabled?: boolean;
   cols?: number;
@@ -93,7 +94,7 @@ export const ScoreCategory = ({
             <ScoreInput
               label={labels[index]}
               field={field}
-              value={scores[field]}
+              value={scores[field] ?? 0}
               onChange={(value) => onScoreChange(field, value)}
               disabled={disabled}
             />
@@ -109,12 +110,14 @@ export const ScoreCategory = ({
 
 function RouteComponent() {
   const [selectedQuestion, setSelectedQuestion] = useState(1);
-  const [currentScores, setCurrentScores] =
-    useState<QuestionFields>(defaultScores);
+  const [currentScores, setCurrentScores] = useState<QuestionOnlyFields>(
+    defaultQuestionScores
+  );
   const [allScores, setAllScores] = useState<{
-    [questionNumber: number]: QuestionFields;
+    [questionNumber: number]: QuestionOnlyFields;
   }>({});
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [overallBonus, setOverallBonus] = useState<number>(0); // New state for overall_bonus
 
   // Keep track of the last participant ID to detect changes
   const [lastParticipantId, setLastParticipantId] = useState<string | null>(
@@ -129,10 +132,6 @@ function RouteComponent() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { data: initialParticipant } = useActiveParticipant();
-  const [viewerPage, setViewerPage] = useState<number | undefined>(
-    initialParticipant?.assignedQuestions?.[0] ?? 1
-  );
 
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Added for debouncing score saves
 
@@ -151,9 +150,10 @@ function RouteComponent() {
         `Jury ID changed to ${juryId}, refreshing data for participant ${participant.id}`
       );
       // Reset scores when jury changes
-      setCurrentScores(defaultScores);
+      setCurrentScores(defaultQuestionScores);
       setAllScores({});
       setSelectedQuestion(1);
+      setOverallBonus(0); // Reset overall bonus
 
       // Invalidate and reload data
       queryClient.invalidateQueries({ queryKey: ["juryScores"] });
@@ -187,16 +187,67 @@ function RouteComponent() {
     },
   });
 
+  /**
+   * Clear all previous scores for this participant and jury member
+   * This handles both the old and new document ID formats
+   */
+  const clearPreviousScores = useCallback(
+    async (participantId: string, juryId: string) => {
+      try {
+        // Get all score documents for this participant and jury
+        const scoresRef = collection(firestore, "scores");
+        const q = query(
+          scoresRef,
+          where("participantId", "==", participantId),
+          where("juryId", "==", juryId)
+        );
+
+        const snapshot = await getDocs(q);
+
+        // Delete each score document
+        const deletePromises = snapshot.docs.map((doc) => {
+          return deleteDoc(doc.ref);
+        });
+
+        await Promise.all(deletePromises);
+
+        // Reset jury progress directly in the database
+        const juryRef = doc(firestore, "jury", juryId);
+        await updateDoc(juryRef, {
+          currentQuestion: 1,
+          hasFinishedEvaluating: false,
+        });
+
+        // Invalidate queries
+        queryClient.invalidateQueries({ queryKey: ["juryScores"] });
+        queryClient.invalidateQueries({ queryKey: ["jury", juryId] });
+        queryClient.refetchQueries({ queryKey: ["jury", juryId] });
+
+        console.log(
+          `Cleared ${deletePromises.length} previous scores for participant ${participantId}`
+        );
+        toast({
+          title: t("jury.messages.scoreReset"),
+          description: t("jury.messages.scoreResetDesc"),
+        });
+      } catch (error) {
+        console.error("Error clearing previous scores:", error);
+      }
+    },
+    [t, queryClient, toast]
+  );
+
   // Reset all scores when participant changes
   useEffect(() => {
     if (participant?.id && participant.id !== lastParticipantId && juryId) {
       console.log("Participant changed, resetting scores");
 
       // Reset scores when a new participant is selected
-      setCurrentScores(defaultScores);
+      setCurrentScores(defaultQuestionScores);
       setAllScores({});
       setSelectedQuestion(1); // Reset to question 1
       setLastParticipantId(participant.id);
+      setOverallBonus(0); // Reset overall bonus
 
       // Also reset the jury progress if needed
       if (
@@ -240,9 +291,10 @@ function RouteComponent() {
       console.log("Questions changed for participant, clearing old scores");
 
       // Reset component state
-      setCurrentScores(defaultScores);
+      setCurrentScores(defaultQuestionScores);
       setAllScores({});
       setSelectedQuestion(1);
+      setOverallBonus(0); // Reset overall bonus
 
       // Reset the jury member's evaluation status FIRST to ensure UI updates correctly
       if (
@@ -280,54 +332,8 @@ function RouteComponent() {
     juryMember,
     updateJuryMutation,
     queryClient,
+    clearPreviousScores,
   ]);
-
-  /**
-   * Clear all previous scores for this participant and jury member
-   * This handles both the old and new document ID formats
-   */
-  const clearPreviousScores = async (participantId: string, juryId: string) => {
-    try {
-      // Get all score documents for this participant and jury
-      const scoresRef = collection(firestore, "scores");
-      const q = query(
-        scoresRef,
-        where("participantId", "==", participantId),
-        where("juryId", "==", juryId)
-      );
-
-      const snapshot = await getDocs(q);
-
-      // Delete each score document
-      const deletePromises = snapshot.docs.map((doc) => {
-        return deleteDoc(doc.ref);
-      });
-
-      await Promise.all(deletePromises);
-
-      // Reset jury progress directly in the database
-      const juryRef = doc(firestore, "jury", juryId);
-      await updateDoc(juryRef, {
-        currentQuestion: 1,
-        hasFinishedEvaluating: false,
-      });
-
-      // Invalidate queries
-      queryClient.invalidateQueries({ queryKey: ["juryScores"] });
-      queryClient.invalidateQueries({ queryKey: ["jury", juryId] });
-      queryClient.refetchQueries({ queryKey: ["jury", juryId] });
-
-      console.log(
-        `Cleared ${deletePromises.length} previous scores for participant ${participantId}`
-      );
-      toast({
-        title: t("jury.messages.scoreReset"),
-        description: t("jury.messages.scoreResetDesc"),
-      });
-    } catch (error) {
-      console.error("Error clearing previous scores:", error);
-    }
-  };
 
   // Get all scores for this participant from all jury members
   useEffect(() => {
@@ -347,8 +353,10 @@ function RouteComponent() {
         );
 
         const snapshot = await getDocs(q);
-        const scoresByQuestion: { [questionNumber: number]: QuestionFields } =
-          {};
+        const scoresByQuestion: {
+          [questionNumber: number]: QuestionOnlyFields;
+        } = {};
+        let initialOverallBonus: number | undefined = undefined;
 
         // Map of current assigned page numbers to detect relevant scores
         const currentPages = new Set(participant.assignedQuestions);
@@ -372,20 +380,43 @@ function RouteComponent() {
           const currentQuestionNumber = currentQuestionIndex + 1;
 
           if (!scoresByQuestion[currentQuestionNumber]) {
-            scoresByQuestion[currentQuestionNumber] = { ...defaultScores };
+            scoresByQuestion[currentQuestionNumber] = {
+              ...defaultQuestionScores,
+            };
           }
 
-          // Merge scores from all jury members (using the highest value for each field)
-          Object.keys(data.scores).forEach((key) => {
-            const fieldKey = key as keyof QuestionFields;
-            const newValue = data.scores[fieldKey];
+          // Separate question scores from overall bonus
+          const allFieldsFromDoc = data.scores as QuestionFields;
+          const { overall_bonus: bonusFromDoc, ...questionOnlyScoresFromDoc } =
+            allFieldsFromDoc;
 
-            // Use scores from the current jury
-            scoresByQuestion[currentQuestionNumber][fieldKey] = newValue ?? 0; // Ensure value is not undefined
+          // Merge question-specific scores
+          Object.keys(questionOnlyScoresFromDoc).forEach((key) => {
+            const fieldKey = key as keyof QuestionOnlyFields;
+            const newValue = questionOnlyScoresFromDoc[fieldKey];
+            scoresByQuestion[currentQuestionNumber][fieldKey] = newValue ?? 0;
           });
+
+          // Logic to determine the initialOverallBonus (e.g., from current question or first question)
+          if (
+            participant.assignedQuestions &&
+            juryMember?.currentQuestion &&
+            currentQuestionNumber === juryMember.currentQuestion &&
+            bonusFromDoc !== undefined
+          ) {
+            initialOverallBonus = bonusFromDoc;
+          } else if (
+            initialOverallBonus === undefined &&
+            currentQuestionNumber === 1 &&
+            bonusFromDoc !== undefined
+          ) {
+            // Fallback to first question's bonus if current question's isn't set yet or found
+            initialOverallBonus = bonusFromDoc;
+          }
         });
 
         setAllScores(scoresByQuestion);
+        setOverallBonus(initialOverallBonus ?? 0); // Set overallBonus after processing all docs
       } catch (error) {
         console.error("Error fetching all scores:", error);
       }
@@ -399,12 +430,14 @@ function RouteComponent() {
     if (selectedQuestion && allScores[selectedQuestion]) {
       // Load all scores for the selected question
       setCurrentScores({
-        ...defaultScores, // Start with defaults to ensure all fields are present
-        ...allScores[selectedQuestion], // Override with saved scores
+        ...defaultQuestionScores, // Start with defaults to ensure all fields are present
+        ...allScores[selectedQuestion], // Override with saved scores for the question
       });
+      // overallBonus state is NOT changed here to maintain its value across questions
     } else {
       // Reset scores to default for a new/unsaved question
-      setCurrentScores(defaultScores);
+      setCurrentScores(defaultQuestionScores);
+      // overallBonus state is NOT changed here
     }
   }, [selectedQuestion, allScores]);
 
@@ -454,9 +487,13 @@ function RouteComponent() {
     onSuccess: (_, variables) => {
       // Update allScores locally after a successful save
       // This ensures the checkmarks update correctly
+      // allScores should store QuestionOnlyFields
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { overall_bonus: unused_overall_bonus, ...questionOnlyScores } =
+        variables.scoresToSave;
       setAllScores((prev) => ({
         ...prev,
-        [variables.questionNumToSave]: variables.scoresToSave,
+        [variables.questionNumToSave]: questionOnlyScores,
       }));
       // Re-validate related queries if needed, though local update might be sufficient
       queryClient.invalidateQueries({ queryKey: ["juryScores"] });
@@ -475,9 +512,23 @@ function RouteComponent() {
     },
   });
 
-  const handleScoreChange = (field: keyof QuestionFields, value: number) => {
+  const handleScoreChange = (
+    receivedField: keyof QuestionFields,
+    value: number
+  ) => {
+    // This handler is for question-specific scores. overall_bonus is handled by handleOverallBonusChange.
+    if (receivedField === "overall_bonus") {
+      // This path should ideally not be taken if ScoreCategory instances are set up correctly.
+      // If it is, delegate to the correct handler or log an error.
+      // For safety, we can call handleOverallBonusChange, though it implies a misconfiguration.
+      // console.warn("handleScoreChange was called with 'overall_bonus', delegating...");
+      // handleOverallBonusChange(value);
+      return;
+    }
+    const field = receivedField as keyof QuestionOnlyFields;
+
     let cappedValue = value;
-    let newScores: QuestionFields | null = null; // Variable to hold the potential new state
+    let newScores: QuestionOnlyFields | null = null; // Variable to hold the potential new state
 
     // Cap husn_al_ada_score between 0 and 10
     if (field === "husn_al_ada_score") {
@@ -489,22 +540,6 @@ function RouteComponent() {
             field: t("jury.categories.husn_al_ada_score"),
             min: 0,
             max: 10,
-            value: cappedValue,
-          }),
-        });
-      }
-    }
-
-    // Cap overall_bonus between 0 and 3
-    if (field === "overall_bonus") {
-      cappedValue = Math.min(3, Math.max(0, value));
-      if (value > 3 || value < 0) {
-        toast({
-          title: t("jury.messages.scoreCappedTitle"),
-          description: t("jury.messages.scoreCappedDesc", {
-            field: t("jury.categories.overall_bonus"),
-            min: 0,
-            max: 3,
             value: cappedValue,
           }),
         });
@@ -526,16 +561,41 @@ function RouteComponent() {
     }
 
     debounceTimeoutRef.current = setTimeout(() => {
-      // Use the 'newScores' captured in the outer scope
-      // Or read directly from state if preferred, but this ensures we save the exact state that was set
       if (newScores && juryId && participant?.id) {
-        console.log(`Debounced save triggered for Q${selectedQuestion}`);
+        console.log(
+          `Debounced save triggered for Q${selectedQuestion} (question scores only)`
+        );
+        const scoresToSaveForQuestion: QuestionFields = {
+          ...newScores, // These are QuestionOnlyFields
+          overall_bonus: overallBonus, // Include the current global overallBonus
+        };
         saveScoresMutation.mutate({
           questionNumToSave: selectedQuestion,
-          scoresToSave: newScores, // Use the captured new scores
+          scoresToSave: scoresToSaveForQuestion,
         });
       }
     }, 500); // Debounce time (e.g., 750ms)
+  };
+
+  const handleOverallBonusChange = (value: number) => {
+    const cappedValue = Math.min(3, Math.max(0, value));
+    if (value > 3 || value < 0) {
+      toast({
+        title: t("jury.messages.scoreCappedTitle"),
+        description: t("jury.messages.scoreCappedDesc", {
+          field: t("jury.categories.overall_bonus"),
+          min: 0,
+          max: 3,
+          value: cappedValue,
+        }),
+      });
+    }
+    setOverallBonus(cappedValue);
+
+    // Optional: If overallBonus needs to be saved immediately on change (not just with "Done" or question save)
+    // This might be redundant if question saves already include it.
+    // Consider if a separate debounced save is needed for overallBonus alone.
+    // For now, relying on it being saved with question scores or handleDone.
   };
 
   // Updated handleDone logic
@@ -545,18 +605,24 @@ function RouteComponent() {
     const totalQuestions = participant.assignedQuestions.length; // Needed for setting final progress
 
     try {
-      // 1. Save the current question's scores FIRST
+      // 1. Save the current question's scores FIRST, including the overall bonus
+      const finalScoresToSave: QuestionFields = {
+        ...currentScores, // These are QuestionOnlyFields
+        overall_bonus: overallBonus, // Include the global overallBonus
+      };
+
       await saveScoresMutation.mutateAsync(
         {
           questionNumToSave: selectedQuestion,
-          scoresToSave: currentScores,
+          scoresToSave: finalScoresToSave,
         },
         {
           onSuccess: () => {
             // 2. Update local state immediately after successful save
+            // allScores should store QuestionOnlyFields
             setAllScores((prev) => ({
               ...prev,
-              [selectedQuestion]: currentScores,
+              [selectedQuestion]: { ...currentScores }, // Save only question scores locally
             }));
 
             // 3. Update jury progress marker in Firestore
@@ -651,18 +717,18 @@ function RouteComponent() {
   };
 
   // Re-added and corrected useEffect to sync viewerPage
-  useEffect(() => {
-    if (
-      participant &&
-      participant.assignedQuestions &&
-      participant.assignedQuestions.length >= selectedQuestion
-    ) {
-      const currentPage = participant.assignedQuestions[selectedQuestion - 1];
-      setViewerPage(currentPage);
-    } else {
-      setViewerPage(1);
-    }
-  }, [participant, selectedQuestion]);
+  // useEffect(() => {
+  //   if (
+  //     participant &&
+  //     participant.assignedQuestions &&
+  //     participant.assignedQuestions.length >= selectedQuestion
+  //   ) {
+  //     const currentPage = participant.assignedQuestions[selectedQuestion - 1];
+  //     setViewerPage(currentPage);
+  //   } else {
+  //     setViewerPage(1);
+  //   }
+  // }, [participant, selectedQuestion]);
 
   // Show login if not authenticated
   if (!isAuthenticated) {
@@ -691,7 +757,7 @@ function RouteComponent() {
       </div>
 
       <div className="flex flex-row px-4 flex-grow">
-        <div className="flex flex-col w-4/6">
+        <div className="flex flex-col w-full">
           <div className="p-4 space-y-4 flex-grow">
             <ParticipantBanner />
             <h2 className="text-2xl font-bold mb-4">
@@ -779,15 +845,9 @@ function RouteComponent() {
                         <ScoreCategory
                           title={t("jury.categories.performance_bonus")}
                           subtitle={`${getSectionWeight("husn_al_ada")} ${t("jury.categories.performance")}`}
-                          labels={[
-                            t("jury.categories.husn_al_ada_score"),
-                            // t("jury.categories.overall_bonus"),
-                          ]}
+                          labels={[t("jury.categories.husn_al_ada_score")]}
                           disabled={isQuestionDone}
-                          fields={[
-                            "husn_al_ada_score",
-                            // "overall_bonus"
-                          ]}
+                          fields={["husn_al_ada_score"]}
                           scores={currentScores}
                           onScoreChange={handleScoreChange}
                           cols={1} // Use 2 columns
@@ -799,9 +859,11 @@ function RouteComponent() {
                         labels={[t("jury.categories.bonus")]}
                         disabled={isQuestionDone}
                         fields={["overall_bonus"]}
-                        scores={currentScores}
-                        onScoreChange={handleScoreChange}
-                        cols={1} // Use 2 columns
+                        scores={{ overall_bonus: overallBonus }}
+                        onScoreChange={(_field, val) =>
+                          handleOverallBonusChange(val)
+                        }
+                        cols={1}
                       />
                     </>
                   );
@@ -823,8 +885,8 @@ function RouteComponent() {
           </div>
         </div>
 
+        {/* 
         <div className="flex flex-col w-2/6 overflow-hidden">
-          {/* Quran Viewer - Always render */}
           <div className="flex flex-col h-[900px]">
             <div className="flex-grow">
               <QuranViewer
@@ -840,6 +902,7 @@ function RouteComponent() {
             </div>
           </div>
         </div>
+         */}
       </div>
     </div>
   );
