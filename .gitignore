@@ -13,7 +13,6 @@ dist-ssr
 *.local
 .env
 
-public
 scripts
 
 # Editor directories and files
