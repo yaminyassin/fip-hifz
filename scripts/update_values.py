@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # --- Configuration ---
 OBS_HOST = "localhost"
 OBS_PORT = 4455
-OBS_PASSWORD = "6Y5fkrt6h5AWQb5K"  # Your OBS WebSocket password
+OBS_PASSWORD = "password"  # Your OBS WebSocket password
 SOURCE_QURAN_IMAGE = "quran_image"
 SOURCE_NAME = "name"
 SOURCE_AGE = "age"
