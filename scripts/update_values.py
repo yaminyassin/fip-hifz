@@ -5,230 +5,259 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 # Use require_version for better compatibility checks if needed, requires obswebsocket module update maybe
 from obswebsocket import obsws, requests, exceptions
+import traceback # Import traceback for logging
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # --- Configuration ---
-OBS_HOST = "localhost"
-OBS_PORT = 4455
-OBS_PASSWORD = "password"  # Your OBS WebSocket password
-SOURCE_QURAN_IMAGE = "quran_image"
-SOURCE_NAME = "name"
-SOURCE_AGE = "age"
-SOURCE_CATEGORY = "category"
-SOURCE_FLAG = "flag"
+class Config:
+    OBS_HOST = "localhost"
+    OBS_PORT = 4455
+    OBS_PASSWORD = "password"  # Your OBS WebSocket password
+    SOURCE_QURAN_IMAGE = "quran_image"
+    SOURCE_NAME = "name1"
+    SOURCE_AGE = "age"
+    SOURCE_FLAG = "flag"
+    SOURCE_CATEGORY = "category" # Renamed from "Category" to "category"
+
+    FIRESTORE_PARTICIPANTS_COLLECTION = "participants"
+
+    # Absolute paths for image directories
+    QURAN_IMAGES_DIR = "/Users/yaminyassin/Work/fip-hifz/obs/assets/quran"
+    FLAG_IMAGES_DIR = "/Users/yaminyassin/Work/fip-hifz/obs/assets/flags"
+    CATEGORY_IMAGES_DIR = "/Users/yaminyassin/Work/fip-hifz/obs/assets/categories" # New directory for category images
+
 # ---------------------
 
-# --- Firebase Configuration ---
-FIRESTORE_PARTICIPANTS_COLLECTION = "participants" # Firestore collection for participants
-# ----------------------------
+class OBSController:
+    """Handles all interactions with OBS via WebSocket."""
+    def __init__(self, host: str, port: int, password: str):
+        self.host = host
+        self.port = port
+        self.password = password
+        self.ws = None
 
-# --- Local File Paths ---
-# Directory where Quran page images are stored (e.g., downloaded by a separate script)
-QURAN_IMAGES_DIR = "/Users/yaminyassin/Work/fip-hifz/quran_images" # Updated to absolute path
-# Directory where flag images are stored
-FLAG_IMAGES_DIR = "flags" # Assumes this is relative to the script's location or CWD
-# ------------------------
+    def connect(self):
+        """Connects to the OBS WebSocket server."""
+        if self.ws and self.is_connected():
+            logging.info("Already connected to OBS.")
+            return
+        try:
+            self.ws = obsws(self.host, self.port, self.password)
+            self.ws.connect()
+            logging.info(f"Successfully connected to OBS WebSocket at {self.host}:{self.port}.")
+        except exceptions.ConnectionFailure as e:
+            logging.error(f"Could not connect to OBS: {e}")
+            logging.error("Ensure OBS is running, WebSocket server enabled, and host/port/password are correct.")
+            self.ws = None
+            raise
 
-def initialize_firebase():
-    """Initializes the Firebase Admin SDK."""
-    try:
-        if os.getenv('GOOGLE_APPLICATION_CREDENTIALS'):
-            cred = credentials.ApplicationDefault()
-            firebase_admin.initialize_app(cred)
-            logging.info("Initialized Firebase Admin SDK using GOOGLE_APPLICATION_CREDENTIALS.")
-        elif os.path.exists("serviceAccountKey.json"): # Assumes key is in the same dir as script
-            cred = credentials.Certificate("serviceAccountKey.json")
-            firebase_admin.initialize_app(cred)
-            logging.info("Initialized Firebase Admin SDK using serviceAccountKey.json.")
+    def disconnect(self):
+        """Disconnects from the OBS WebSocket server."""
+        if self.ws and self.is_connected():
+            logging.info("Disconnecting from OBS.")
+            self.ws.disconnect()
+            self.ws = None
         else:
-            logging.error("Firebase credentials not found. "
-                          "Set GOOGLE_APPLICATION_CREDENTIALS or place serviceAccountKey.json in script directory.")
-            return None
+            logging.info("Not connected to OBS or already disconnected.")
+
+    def is_connected(self) -> bool:
+        """Checks if the WebSocket connection is active."""
+        return self.ws and hasattr(self.ws, 'ws') and self.ws.ws and self.ws.ws.connected
+
+    def update_text_source(self, obs_source_name: str, new_text: str):
+        """Updates the text of a specified text source in OBS."""
+        if not self.is_connected():
+            logging.error(f"Not connected to OBS. Cannot update text source '{obs_source_name}'.")
+            return
+        if not new_text:
+            logging.warning(f"New text for source '{obs_source_name}' is empty. Skipping update.")
+            return
+        try:
+            new_settings = {'text': str(new_text)}
+            self.ws.call(requests.SetInputSettings(inputName=obs_source_name, inputSettings=new_settings, overlay=True))
+            logging.info(f"Successfully updated text source '{obs_source_name}' to '{new_text}'.")
+        except exceptions.ConnectionFailure:
+            logging.error(f"Connection to OBS failed during text update for '{obs_source_name}'.")
+        except Exception as e:
+            logging.error(f"Error updating text source '{obs_source_name}': {e}")
+            logging.debug(traceback.format_exc())
+
+    def update_image_file_source(self, obs_source_name: str, image_base_dir: str, new_image_filename: str):
+        """Changes the file path of an image source in OBS."""
+        if not self.is_connected():
+            logging.error(f"Not connected to OBS. Cannot update image source '{obs_source_name}'.")
+            return
+        if not new_image_filename:
+            logging.warning(f"New image filename for source '{obs_source_name}' is empty. Skipping update.")
+            return
+
+        new_file_path = os.path.join(image_base_dir, new_image_filename)
+        if not os.path.exists(new_file_path):
+            logging.error(f"Image file not found: {new_file_path} for source '{obs_source_name}'.")
+            return
+
+        try:
+            new_settings = {'file': new_file_path}
+            self.ws.call(requests.SetInputSettings(inputName=obs_source_name, inputSettings=new_settings, overlay=True))
+            logging.info(f"Successfully changed source '{obs_source_name}' image to '{new_file_path}'.")
+        except exceptions.ConnectionFailure:
+            logging.error(f"Connection to OBS failed during image update for '{obs_source_name}'.")
+        except Exception as e:
+            logging.error(f"Error changing source '{obs_source_name}': {e}")
+            logging.debug(traceback.format_exc())
+
+# --- Firebase Functions ---
+def initialize_firebase():
+    """Initializes the Firebase Admin SDK if not already initialized."""
+    try:
+        if not firebase_admin._apps:
+            if os.getenv('GOOGLE_APPLICATION_CREDENTIALS'):
+                cred = credentials.ApplicationDefault()
+                firebase_admin.initialize_app(cred)
+                logging.info("Initialized Firebase Admin SDK using GOOGLE_APPLICATION_CREDENTIALS.")
+            elif os.path.exists("../google-services-key.json"):
+                cred = credentials.Certificate("../google-services-key.json")
+                firebase_admin.initialize_app(cred)
+                logging.info("Initialized Firebase Admin SDK using google-services-key.json from workspace root.")
+            else:
+                logging.error("Firebase credentials not found. "
+                              "Set GOOGLE_APPLICATION_CREDENTIALS or place google-services-key.json in the workspace root.")
+                return None
+        else:
+            logging.info("Firebase Admin SDK already initialized.")
         return firestore.client()
     except Exception as e:
         logging.error(f"Error initializing Firebase Admin SDK: {e}")
         return None
 
-def get_active_participant_data(db):
-    """
-    Fetches the first active participant's data from Firestore.
-    An active participant is expected to have a field 'isActive' set to True.
-    """
-    if not db:
+def get_active_participant_data(db_client):
+    """Fetches the first active participant's data from Firestore."""
+    if not db_client:
         return None
     try:
-        participants_ref = db.collection(FIRESTORE_PARTICIPANTS_COLLECTION)
+        participants_ref = db_client.collection(Config.FIRESTORE_PARTICIPANTS_COLLECTION)
         query = participants_ref.where(filter=firestore.FieldFilter("isActive", "==", True)).limit(1)
         active_participants = list(query.stream())
 
         if active_participants:
-            participant_data = active_participants[0].to_dict()
-            participant_id = active_participants[0].id
-            logging.info(f"Found active participant: {participant_id} - {participant_data.get('name', 'N/A')}")
-            return participant_data
+            participant = active_participants[0]
+            logging.info(f"Found active participant: {participant.id} - {participant.to_dict().get('name', 'N/A')}")
+            return participant.to_dict()
         else:
-            logging.warning(f"No active participant found in '{FIRESTORE_PARTICIPANTS_COLLECTION}' collection.")
+            logging.warning(f"No active participant found in '{Config.FIRESTORE_PARTICIPANTS_COLLECTION}'.")
             return None
     except Exception as e:
-        logging.error(f"Error fetching active participant data from Firestore: {e}")
+        logging.error(f"Error fetching active participant from Firestore: {e}")
         return None
 
-def update_text_source(ws: obsws, obs_source_name: str, new_text: str):
-    """
-    Updates the text of a specified text source in OBS.
-
-    Args:
-        ws: The OBS WebSocket client instance.
-        obs_source_name: The name of the text source in OBS.
-        new_text: The new text to set for the source.
-    """
-    if not new_text: # Don't try to set empty text if that's not desired, or handle as needed
-        logging.warning(f"New text for source '{obs_source_name}' is empty. Skipping update.")
-        return
-    try:
-        # For GDI text sources, the setting is 'text'. For Freetype 2, it might be different.
-        # This assumes a common 'text' property.
-        new_settings = {'text': str(new_text)} # Ensure text is string
-        ws.call(requests.SetInputSettings(inputName=obs_source_name, inputSettings=new_settings, overlay=True))
-        logging.info(f"Successfully requested OBS to update text source '{obs_source_name}' to '{new_text}'.")
-    except exceptions.ConnectionFailure:
-        logging.error(f"Connection to OBS failed during text update for '{obs_source_name}'.")
-    except Exception as e:
-        logging.error(f"An error occurred while updating text source '{obs_source_name}': {e}")
-        import traceback
-        logging.debug(traceback.format_exc())
-
-def update_image_file_source(ws: obsws, obs_source_name: str, image_base_dir: str, new_image_filename: str):
-    """
-    Changes the file path of an image source in OBS.
-
-    Args:
-        ws: The OBS WebSocket client instance.
-        obs_source_name: The name of the image source in OBS.
-        image_base_dir: The base directory where the image is located.
-        new_image_filename: The filename of the new image to set.
-    """
-    if not new_image_filename:
-        logging.warning(f"New image filename for source '{obs_source_name}' is empty. Skipping update.")
+# --- Data Processing and OBS Updates ---
+def process_participant_updates(obs_controller: OBSController, participant_data: dict):
+    """Processes participant data and updates relevant OBS sources."""
+    if not participant_data:
+        logging.info("No participant data provided for OBS update.")
         return
 
-    try:
-        new_file_path = os.path.join(image_base_dir, new_image_filename)
+    # Update Quran Image
+    active_q_num = participant_data.get('activeQuestion')
+    if active_q_num is not None:
+        try:
+            q_num = int(active_q_num)
+            if 0 <= q_num <= 999:
+                img_file = f"{q_num:03d}.png"
+                obs_controller.update_image_file_source(Config.SOURCE_QURAN_IMAGE, Config.QURAN_IMAGES_DIR, img_file)
+            else:
+                logging.warning(f"'activeQuestion' {q_num} out of range (0-999). Quran image not updated.")
+        except ValueError:
+            logging.warning(f"Invalid 'activeQuestion' value: {active_q_num}. Quran image not updated.")
+    else:
+        logging.warning("No 'activeQuestion' field. Quran image not updated.")
 
-        if not os.path.exists(new_file_path):
-            logging.error(f"New image file not found locally at path: {new_file_path} for source '{obs_source_name}'. Cannot update.")
-            return
+    # Update Name
+    name = participant_data.get('name')
+    if name:
+        obs_controller.update_text_source(Config.SOURCE_NAME, name)
+    else:
+        logging.warning(f"No 'name' field. Source '{Config.SOURCE_NAME}' not updated.")
 
-        # For image sources, the setting is typically 'file'.
-        new_settings = {'file': new_file_path}
-        ws.call(requests.SetInputSettings(inputName=obs_source_name, inputSettings=new_settings, overlay=True))
-        logging.info(f"Successfully requested OBS to change source '{obs_source_name}' image to '{new_image_filename}' (path: {new_file_path}).")
+    # Update Age
+    age = participant_data.get('age')
+    if age is not None:
+        obs_controller.update_text_source(Config.SOURCE_AGE, str(age))
+    else:
+        logging.warning(f"No 'age' field. Source '{Config.SOURCE_AGE}' not updated.")
 
-    except exceptions.ConnectionFailure:
-        logging.error(f"Connection to OBS failed during image update for '{obs_source_name}'.")
-    except Exception as e:
-        logging.error(f"An unexpected error occurred while changing source '{obs_source_name}': {e}")
-        import traceback
-        logging.debug(traceback.format_exc())
+    # Update Category Image
+    category_image_filename = participant_data.get('categoryFilename')
+    if category_image_filename:
+        obs_controller.update_image_file_source(
+            Config.SOURCE_CATEGORY, # Now refers to "category"
+            Config.CATEGORY_IMAGES_DIR,
+            category_image_filename
+        )
+    else:
+        logging.warning(f"No 'categoryFilename' field. Source '{Config.SOURCE_CATEGORY}' (image) not updated.")
 
-def main():
-    obs_ws = None
-    db = None
+    # Update Flag
+    flag_file = participant_data.get('flagFilename')
+    flag_text = participant_data.get('flagText')
+    if flag_file:
+        obs_controller.update_image_file_source(Config.SOURCE_FLAG, Config.FLAG_IMAGES_DIR, flag_file)
+    elif flag_text:
+        obs_controller.update_text_source(Config.SOURCE_FLAG, flag_text)
+    else:
+        logging.warning(f"No 'flagFilename' or 'flagText'. Source '{Config.SOURCE_FLAG}' not updated.")
 
-    try:
-        # Initialize Firebase
-        db = initialize_firebase()
-        if not db:
-            sys.exit(1) # Exit if Firebase init fails
-
-        # Fetch active participant data
-        participant_data = get_active_participant_data(db)
-        if not participant_data:
-            logging.info("No active participant data to process. Exiting.")
-            sys.exit(0) # Graceful exit if no active participant
-
-        # Connect to OBS
-        obs_ws = obsws(OBS_HOST, OBS_PORT, OBS_PASSWORD)
-        logging.info(f"Connecting to OBS WebSocket at {OBS_HOST}:{OBS_PORT}...")
-        obs_ws.connect()
-        logging.info("Successfully connected to OBS.")
-
-        # Update OBS sources based on participant data
-        # --- Quran Image (based on activeQuestion number) ---
-        active_question_number = participant_data.get('activeQuestion')
-        if active_question_number is not None:
+# --- Utility Functions ---
+def ensure_directories_exist():
+    """Creates necessary image directories if they don't exist."""
+    dirs_to_create = [
+        Config.QURAN_IMAGES_DIR,
+        Config.FLAG_IMAGES_DIR,
+        Config.CATEGORY_IMAGES_DIR # Add new category images directory
+    ]
+    for directory in dirs_to_create:
+        if not os.path.exists(directory):
             try:
-                # Ensure it's an integer before formatting
-                question_num = int(active_question_number)
-                if 0 <= question_num <= 999: # Assuming page numbers are within 0-999 range for XXX.png format
-                    # Format the number to be three digits with leading zeros, e.g., 50 -> "050.png"
-                    quran_image_filename = f"{question_num:03d}.png"
-                    update_image_file_source(obs_ws, SOURCE_QURAN_IMAGE, QURAN_IMAGES_DIR, quran_image_filename)
-                else:
-                    logging.warning(f"'activeQuestion' number {question_num} is out of the expected range (0-999). Source '{SOURCE_QURAN_IMAGE}' not updated.")
-            except ValueError:
-                logging.warning(f"'activeQuestion' field ('{active_question_number}') is not a valid number. Source '{SOURCE_QURAN_IMAGE}' not updated.")
-        else:
-            logging.warning(f"No 'activeQuestion' field found for active participant. Source '{SOURCE_QURAN_IMAGE}' not updated.")
+                os.makedirs(directory)
+                logging.info(f"Created directory: {directory}")
+            except OSError as e:
+                logging.error(f"Failed to create directory {directory}: {e}. Check permissions/path.")
+                # Depending on how critical this is, you might want to sys.exit(1)
 
-        # --- Name (Text) ---
-        name_text = participant_data.get('name')
-        if name_text:
-            update_text_source(obs_ws, SOURCE_NAME, name_text)
-        else:
-            logging.warning(f"No 'name' found for active participant. Source '{SOURCE_NAME}' not updated.")
+# --- Main Execution ---
+def main():
+    obs_controller = None
+    try:
+        ensure_directories_exist() # Ensure directories are ready
 
-        # --- Age (Text) ---
-        age_text = participant_data.get('age') # Assuming age might be number or string
-        if age_text is not None: # Check for None as age could be 0
-            update_text_source(obs_ws, SOURCE_AGE, str(age_text)) # Convert to string
-        else:
-            logging.warning(f"No 'age' found for active participant. Source '{SOURCE_AGE}' not updated.")
+        db_client = initialize_firebase()
+        if not db_client:
+            logging.critical("Firebase initialization failed. Exiting application.")
+            sys.exit(1)
 
-        # --- Category (Text) ---
-        category_text = participant_data.get('category')
-        if category_text:
-            update_text_source(obs_ws, SOURCE_CATEGORY, category_text)
-        else:
-            logging.warning(f"No 'category' found for active participant. Source '{SOURCE_CATEGORY}' not updated.")
+        participant_data = get_active_participant_data(db_client)
+        if not participant_data:
+            logging.info("No active participant data found. Nothing to update in OBS. Exiting.")
+            sys.exit(0)
 
-        # --- Flag (Image or Text) ---
-        flag_filename = participant_data.get('flagFilename')
-        flag_text = participant_data.get('flagText')
+        obs_controller = OBSController(Config.OBS_HOST, Config.OBS_PORT, Config.OBS_PASSWORD)
+        obs_controller.connect() # Raises ConnectionFailure if unable to connect
 
-        if flag_filename:
-            update_image_file_source(obs_ws, SOURCE_FLAG, FLAG_IMAGES_DIR, flag_filename)
-        elif flag_text:
-            update_text_source(obs_ws, SOURCE_FLAG, flag_text)
-        else:
-            logging.warning(f"No 'flagFilename' or 'flagText' found for active participant. Source '{SOURCE_FLAG}' not updated.")
+        process_participant_updates(obs_controller, participant_data)
 
-    except exceptions.ConnectionFailure as e:
-        logging.error(f"Could not connect to OBS: {e}")
-        logging.error("Please ensure OBS is running, the WebSocket server is enabled, and the host/port/password are correct.")
+        logging.info("OBS sources updated successfully based on active participant data.")
+
+    except exceptions.ConnectionFailure:
+        logging.critical("Failed to connect to OBS. Ensure OBS is running and configured correctly. Exiting.")
         sys.exit(1)
     except Exception as e:
-         logging.error(f"An unexpected error occurred in main: {e}")
-         import traceback
-         logging.error(traceback.format_exc()) # More detailed error for debugging
-         sys.exit(1)
+        logging.critical(f"An unexpected error occurred in main execution: {e}", exc_info=True)
+        sys.exit(1)
     finally:
-        if obs_ws and hasattr(obs_ws, 'ws') and obs_ws.ws and obs_ws.ws.connected: # More robust check for active connection
-            logging.info("Disconnecting from OBS.")
-            obs_ws.disconnect()
+        if obs_controller:
+            obs_controller.disconnect()
 
 if __name__ == "__main__":
-    # Create image directories if they don't exist, so the script doesn't fail if they are missing
-    # and an image needs to be loaded. The actual images should be placed here by another process.
-    if not os.path.exists(QURAN_IMAGES_DIR):
-        os.makedirs(QURAN_IMAGES_DIR)
-        logging.info(f"Created directory: {QURAN_IMAGES_DIR}")
-    if not os.path.exists(FLAG_IMAGES_DIR):
-        os.makedirs(FLAG_IMAGES_DIR)
-        logging.info(f"Created directory: {FLAG_IMAGES_DIR}")
-        
     main()
-    # Consider adding logging level configuration via command-line arguments for flexibility
-    # Example: logging.basicConfig(level=logging.DEBUG) for more verbose output
