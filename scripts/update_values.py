@@ -189,15 +189,17 @@ def process_participant_updates(obs_controller: OBSController, participant_data:
         logging.warning(f"No 'age' field. Source '{Config.SOURCE_AGE}' not updated.")
 
     # Update Category Image
-    category_image_filename = participant_data.get('categoryFilename')
-    if category_image_filename:
+    category_base_name = participant_data.get('category') # Get the base name like "B1"
+    if category_base_name:
+        category_image_filename = f"{category_base_name}.png" # Construct filename e.g., "B1.png"
         obs_controller.update_image_file_source(
-            Config.SOURCE_CATEGORY, # Now refers to "category"
+            Config.SOURCE_CATEGORY, # This is "category"
             Config.CATEGORY_IMAGES_DIR,
             category_image_filename
         )
+        logging.info(f"Updated category image source '{Config.SOURCE_CATEGORY}' with '{category_image_filename}'.")
     else:
-        logging.warning(f"No 'categoryFilename' field. Source '{Config.SOURCE_CATEGORY}' (image) not updated.")
+        logging.warning(f"No 'category' field found in participant data. Source '{Config.SOURCE_CATEGORY}' (image) not updated.")
 
     # Update Flag
     flag_file = participant_data.get('flagFilename')
