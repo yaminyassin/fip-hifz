@@ -46,26 +46,30 @@
     },
     "categories": {
       "hifz": "Hifz",
-      "hifz_reminder": "Lembrete",
-      "hifz_assistance": "Assistido",
-      "hifz_fath": "Fath",
-      "hifz_tannin": "Tannin",
-      "hifz_taraddud": "Taraddud",
+      "hifdh_judge_correction": "Correção do Júri فتح",
+      "hifdh_self_correction": "Autocorreção تنبيه",
       "tajweed": "Tajweed",
       "tajweed_minor": "Erros Menores",
       "tajweed_major": "Erros Maiores",
-      "tajweed_jali": "Jali",
-      "tajweed_khafi": "Khafi",
-      "waqf": "Waqf",
-      "waqf_ibtida": "Ibtida",
-      "fluency": "Desempenho/Fluência",
-      "fluency_bonus": "Bônus de Fluência",
+      "waqf": "Waqf & Ibtida (Parada e Início)",
+      "waqf_ibtida_incorrect": "Pausa/Início Incorreto",
+      "waqf_ibtida_meaning": "Altera o Significado",
+      "husn_al_ada": "Husn al-Adā' (Desempenho)",
+      "husn_al_ada_score": "Erros de Fluência/Desempenho",
+      "husn_al_ada_mistakes_count": "Erros de Fluência/Desempenho",
+      "overall_bonus_title": "Bônus Geral",
+      "overall_bonus": "Bônus (0-3 pts)",
       "ofTotalScore": "da pontuação total",
       "maxDeduction": "Dedução Máxima",
       "perQuestion": "por questão",
       "maxBonus": "Bônus Máximo",
       "total": "total",
-      "perfectPerformance": "Desempenho Perfeito"
+      "perfectPerformance": "Desempenho Perfeito",
+      "performance_bonus": "HUSN AL-ADĀ (Fluência e Desempenho)",
+      "performance": "Desempenho",
+      "bonus": "Bônus",
+      "deduction": "Dedução",
+      "contribution": "Contribuição"
     },
     "scoreSummary": {
       "title": "Resumo da Pontuação",
@@ -96,8 +100,10 @@
       "errorUpdatingProgress": "[FALTA] jury.messages.errorUpdatingProgress",
       "scoresSavedTitle": "[FALTA] jury.messages.scoresSavedTitle",
       "scoresSavedNavDesc": "[FALTA] jury.messages.scoresSavedNavDesc",
-      "errorSavingScoresNav": "[FALTA] jury.messages.errorSavingScoresNav"
-    }
+      "errorSavingScoresNav": "[FALTA] jury.messages.errorSavingScoresNav",
+      "noData": "Nenhum dado para exibir para a seleção atual."
+    },
+    "questionBreakdown": "Detalhamento por Questão"
   },
   "randomizer": {
     "title": "Randomizador de Questões",
@@ -361,5 +367,39 @@
   },
   "error": {
     "general": "Ocorreu um erro. Por favor, tente novamente."
+  },
+  "status": {
+    "noDeductions": "Sem Deduções",
+    "noBonusAwarded": "Nenhum Bônus Concedido",
+    "voided": "Anulada",
+    "complete": "Completo",
+    "pending": "Pendente",
+    "active": "Ativo",
+    "inactive": "Inativo"
+  },
+  "filter": {
+    "by_category": "Filtrar por Categoria",
+    "all_categories": "Todas as Categorias",
+    "category_a": "Categoria A (A1 & A2)",
+    "category_b": "Categoria B (B1 & B2)",
+    "category_c": "Categoria C (C1 & C2)",
+    "category_d": "Categoria D (D1 & D2)",
+    "byJury": "Filtrar por Júri",
+    "selectJury": "Selecionar Júri/Média"
+  },
+  "actions": {
+    "setActive": "Definir como Ativo",
+    "details": "Detalhes",
+    "viewDetails": "Ver detalhes da pontuação",
+    "save": "Salvar Alterações",
+    "close": "Fechar",
+    "logout": "Sair",
+    "done": "Concluído",
+    "saving": "Salvando...",
+    "completed": "Concluído",
+    "decrease": "Diminuir pontuação",
+    "increase": "Aumentar pontuação",
+    "prevQuestion": "Questão Anterior",
+    "nextQuestion": "Próxima Questão"
   }
 }

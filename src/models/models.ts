@@ -10,26 +10,25 @@ export type Quran = {
  * the judge evaluation of the participant, per question
  */
 export type QuestionFields = {
-  // Hifdh (Memorisation) - 50% Max Deduction
-  hifdh_judge_correction: number; // فتح (Judge Correction): -1.5% each
-  hifdh_self_correction: number; // تنبيه (Self Correction): -0.5% each
-  hifdh_stuck_count: number; // Times Stuck (First time or after prompt): -0.5% each time
-  // Removed hifdh_stuck_first and hifdh_stuck_prompted
-  // Note: 4+ Hifdh mistakes (sum of judge, self, and stuck count) voids the question (score=0)
+  // Hifdh (Memorisation) - Max 100 points base per question
+  hifdh_judge_correction: number; // فتح (Judge Correction): -3 points each
+  hifdh_self_correction: number; // تنبيه (Self Correction): -2 points each
+  hifdh_stuck_count: number; // Times Stuck: Informational, not directly penalized in new system.
+  // Note: 4+ Hifdh judge corrections voids the question (score=0)
 
-  // Tajweed (Qur'anic Rules) - 30% Max Deduction
-  tajweed_major: number; // Major Mistake (Jali): -1% each
-  tajweed_minor: number; // Minor Mistake (Khafi): -0.5% each
+  // Tajweed (التجويد)
+  tajweed_major: number; // Major Mistake (اللحن الجلي): -2 points each
+  tajweed_minor: number; // Minor Mistake (اللحن الخفي): -1 point each
 
-  // Waqf & Ibtida (Stopping & Starting) - 10% Max Deduction
-  waqf_ibtida_incorrect: number; // Incorrect Pause/Start: -0.5% each
-  waqf_ibtida_meaning: number; // Pause/Start Alters Meaning: -1% each (applied if relevant)
+  // Waqf & Ibtida (Stopping & Starting - الوقف و الإبتداء)
+  waqf_ibtida_incorrect: number; // Incorrect Pause/Start: -0.3 points each
+  waqf_ibtida_meaning: number; // Pause/Start Alters Meaning: -0.7 points each
 
-  // Husn al-Adā' (Fluency & Performance) - 10% Score Addition
-  husn_al_ada_score: number; // Score (0-10) added to the percentage, max 10%
+  // Husn al-Adā' (Fluency & Performance - حسن الأداء)
+  husn_al_ada_score: number; // Count of Husn Al-Ada mistakes: -1 point each mistake
 
-  // Overall Bonus - Max +3% Added After Averaging
-  overall_bonus: number; // Bonus points (0-3) added per question, total capped at 3%
+  // Overall Bonus
+  overall_bonus: number; // Bonus points (0-3) added per question, total capped at 3 points to final average.
 };
 
 export type Scores = {
