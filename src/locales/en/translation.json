@@ -107,6 +107,8 @@
     "questionBreakdown": "Per-Question Breakdown"
   },
   "randomizer": {
+    "start": "Start",
+    "generatingAll": "Picking Questions...",
     "title": "Question Randomizer",
     "generateQuestions": "Generate All Questions",
     "generateQuestion": "Generate Question",
