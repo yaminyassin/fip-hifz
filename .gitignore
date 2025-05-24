@@ -12,8 +12,9 @@ dist
 dist-ssr
 *.local
 
-scripts
-
+google-services-key.json
+quran_images/*
+pyenv/*
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -66,8 +66,9 @@
       "performance": "Performance",
       "bonus": "Bonus",
       "husn_al_ada": "Husn al-Adā' (Performance)",
-      "husn_al_ada_score": "Fluency & Performance",
-      "overall_bonus": "Bonus (0-3)",
+      "husn_al_ada_score": "Fluency/Performance Mistakes",
+      "husn_al_ada_mistakes_count": "Fluency/Performance Mistakes",
+      "overall_bonus": "Bonus (0-3 pts)",
       "deduction": "Deduction",
       "contribution": "Contribution"
     },
@@ -100,10 +101,14 @@
       "errorUpdatingProgress": "There was an error updating your progress. Please try again.",
       "scoresSavedTitle": "[MISSING] jury.messages.scoresSavedTitle",
       "scoresSavedNavDesc": "[MISSING] jury.messages.scoresSavedNavDesc",
-      "errorSavingScoresNav": "Error saving scores for question {{number}}. Please try again."
-    }
+      "errorSavingScoresNav": "Error saving scores for question {{number}}. Please try again.",
+      "noData": "No data to display for the current selection."
+    },
+    "questionBreakdown": "Per-Question Breakdown"
   },
   "randomizer": {
+    "start": "Start",
+    "generatingAll": "Picking Questions...",
     "title": "Question Randomizer",
     "generateQuestions": "Generate All Questions",
     "generateQuestion": "Generate Question",
@@ -354,5 +359,39 @@
   },
   "error": {
     "general": "An error occurred. Please try again."
+  },
+  "status": {
+    "noDeductions": "No Deductions",
+    "noBonusAwarded": "No Bonus Awarded",
+    "voided": "Voided",
+    "complete": "Complete",
+    "pending": "Pending",
+    "active": "Active",
+    "inactive": "Inactive"
+  },
+  "filter": {
+    "by_category": "Filter by Category",
+    "all_categories": "All Categories",
+    "category_a": "Category A (A1 & A2)",
+    "category_b": "Category B (B1 & B2)",
+    "category_c": "Category C (C1 & C2)",
+    "category_d": "Category D (D1 & D2)",
+    "byJury": "Filter by Jury",
+    "selectJury": "Select Jury/Average"
+  },
+  "actions": {
+    "setActive": "Set Active",
+    "details": "Details",
+    "viewDetails": "View score details",
+    "save": "Save Changes",
+    "close": "Close",
+    "logout": "Logout",
+    "done": "Done",
+    "saving": "Saving...",
+    "completed": "Completed",
+    "decrease": "Decrease score",
+    "increase": "Increase score",
+    "prevQuestion": "[MISSING] actions.prevQuestion",
+    "nextQuestion": "[MISSING] actions.nextQuestion"
   }
 }

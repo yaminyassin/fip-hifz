@@ -2,276 +2,394 @@ import { Button } from "@/components/shadcn/button";
 import { Label } from "@/components/shadcn/label";
 import { ParticipantBanner } from "@/components/ui/ParticipantBanner";
 import { createLazyFileRoute } from "@tanstack/react-router";
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import { useUpdateParticipantQuestion } from "@/hooks/useUpdateParticipantQuestion";
-import { Card, CardContent } from "@/components/shadcn/card";
 import { useActiveParticipant } from "@/hooks/useActiveParticipant";
-import { useToast } from "@/components/shadcn/use-toast";
 import { useTranslation } from "react-i18next";
+import { TFunction } from "i18next";
 import { getCategoryConfig, generateRandomPage } from "@/lib/quranUtils";
 import { Participant } from "@/models/models";
 
+// Import assets
+import backgroundImage from "@/assets/randomizer/background.png";
+import A1 from "@/assets/categories/A1.png";
+import A2 from "@/assets/categories/A2.png";
+import B1 from "@/assets/categories/B1.png";
+import B2 from "@/assets/categories/B2.png";
+import C1 from "@/assets/categories/C1.png";
+import C2 from "@/assets/categories/C2.png";
+import D1 from "@/assets/categories/D1.png";
+import D2 from "@/assets/categories/D2.png";
+import M from "@/assets/categories/M.png";
+
+const categoryImageMap: Record<string, string> = {
+  A1,
+  A2,
+  B1,
+  B2,
+  C1,
+  C2,
+  D1,
+  D2,
+  M,
+};
+
 // Memoize the RandomNumber component to prevent unnecessary re-renders
-const RandomNumber = React.memo(({ 
-  number, 
-  index, 
-  onRandomize,
-  isGenerating
-}: { 
-  number: number; 
-  index: number;
-  onRandomize: () => void;
-  isGenerating: boolean;
-}) => {
-  const [displayNumber, setDisplayNumber] = useState(number);
-  const { t } = useTranslation();
+const RandomNumber = React.memo(
+  ({ number, index }: { number: number; index: number }) => {
+    const [displayNumber, setDisplayNumber] = useState(number);
+    const { t } = useTranslation();
 
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout;
+    useEffect(() => {
+      let intervalId: NodeJS.Timeout | undefined = undefined;
 
-    if (number === 0) {
-      intervalId = setInterval(() => {
-        setDisplayNumber(Math.floor(Math.random() * 600) + 1);
-      }, 50);
-    } else {
-      setDisplayNumber(number);
-    }
+      if (number === 0) {
+        setDisplayNumber(0); // Ensure it shows "..." or similar immediately
+        intervalId = setInterval(() => {
+          setDisplayNumber(Math.floor(Math.random() * 600) + 1);
+        }, 50);
+      } else {
+        setDisplayNumber(number);
+      }
 
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [number]);
+      return () => {
+        if (intervalId) clearInterval(intervalId);
+      };
+    }, [number]);
 
-  return (
-    <Card className="w-auto h-auto flex flex-col items-center justify-center bg-card/50 shadow-md">
-      <CardContent className="flex flex-col items-center justify-center p-6 space-y-4">
-        <div className="text-4xl font-medium text-muted-foreground">
-          {t("randomizer.questionLabel", { number: index + 1 })}
+    return (
+      <div className="w-48 h-48 flex flex-col items-center justify-center shadow-lg border border-[#5E618B80] p-4">
+        <div className="flex flex-col items-center justify-center space-y-4 w-full">
+          <div className="text-2xl sm:text-3xl lg:text-4xl text-[#3D435D] text-center whitespace-nowrap">
+            {t("randomizer.questionLabel", { number: index + 1 })}
+          </div>
+          <div className="flex items-center justify-center rounded-lg border-2 border-[#9DA3AE] px-6 py-3 shadow-sm min-w-[100px]">
+            <Label className="font-cera text-2xl sm:text-3xl lg:text-4xl font-bold text-[#2F3046]">
+              {displayNumber === 0 ? "..." : displayNumber}
+            </Label>
+          </div>
         </div>
-        <div className="flex items-center justify-center w-32 h-16 border-2 rounded-lg border-primary/20 bg-background/50 shadow-sm">
-          <Label className="text-3xl font-bold">
-            {displayNumber === 0 ? "" : displayNumber}
-          </Label>
-        </div>
-        <Button
-          onClick={onRandomize}
-          size="sm"
-          variant="outline"
-          disabled={isGenerating}
-          className="mt-4"
-        >
-          {isGenerating ? t("randomizer.generating") : t("randomizer.generateQuestion")}
-        </Button>
-      </CardContent>
-    </Card>
-  );
-});
+      </div>
+    );
+  }
+);
 
 // Add display name for debugging purposes
 RandomNumber.displayName = "RandomNumber";
 
+// Define RandomizerContentView component
+const RandomizerContentView = React.memo(
+  ({
+    participant,
+    questionNumbers,
+    isGeneratingAll,
+    isLoadingButton, // Renamed for clarity in button context
+    handleStartAllQuestions,
+    layoutClass,
+    randomNumberComponents,
+    t,
+    categoryImageMap,
+  }: {
+    participant: Participant;
+    questionNumbers: number[];
+    isGeneratingAll: boolean;
+    isLoadingButton: boolean;
+    handleStartAllQuestions: () => void;
+    layoutClass: string;
+    randomNumberComponents: JSX.Element[];
+    t: TFunction;
+    categoryImageMap: Record<string, string>;
+  }) => {
+    return (
+      <>
+        <div className="flex flex-col items-center gap-6 md:gap-8 flex-grow bg-[#FFFEFA] p-8">
+          {categoryImageMap[participant.category] && (
+            <img
+              src={
+                categoryImageMap[
+                  participant.category as keyof typeof categoryImageMap
+                ]
+              }
+              alt={t("randomizer.categoryAltText", {
+                category: participant.category,
+              })}
+              className="w-[260px] object-contain"
+            />
+          )}
+
+          {questionNumbers.length > 0 ? (
+            <div
+              className={`${layoutClass} gap-8  w-full max-w-4xl mx-auto flex-grow`}
+            >
+              {randomNumberComponents}
+            </div>
+          ) : (
+            <div className="text-lg text-center text-gray-300 py-5">
+              {t("randomizer.noQuestionsForCategory")}
+            </div>
+          )}
+        </div>
+        <div className="mt-6 md:mt-8 w-full flex justify-center">
+          <Button
+            onClick={handleStartAllQuestions}
+            disabled={
+              isGeneratingAll || questionNumbers.length === 0 || isLoadingButton
+            }
+            size="lg"
+            className="bg-[#61A8BB] hover:bg-[#00838F] text-[#FFFEFA] text-2xl py-3 px-6 sm:px-8 rounded-lg shadow-md hover:shadow-lg transition-all duration-150 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#007C8A] focus:ring-opacity-50 min-w-[150px] sm:min-w-[200px]"
+            aria-label={t("randomizer.startGenerationAria")}
+          >
+            {isGeneratingAll ? (
+              <div className="flex items-center justify-center">
+                <svg
+                  className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                {t("randomizer.generatingAll")}
+              </div>
+            ) : (
+              t("randomizer.start")
+            )}
+          </Button>
+        </div>
+      </>
+    );
+  }
+);
+RandomizerContentView.displayName = "RandomizerContentView";
+
 const RouteComponent = () => {
   const [questionNumbers, setQuestionNumbers] = useState<number[]>([]);
-  const [generatingQuestions, setGeneratingQuestions] = useState<Record<number, boolean>>({});
-  const [isLoading, setIsLoading] = useState(true);
+  const [isGeneratingAll, setIsGeneratingAll] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // True for initial component mount loading
   const lastActiveParticipantRef = useRef<Participant | null>(null);
-  
+
   const updateQuestion = useUpdateParticipantQuestion();
-  const { data: activeParticipant, isLoading: isParticipantLoading } = useActiveParticipant();
-  const { toast } = useToast();
+  const { data: activeParticipant, isLoading: isParticipantLoading } =
+    useActiveParticipant();
   const { t } = useTranslation();
-  
-  // Keep track of the last active participant to prevent UI flashing
+
   useEffect(() => {
     if (activeParticipant) {
       lastActiveParticipantRef.current = activeParticipant;
       setIsLoading(false);
     } else if (!isParticipantLoading) {
-      // Only clear the ref if we're sure there's no active participant
-      if (!isLoading) {
-        lastActiveParticipantRef.current = null;
-      }
-      setIsLoading(false);
+      // No active participant, and participant fetch isn't loading
+      lastActiveParticipantRef.current = null; // Clear ref if no active user and not loading
+      setIsLoading(false); // Done with initial loading sequence
     }
-  }, [activeParticipant, isParticipantLoading, isLoading]);
+    // If isParticipantLoading is true, isLoading remains true or as per its last state
+    // until activeParticipant is resolved or isParticipantLoading becomes false.
+  }, [activeParticipant, isParticipantLoading, setIsLoading]);
 
-  // Get the number of questions based on the participant's category
   const getNumQuestions = useCallback((participant: Participant | null) => {
     if (!participant) return 0;
-    
     const config = getCategoryConfig(participant.category);
     return config.numQuestions;
   }, []);
 
-  // Initialize question numbers from participant data
   useEffect(() => {
-    const participant = activeParticipant || lastActiveParticipantRef.current;
-    
-    if (participant) {
-      const numQuestions = getNumQuestions(participant);
-      let questions = [...(participant.assignedQuestions || [])];
-      
-      // Ensure we have the right number of questions
-      while (questions.length < numQuestions) {
-        questions.push(0);
-      }
-      
-      // Trim if we have too many questions
-      if (questions.length > numQuestions) {
-        questions = questions.slice(0, numQuestions);
-      }
-      
-      setQuestionNumbers(questions);
-    } else {
-      setQuestionNumbers([]);
+    // If generation is in progress, handleStartAllQuestions is managing questionNumbers.
+    // Avoid syncing from activeParticipant to prevent overwriting optimistic updates with potentially stale data.
+    if (isGeneratingAll) {
+      return;
     }
-  }, [activeParticipant, getNumQuestions]);
 
-  // Use the active participant or the last known active participant
-  const participant = useMemo(() => 
-    activeParticipant || lastActiveParticipantRef.current, 
+    const participantToUse =
+      activeParticipant || lastActiveParticipantRef.current;
+
+    if (participantToUse) {
+      const numQuestions = getNumQuestions(participantToUse);
+      let newQuestionsDerivedFromServer = [
+        ...(participantToUse.assignedQuestions || []),
+      ];
+      while (newQuestionsDerivedFromServer.length < numQuestions) {
+        newQuestionsDerivedFromServer.push(0); // Use 0 as placeholder for not-yet-generated
+      }
+      if (newQuestionsDerivedFromServer.length > numQuestions) {
+        newQuestionsDerivedFromServer = newQuestionsDerivedFromServer.slice(
+          0,
+          numQuestions
+        );
+      }
+
+      // Only update state if the derived questions are different from the current questionNumbers state.
+      // This prevents unnecessary re-renders if the server state confirms the optimistic local state.
+      if (
+        questionNumbers.length !== newQuestionsDerivedFromServer.length ||
+        newQuestionsDerivedFromServer.some(
+          (nq, idx) => nq !== questionNumbers[idx]
+        )
+      ) {
+        setQuestionNumbers(newQuestionsDerivedFromServer);
+      }
+    } else {
+      // No participant, ensure questions are cleared if not already
+      if (questionNumbers.length !== 0) {
+        setQuestionNumbers([]);
+      }
+    }
+  }, [activeParticipant, getNumQuestions, isGeneratingAll, questionNumbers]); // Added isGeneratingAll and questionNumbers
+
+  const participant = useMemo(
+    () => activeParticipant || lastActiveParticipantRef.current,
     [activeParticipant]
   );
 
-  // Use useCallback to maintain a stable function reference
-  const handleRandomizeQuestion = useCallback((index: number) => {
-    // Use the memoized participant value
-    if (!participant) {
-      toast({
-        title: t("randomizer.messages.error"),
-        description: t("randomizer.messages.noParticipant"),
-        variant: "destructive",
-      });
+  const handleStartAllQuestions = useCallback(async () => {
+    if (!participant || isGeneratingAll) return;
+
+    const numQuestions = getNumQuestions(participant);
+    if (numQuestions === 0) {
+      console.error(t("randomizer.messages.noQuestionsToGenerate"));
       return;
     }
 
-    // Check if this question is already being generated
-    if (generatingQuestions[index]) {
-      return;
-    }
+    setIsGeneratingAll(true);
+    console.log(t("randomizer.messages.generationStartingTitle"));
 
-    // Mark this question as generating using object update
-    setGeneratingQuestions(prev => ({ ...prev, [index]: true }));
+    setQuestionNumbers(Array(numQuestions).fill(0));
 
-    // Reset to 0 to trigger rolling animation
-    setQuestionNumbers(prev => {
-      const updated = [...prev];
-      updated[index] = 0;
-      return updated;
-    });
+    const generatedPages: number[] = [];
 
-    // Generate a random page based on the participant's category and question index
-    const randomPage = generateRandomPage(participant.category, index);
+    for (let i = 0; i < numQuestions; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Time for rolling animation per card
 
-    // Update after a delay to show animation
-    setTimeout(() => {
-      // Update local state first to ensure UI consistency
-      setQuestionNumbers(prev => {
+      const randomPage = generateRandomPage(participant.category, i);
+      generatedPages.push(randomPage);
+
+      setQuestionNumbers((prev) => {
         const updated = [...prev];
-        updated[index] = randomPage;
+        updated[i] = randomPage;
         return updated;
       });
+    }
 
-      // Update Firestore
-      updateQuestion.mutate(
-        {
-          participantId: participant.id,
-          questionIndex: index,
-          pageNumber: randomPage,
-        },
-        {
-          onSuccess: () => {
-            toast({
-              title: t("randomizer.messages.success"),
-              description: t("randomizer.messages.successDesc"),
-            });
-            // Remove from generating state using object update
-            setGeneratingQuestions(prev => {
-              const updated = { ...prev };
-              delete updated[index];
-              return updated;
-            });
-          },
-          onError: (error) => {
-            console.error("Error updating question:", error);
-            toast({
-              title: t("randomizer.messages.error"),
-              description: t("randomizer.messages.errorDesc"),
-              variant: "destructive",
-            });
-            // Remove from generating state using object update
-            setGeneratingQuestions(prev => {
-              const updated = { ...prev };
-              delete updated[index];
-              return updated;
-            });
-          },
-        }
-      );
-    }, 1000);
-  }, [participant, generatingQuestions, toast, t, updateQuestion]);
+    let allSucceeded = true;
+    for (let i = 0; i < numQuestions; i++) {
+      try {
+        await new Promise<void>((resolve, reject) => {
+          updateQuestion.mutate(
+            {
+              participantId: participant.id,
+              questionIndex: i,
+              pageNumber: generatedPages[i],
+            },
+            {
+              onSuccess: () => resolve(),
+              onError: (error) => {
+                console.error(`Error updating question ${i + 1}:`, error);
+                allSucceeded = false;
+                reject(error); // Reject to mark this specific mutation as failed
+              },
+            }
+          );
+        });
+      } catch (error) {
+        // Error handling for individual mutation already done in onError
+        // This catch is for the Promise.reject if a mutation fails
+        console.log(`Mutation for question ${i + 1} was rejected.`, error);
+      }
+    }
 
-  // Memoize the grid layout class to prevent recalculation on every render
-  const gridLayoutClass = useMemo(() => {
-    if (questionNumbers.length <= 2) return 'grid-cols-1 md:grid-cols-2';
-    if (questionNumbers.length === 3) return 'grid-cols-1 md:grid-cols-3';
-    return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4';
-  }, [questionNumbers.length]);
+    if (allSucceeded) {
+      console.log(t("randomizer.messages.allSuccessTitle"));
+    } else {
+      console.warn(t("randomizer.messages.partialSuccessTitle"));
+    }
+    setIsGeneratingAll(false);
+  }, [
+    participant,
+    isGeneratingAll,
+    getNumQuestions,
+    updateQuestion,
+    t,
+    setQuestionNumbers,
+    setIsGeneratingAll,
+    // generateRandomPage is stable as it's an import
+  ]);
 
-  // Memoize the RandomNumber components to prevent unnecessary re-renders
+  const layoutClass = useMemo(() => {
+    // Use flexbox for horizontal flow instead of grid
+    return "flex flex-wrap justify-center";
+  }, []);
+
   const randomNumberComponents = useMemo(() => {
     return questionNumbers.map((number, index) => (
-      <RandomNumber
-        key={index}
-        number={number}
-        index={index}
-        onRandomize={() => handleRandomizeQuestion(index)}
-        isGenerating={generatingQuestions[index] === true}
-      />
+      <RandomNumber key={index} number={number} index={index} />
     ));
-  }, [questionNumbers, generatingQuestions, handleRandomizeQuestion]);
+  }, [questionNumbers]);
 
-  if (isLoading) {
+  if (
+    isLoading || // Initial component loading
+    (isParticipantLoading && !lastActiveParticipantRef.current) // Actively fetching and no cached participant to show
+  ) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted">
-        <div className="container mx-auto p-6 flex flex-col justify-center gap-12">
+      <div
+        style={{ backgroundImage: `url(${backgroundImage})` }}
+        className="min-h-screen bg-cover bg-center flex items-center justify-center p-4"
+      >
+        <div className="bg-[#414361] text-white rounded-xl shadow-2xl p-6 sm:p-8 md:p-10 w-full max-w-3xl lg:max-w-4xl flex flex-col items-center justify-center min-h-[400px]">
           <ParticipantBanner />
-          <Card className="flex-1 flex flex-col items-center justify-center gap-12 bg-card/50 backdrop-blur-sm p-8">
-            <div className="text-xl text-center text-muted-foreground">
-              {t("common.loading")}
-            </div>
-          </Card>
+          <div className="text-xl text-center text-gray-300 py-10">
+            {t("common.loading")}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted">
-      <div className="container mx-auto p-6 flex flex-col justify-center gap-12">
-        <ParticipantBanner />
+    <div
+      style={{ backgroundImage: `url(${backgroundImage})` }}
+      className="min-h-screen bg-cover bg-center flex items-center justify-center pt-10 pl-16 pr-20 "
+    >
+      <div className="bg-[#414361]  rounded-xl shadow-2xl p-6 sm:p-8 md:p-10 w-full flex flex-col">
+        <div className="mb-6 md:mb-8">
+          <ParticipantBanner />
+        </div>
 
-        <Card className="flex-1 flex flex-col items-center justify-center gap-12 bg-card/50 backdrop-blur-sm p-8">
-          {participant ? (
-            <>
-              <div className="flex flex-col items-center gap-2">
-                <div className="text-2xl font-medium text-center">
-                  {t("randomizer.categoryLabel")}: {participant.category}
-                </div>
-              </div>
-              
-              <div className="flex justify-center w-full">
-                <div className={`grid gap-6 ${gridLayoutClass}`}>
-                  {randomNumberComponents}
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="text-xl text-center text-muted-foreground">
+        {participant ? (
+          <RandomizerContentView
+            participant={participant}
+            questionNumbers={questionNumbers}
+            isGeneratingAll={isGeneratingAll}
+            isLoadingButton={isLoading || isParticipantLoading} // Pass combined loading state for button
+            handleStartAllQuestions={handleStartAllQuestions}
+            layoutClass={layoutClass}
+            randomNumberComponents={randomNumberComponents}
+            t={t}
+            categoryImageMap={categoryImageMap}
+          />
+        ) : (
+          <div className="flex flex-col items-center gap-6 md:gap-8 flex-grow">
+            <div className="text-xl text-center text-gray-300 py-10">
               {t("randomizer.noParticipant")}
             </div>
-          )}
-        </Card>
+          </div>
+        )}
       </div>
     </div>
   );

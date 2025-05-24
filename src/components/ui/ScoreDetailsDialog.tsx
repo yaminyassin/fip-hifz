@@ -1,6 +1,6 @@
 import { Participant, QuestionFields } from "@/models/models";
 import { useTranslation } from "react-i18next";
-import { calculateFinalScore } from "@/utils/scoreUtils";
+import { calculateFinalScore, CalculatedScoreResult, MAX_HIFDH_DEDUCTION, MAX_TAJWEED_DEDUCTION, MAX_WAQF_IBTIDA_DEDUCTION, getSectionWeight } from "@/utils/scoreUtils";
 import {
   Card,
   CardContent,
@@ -9,7 +9,7 @@ import {
   CardDescription,
 } from "@/components/shadcn/card";
 import { Button } from "@/components/shadcn/button";
-import { X, CheckCircle2 } from "lucide-react";
+import { X, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
   Select,
@@ -46,6 +46,8 @@ type ParticipantWithScores = Participant & {
     average: { [questionNumber: number]: QuestionFields };
     juryIds: string[];
   };
+  overallAverageScore?: CalculatedScoreResult;
+  scoresByJury?: Record<string, CalculatedScoreResult>;
 };
 
 interface ScoreDetailsDialogProps {
@@ -61,52 +63,60 @@ export const ScoreDetailsDialog = ({
 }: ScoreDetailsDialogProps) => {
   const { t } = useTranslation();
   const [selectedJuryId, setSelectedJuryId] = useState<string>("average");
-  const [activeScores, setActiveScores] = useState<{
+  const [activeQuestionDetailScores, setActiveQuestionDetailScores] = useState<{
     [questionNumber: number]: QuestionFields;
   }>({});
+  const [displayedResult, setDisplayedResult] = useState<CalculatedScoreResult | null>(null);
   const [juryName, setJuryName] = useState<string>("");
   const { data: juryMembers = [] } = useJuryMembers();
 
-  // When the dialog opens or the selected jury changes, update the displayed scores
   useEffect(() => {
-    if (!participant.questionScores) return;
-    if (
-      !participant.questionScores.average ||
-      !participant.questionScores.byJury
-    )
+    if (!participant.questionScores) {
+      setDisplayedResult(null);
+      setActiveQuestionDetailScores({});
       return;
+    }
+
+    let scoresToCalculate: { [questionNumber: number]: QuestionFields } | null = null;
 
     if (selectedJuryId === "average") {
-      setActiveScores(participant.questionScores.average);
+      scoresToCalculate = participant.questionScores.average;
       setJuryName(t("jury.scoreSummary.averageOfAll"));
     } else {
-      setActiveScores(participant.questionScores.byJury[selectedJuryId] || {});
-      // Find jury name from the juryMembers data
+      scoresToCalculate = participant.questionScores.byJury?.[selectedJuryId] || {};
       const juryMember = juryMembers.find((jury) => jury.id === selectedJuryId);
-      setJuryName(
-        juryMember?.name ||
-          t("jury.scoreSummary.juryMember", { id: selectedJuryId })
-      );
+      setJuryName(juryMember?.name || t("jury.scoreSummary.juryMember", { id: selectedJuryId }));
     }
+
+    if (scoresToCalculate && Object.keys(scoresToCalculate).length > 0) {
+      setDisplayedResult(calculateFinalScore(scoresToCalculate as any));
+      setActiveQuestionDetailScores(scoresToCalculate);
+    } else {
+      setDisplayedResult(null);
+      setActiveQuestionDetailScores({});
+    }
+
   }, [selectedJuryId, participant.questionScores, juryMembers, t]);
 
-  if (!participant.questionScores) {
-    return null;
+  if (!participant.questionScores || !displayedResult) {
+    return (
+      <DialogRoot open={isOpen} onOpenChange={onClose}>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">
+            {t("participants.visualizations.title")} - {participant.name}
+          </h2>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label={t("actions.close")}>
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+        <p>{t("messages.noData")}</p>
+      </DialogRoot>
+    );
   }
 
-  if (
-    !participant.questionScores.average ||
-    !participant.questionScores.byJury ||
-    !participant.questionScores.juryIds
-  ) {
-    return null;
-  }
+  const questionNumbers = Object.keys(activeQuestionDetailScores).map(Number).sort((a, b) => a - b);
+  const { percentage: finalPercentage, breakdownBySection } = displayedResult;
 
-  const questionNumbers = Object.keys(activeScores).map(Number);
-
-  const result = calculateFinalScore(activeScores);
-
-  // Map the new QuestionFields keys to their translation keys
   const getCategoryName = (key: keyof QuestionFields) => {
     const categories: Record<keyof QuestionFields, string> = {
       hifdh_judge_correction: t("jury.categories.hifdh_judge_correction"),
@@ -116,79 +126,32 @@ export const ScoreDetailsDialog = ({
       tajweed_minor: t("jury.categories.tajweed_minor"),
       waqf_ibtida_incorrect: t("jury.categories.waqf_ibtida_incorrect"),
       waqf_ibtida_meaning: t("jury.categories.waqf_ibtida_meaning"),
-      husn_al_ada_score: t("jury.categories.husn_al_ada_score"),
+      husn_al_ada_score: t("jury.categories.husn_al_ada_mistakes_count"),
       overall_bonus: t("jury.categories.overall_bonus"),
     };
-
-    return categories[key] || key; // Fallback to key name if translation missing
+    return categories[key] || key;
+  };
+  
+  const getScoreColor = (score: number) => {
+    if (score >= 90) return "text-green-600";
+    if (score >= 80) return "text-blue-600";
+    if (score >= 70) return "text-yellow-600";
+    if (score >= 60) return "text-orange-600";
+    return "text-red-600";
   };
 
-  // Calculate total *count* of mistakes per question by category (for display)
-  const calculateMistakeCount = (
-    questionNumber: number,
-    category: "hifdh" | "tajweed" | "waqf" // Use new aggregate names
-  ) => {
-    const scores = activeScores[questionNumber];
-    if (!scores) return 0;
-
-    let count = 0;
-
-    if (category === "hifdh") {
-      // Summing up different types of hifdh issues
-      count =
-        scores.hifdh_judge_correction +
-        scores.hifdh_self_correction +
-        scores.hifdh_stuck_count;
-    } else if (category === "tajweed") {
-      count = scores.tajweed_major + scores.tajweed_minor;
-    } else if (category === "waqf") {
-      // Summing up both types of waqf issues
-      count = scores.waqf_ibtida_incorrect + scores.waqf_ibtida_meaning;
-    }
-
-    return count;
-  };
-
-  // Check if there are any errors in a specific category across all questions
-  const hasErrorsInCategory = (
-    category: "hifdh" | "tajweed" | "waqf" // Use new aggregate names
-  ): boolean => {
-    return questionNumbers.some((questionNumber) => {
-      const scores = activeScores[questionNumber];
-      if (!scores) return false;
-
-      if (category === "hifdh") {
-        return (
-          scores.hifdh_judge_correction > 0 ||
-          scores.hifdh_self_correction > 0 ||
-          scores.hifdh_stuck_count > 0
-        );
-      } else if (category === "tajweed") {
-        return scores.tajweed_major > 0 || scores.tajweed_minor > 0;
-      } else if (category === "waqf") {
-        return (
-          scores.waqf_ibtida_incorrect > 0 || scores.waqf_ibtida_meaning > 0
-        );
-      }
-      return false;
-    });
-  };
-
-  // Function to render category cards
   const renderCategoryCards = () => {
-    if (selectedJuryId === "average") {
-      // For average view, only show the main category summaries
-      return (
+    return (
         <>
           <Card className="h-auto">
             <CardHeader>
               <CardTitle>{t("jury.categories.hifdh")}</CardTitle>
               <CardDescription>
-                {t("jury.categories.ofTotalScore", { percentage: "50%" })}
+                {`Achieved: ${breakdownBySection.hifdh.toFixed(1)} / ${MAX_HIFDH_DEDUCTION} pts`}
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center">
-              {result.breakdownBySection.hifdh >= 50 ? (
+              {breakdownBySection.hifdh >= MAX_HIFDH_DEDUCTION ? (
                 <div className="flex items-center justify-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-emerald-600 dark:text-emerald-400 font-medium">
@@ -196,8 +159,8 @@ export const ScoreDetailsDialog = ({
                   </span>
                 </div>
               ) : (
-                <span className="text-black dark:text-white text-3xl font-bold">
-                  {result.breakdownBySection.hifdh.toFixed(1)}%
+                <span className={`text-3xl font-bold ${getScoreColor(breakdownBySection.hifdh / MAX_HIFDH_DEDUCTION * 100)}`}>
+                  {breakdownBySection.hifdh.toFixed(1)} pts
                 </span>
               )}
             </CardContent>
@@ -207,20 +170,20 @@ export const ScoreDetailsDialog = ({
             <CardHeader>
               <CardTitle>{t("jury.categories.tajweed")}</CardTitle>
               <CardDescription>
-                {t("jury.categories.ofTotalScore", { percentage: "30%" })}
+                {`Achieved: ${breakdownBySection.tajweed.toFixed(1)} / ${MAX_TAJWEED_DEDUCTION} pts`}
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center">
-              {result.breakdownBySection.tajweed >= 30 ? (
-                <div className="flex items-center justify-center gap-2">
+              {breakdownBySection.tajweed >= MAX_TAJWEED_DEDUCTION ? (
+                 <div className="flex items-center justify-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-emerald-600 dark:text-emerald-400 font-medium">
                     {t("jury.categories.perfectPerformance")}
                   </span>
                 </div>
               ) : (
-                <span className="text-black dark:text-white text-3xl font-bold">
-                  {result.breakdownBySection.tajweed.toFixed(1)}%
+                <span className={`text-3xl font-bold ${getScoreColor(breakdownBySection.tajweed / MAX_TAJWEED_DEDUCTION * 100)}`}>
+                  {breakdownBySection.tajweed.toFixed(1)} pts
                 </span>
               )}
             </CardContent>
@@ -230,11 +193,11 @@ export const ScoreDetailsDialog = ({
             <CardHeader>
               <CardTitle>{t("jury.categories.waqf")}</CardTitle>
               <CardDescription>
-                {t("jury.categories.ofTotalScore", { percentage: "10%" })}
+                 {`Achieved: ${breakdownBySection.waqf.toFixed(1)} / ${MAX_WAQF_IBTIDA_DEDUCTION} pts`}
               </CardDescription>
             </CardHeader>
             <CardContent className="text-center">
-              {result.breakdownBySection.waqf >= 10 ? (
+              {breakdownBySection.waqf >= MAX_WAQF_IBTIDA_DEDUCTION ? (
                 <div className="flex items-center justify-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-emerald-600 dark:text-emerald-400 font-medium">
@@ -242,391 +205,165 @@ export const ScoreDetailsDialog = ({
                   </span>
                 </div>
               ) : (
-                <span className="text-black dark:text-white text-3xl font-bold">
-                  {result.breakdownBySection.waqf.toFixed(1)}%
+                 <span className={`text-3xl font-bold ${getScoreColor(breakdownBySection.waqf / MAX_WAQF_IBTIDA_DEDUCTION * 100)}`}>
+                  {breakdownBySection.waqf.toFixed(1)} pts
                 </span>
               )}
             </CardContent>
           </Card>
         </>
-      );
-    } else {
-      // Count errors by category to determine how many questions have errors
-      const hifdhQuestionsWithErrors = questionNumbers.filter(
-        (questionNumber) => {
-          const scores = activeScores[questionNumber];
-          if (!scores) return false;
-          return (
-            scores.hifdh_judge_correction > 0 ||
-            scores.hifdh_self_correction > 0 ||
-            scores.hifdh_stuck_count > 0
-          );
-        }
-      ).length;
-
-      const tajweedQuestionsWithErrors = questionNumbers.filter(
-        (questionNumber) => {
-          const scores = activeScores[questionNumber];
-          if (!scores) return false;
-          return scores.tajweed_major > 0 || scores.tajweed_minor > 0;
-        }
-      ).length;
-
-      const waqfQuestionsWithErrors = questionNumbers.filter(
-        (questionNumber) => {
-          const scores = activeScores[questionNumber];
-          if (!scores) return false;
-          return (
-            scores.waqf_ibtida_incorrect > 0 || scores.waqf_ibtida_meaning > 0
-          );
-        }
-      ).length;
-
-      // For individual jury view, show detailed question breakdowns with dynamic sizing
-      return (
-        <>
-          <Card
-            className={`h-auto ${hifdhQuestionsWithErrors > 2 ? "row-span-2" : ""}`}
-          >
-            <CardHeader>
-              <CardTitle>
-                {t("jury.categories.hifdh")} -{" "}
-                {result.breakdownBySection.hifdh.toFixed(1)}%
-              </CardTitle>
-              <CardDescription>
-                {t("jury.categories.ofTotalScore", { percentage: "50%" })}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {hasErrorsInCategory("hifdh") ? (
-                <ul className="space-y-2">
-                  {questionNumbers.map((questionNumber) => {
-                    const scores = activeScores[questionNumber];
-                    const mistakeCount = calculateMistakeCount(
-                      questionNumber,
-                      "hifdh"
-                    );
-
-                    if (!scores || mistakeCount === 0) return null;
-
-                    return (
-                      <li
-                        key={`hifdh-${questionNumber}`}
-                        className="border-b pb-2 last:border-0"
-                      >
-                        <div className="flex justify-between mb-1">
-                          <p className="font-semibold">
-                            {t("jury.question")} {questionNumber}
-                          </p>
-                        </div>
-                        <ul className="ml-4 space-y-1 text-sm text-muted-foreground">
-                          {scores.hifdh_judge_correction > 0 && (
-                            <li>
-                              {getCategoryName("hifdh_judge_correction")}:{" "}
-                              <span className="font-medium text-destructive">
-                                {scores.hifdh_judge_correction}x
-                              </span>
-                            </li>
-                          )}
-                          {scores.hifdh_self_correction > 0 && (
-                            <li>
-                              {getCategoryName("hifdh_self_correction")}:{" "}
-                              <span className="font-medium text-destructive">
-                                {scores.hifdh_self_correction}x
-                              </span>
-                            </li>
-                          )}
-                          {scores.hifdh_stuck_count > 0 && (
-                            <li>
-                              {getCategoryName("hifdh_stuck_count")}:{" "}
-                              <span className="font-medium text-destructive">
-                                {scores.hifdh_stuck_count}x
-                              </span>
-                            </li>
-                          )}
-                        </ul>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-md border border-emerald-200 dark:border-emerald-800">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                  <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">
-                    {t("jury.categories.perfectPerformance")}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card
-            className={`h-auto ${tajweedQuestionsWithErrors > 2 ? "row-span-2" : ""}`}
-          >
-            <CardHeader>
-              <CardTitle>
-                {t("jury.categories.tajweed")} -{" "}
-                {result.breakdownBySection.tajweed.toFixed(1)}%
-              </CardTitle>
-              <CardDescription>
-                {t("jury.categories.ofTotalScore", { percentage: "30%" })}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {hasErrorsInCategory("tajweed") ? (
-                <ul className="space-y-2">
-                  {questionNumbers.map((questionNumber) => {
-                    const scores = activeScores[questionNumber];
-                    const mistakeCount = calculateMistakeCount(
-                      questionNumber,
-                      "tajweed"
-                    );
-
-                    if (!scores || mistakeCount === 0) return null;
-
-                    return (
-                      <li
-                        key={`tajweed-${questionNumber}`}
-                        className="border-b pb-2 last:border-0"
-                      >
-                        <div className="flex justify-between mb-1">
-                          <p className="font-semibold">
-                            {t("jury.question")} {questionNumber}
-                          </p>
-                        </div>
-                        <ul className="ml-4 space-y-1 text-sm text-muted-foreground">
-                          {scores.tajweed_major > 0 && (
-                            <li>
-                              {getCategoryName("tajweed_major")}:{" "}
-                              <span className="font-medium text-destructive">
-                                {scores.tajweed_major}x
-                              </span>
-                            </li>
-                          )}
-                          {scores.tajweed_minor > 0 && (
-                            <li>
-                              {getCategoryName("tajweed_minor")}:{" "}
-                              <span className="font-medium text-destructive">
-                                {scores.tajweed_minor}x
-                              </span>
-                            </li>
-                          )}
-                        </ul>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-md border border-emerald-200 dark:border-emerald-800">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                  <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">
-                    {t("jury.categories.perfectPerformance")}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card
-            className={`h-auto ${waqfQuestionsWithErrors > 2 ? "row-span-2" : ""}`}
-          >
-            <CardHeader>
-              <CardTitle>
-                {t("jury.categories.waqf")} -{" "}
-                {result.breakdownBySection.waqf.toFixed(1)}%
-              </CardTitle>
-              <CardDescription>
-                {t("jury.categories.ofTotalScore", { percentage: "10%" })}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {hasErrorsInCategory("waqf") ? (
-                <ul className="space-y-2">
-                  {questionNumbers.map((questionNumber) => {
-                    const scores = activeScores[questionNumber];
-                    const mistakeCount = calculateMistakeCount(
-                      questionNumber,
-                      "waqf"
-                    );
-
-                    if (!scores || mistakeCount === 0) return null;
-
-                    return (
-                      <li
-                        key={`waqf-${questionNumber}`}
-                        className="border-b pb-2 last:border-0"
-                      >
-                        <div className="flex justify-between mb-1">
-                          <p className="font-semibold">
-                            {t("jury.question")} {questionNumber}
-                          </p>
-                        </div>
-                        <ul className="ml-4 space-y-1 text-sm text-muted-foreground">
-                          {scores.waqf_ibtida_incorrect > 0 && (
-                            <li>
-                              {getCategoryName("waqf_ibtida_incorrect")}:{" "}
-                              <span className="font-medium text-destructive">
-                                {scores.waqf_ibtida_incorrect}x
-                              </span>
-                            </li>
-                          )}
-                          {scores.waqf_ibtida_meaning > 0 && (
-                            <li>
-                              {getCategoryName("waqf_ibtida_meaning")}:{" "}
-                              <span className="font-medium text-destructive">
-                                {scores.waqf_ibtida_meaning}x
-                              </span>
-                            </li>
-                          )}
-                        </ul>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-md border border-emerald-200 dark:border-emerald-800">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                  <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">
-                    {t("jury.categories.perfectPerformance")}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </>
-      );
-    }
+    );
   };
-
-  // The Husn al-Ada card can be slightly modified
+  
   const renderHusnAlAdaCard = () => (
     <Card className="h-auto">
       <CardHeader>
-        <CardTitle>
-          {t("jury.categories.husn_al_ada")} - +
-          {result.breakdownBySection.husn_al_ada.toFixed(1)}%
-        </CardTitle>
+        <CardTitle>{t("jury.categories.husn_al_ada")}</CardTitle>
         <CardDescription>
-          {t("jury.categories.maxBonus")} +10% {t("jury.categories.total")}
+          {getSectionWeight("husn_al_ada")} 
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground mb-3">
-          {t("jury.scoreSummary.husnAlAdaExplanation")}
-        </p>
-        <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-md border border-emerald-200 dark:border-emerald-800">
-          <p className="text-sm text-emerald-600 dark:text-emerald-400">
-            <span className="font-medium">
-              +{result.breakdownBySection.husn_al_ada.toFixed(1)}%
-            </span>{" "}
-            {t("jury.messages.overallPerformance")}
-          </p>
-        </div>
+      <CardContent className="text-center">
+        {breakdownBySection.husn_al_ada <= 0 ? (
+          <div className="flex items-center justify-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+              {t("status.noDeductions")}
+            </span>
+          </div>
+        ) : (
+          <span className="text-red-600 dark:text-red-500 text-3xl font-bold">
+            -{breakdownBySection.husn_al_ada.toFixed(1)} pts
+          </span>
+        )}
       </CardContent>
     </Card>
   );
 
-  // Render Overall Bonus Card (New)
   const renderOverallBonusCard = () => (
     <Card className="h-auto">
       <CardHeader>
-        <CardTitle>
-          {t("jury.categories.overall_bonus")} - +
-          {result.breakdownBySection.overall_bonus.toFixed(1)}%
-        </CardTitle>
+        <CardTitle>{t("jury.categories.overall_bonus_title")}</CardTitle>
         <CardDescription>
-          {t("jury.categories.maxBonus")} +3% {t("jury.categories.total")}
+          {getSectionWeight("overall_bonus")}
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground mb-3">
-          {t("jury.scoreSummary.overallBonusExplanation")}
-        </p>
-        <div className="p-3 bg-sky-50 dark:bg-sky-950/30 rounded-md border border-sky-200 dark:border-sky-800">
-          <p className="text-sm text-sky-600 dark:text-sky-400">
-            <span className="font-medium">
-              +{result.breakdownBySection.overall_bonus.toFixed(1)}%
-            </span>{" "}
-            {t("jury.messages.additionalPoints")}
-          </p>
-        </div>
+      <CardContent className="text-center">
+        {breakdownBySection.overall_bonus > 0 ? (
+           <span className="text-green-600 dark:text-green-500 text-3xl font-bold">
+            +{breakdownBySection.overall_bonus.toFixed(1)} pts
+          </span>
+        ) : (
+          <span className="text-muted-foreground text-lg">
+            {t("status.noBonusAwarded")}
+          </span>
+        )}
       </CardContent>
     </Card>
   );
 
   return (
     <DialogRoot open={isOpen} onOpenChange={onClose}>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">
-          {participant.name} - {t("jury.scoreSummary.title")}
-        </h2>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          aria-label={t("common.close")}
-        >
-          <X className="h-5 w-5" />
-        </Button>
-      </div>
-
-      <div className="flex flex-col mb-6 gap-2">
-        <label htmlFor="jury-select" className="text-sm font-medium">
-          {t("jury.scoreSummary.selectJury")}
-        </label>
-
-        <Select value={selectedJuryId} onValueChange={setSelectedJuryId}>
-          <SelectTrigger id="jury-select" className="w-full sm:w-72">
-            <SelectValue placeholder={t("jury.scoreSummary.selectJury")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="average">
-              {t("jury.scoreSummary.averageOfAll")}
-            </SelectItem>
-            {participant.questionScores.juryIds &&
-              participant.questionScores.juryIds.map((juryId) => {
-                const jury = juryMembers.find((j) => j.id === juryId);
-                return (
-                  <SelectItem key={juryId} value={juryId}>
-                    {jury?.name ||
-                      t("jury.scoreSummary.juryMember", { id: juryId })}
-                  </SelectItem>
-                );
-              })}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="mb-4">
-        <p className="text-muted-foreground">
-          {selectedJuryId !== "average" &&
-            t("jury.scoreSummary.currentlyViewing") + ": " + juryName}
-        </p>
-        <div className="flex items-center mt-2">
-          <h3 className="text-xl font-bold">
-            {juryName}: {result.percentage.toFixed(1)}%
-          </h3>
-          {participant.questionScores.juryIds.length > 1 &&
-            selectedJuryId === "average" && (
-              <span className="text-sm text-muted-foreground ml-2">
-                ({participant.questionScores.juryIds.length}{" "}
-                {t("participants.table.juryCount")})
-              </span>
-            )}
+        <div className="flex justify-between items-center mb-6 pb-4 border-b">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">
+              {participant.name}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {t("participants.visualizations.title")} - {juryName}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={selectedJuryId} onValueChange={setSelectedJuryId}>
+              <SelectTrigger className="w-[200px]" aria-label={t("filter.byJury")}>
+                <SelectValue placeholder={t("filter.selectJury")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="average">
+                  {t("jury.scoreSummary.averageOfAll")}
+                </SelectItem>
+                {participant.questionScores?.juryIds.map((id) => {
+                  const jury = juryMembers.find(j => j.id === id);
+                  return (
+                    <SelectItem key={id} value={id}>
+                      {jury?.name || t("jury.scoreSummary.juryMember", { id })}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+            <Button variant="ghost" size="icon" onClick={onClose} aria-label={t("actions.close")}>
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 auto-rows-auto">
-        {renderCategoryCards()}
-        {renderHusnAlAdaCard()}
-        {renderOverallBonusCard()}
-      </div>
+        <Card className="mb-6 shadow-lg">
+          <CardHeader className="text-center">
+            <CardDescription>{t("jury.scoreSummary.totalScore")}</CardDescription>
+            <CardTitle className={`text-5xl font-extrabold ${getScoreColor(finalPercentage)}`}>
+              {finalPercentage.toFixed(1)} pts
+            </CardTitle>
+          </CardHeader>
+        </Card>
 
-      <div className="flex justify-center">
-        <Button onClick={onClose} variant="outline" className="min-w-32">
-          {t("common.close")}
-        </Button>
-      </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {renderCategoryCards()}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          {renderHusnAlAdaCard()}
+          {renderOverallBonusCard()}
+        </div>
+        
+        <h3 className="text-xl font-semibold mb-3">{t("jury.questionBreakdown")}</h3>
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr className="border-b">
+                    <th className="p-3 text-left font-medium">{t("jury.question")}</th>
+                    {(Object.keys(activeQuestionDetailScores[questionNumbers[0]] || {}) as Array<keyof QuestionFields>)
+                      .filter(key => key !== 'hifdh_stuck_count' || (activeQuestionDetailScores[questionNumbers[0]] && activeQuestionDetailScores[questionNumbers[0]].hifdh_stuck_count > 0))
+                      .map((key) => (
+                        <th key={key} className="p-3 text-center font-medium whitespace-nowrap">
+                          {getCategoryName(key)}
+                        </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {questionNumbers.map((qNum) => {
+                    const scoresForQuestion = activeQuestionDetailScores[qNum];
+                    if (!scoresForQuestion) return null;
+                    const isHifzVoided = scoresForQuestion.hifdh_judge_correction >= 4;
+
+                    return (
+                      <tr key={qNum} className={`border-b last:border-none ${isHifzVoided ? 'bg-red-50 dark:bg-red-900/30' : ''}`}>
+                        <td className="p-3 font-medium">
+                          {t("jury.question")} {qNum}
+                          {isHifzVoided && (
+                            <span className="ml-2 text-xs text-red-600 dark:text-red-400 font-semibold">({t("status.voided")})</span>
+                          )}
+                        </td>
+                        {(Object.keys(scoresForQuestion) as Array<keyof QuestionFields>)
+                          .filter(key => key !== 'hifdh_stuck_count' || scoresForQuestion.hifdh_stuck_count > 0)
+                          .map((key) => (
+                          <td key={key} className="p-3 text-center">
+                            {scoresForQuestion[key]}
+                            {(key === "hifdh_judge_correction" && scoresForQuestion[key] > 0 && scoresForQuestion[key] < 4) && isHifzVoided && (
+                                <AlertTriangle className="h-4 w-4 text-red-500 inline-block ml-1" />
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
     </DialogRoot>
   );
 };

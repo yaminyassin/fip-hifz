@@ -795,7 +795,7 @@ function RouteComponent() {
                         {/* Hifdh Section - Apply conditional class */}
                         <ScoreCategory
                           title={t("jury.categories.hifdh")}
-                          subtitle={`${getSectionWeight("hifdh")} ${t("jury.categories.deduction")}`}
+                          subtitle={`${getSectionWeight("hifdh")} `}
                           labels={[
                             t("jury.categories.hifdh_judge_correction"),
                             t("jury.categories.hifdh_self_correction"),
@@ -813,7 +813,7 @@ function RouteComponent() {
                         {/* Tajweed Section */}
                         <ScoreCategory
                           title={t("jury.categories.tajweed")}
-                          subtitle={`${getSectionWeight("tajweed")} ${t("jury.categories.deduction")}`}
+                          subtitle={`${getSectionWeight("tajweed")} `}
                           labels={[
                             t("jury.categories.tajweed_major"),
                             t("jury.categories.tajweed_minor"),
@@ -827,7 +827,7 @@ function RouteComponent() {
                         {/* Waqf & Ibtida Section */}
                         <ScoreCategory
                           title={t("jury.categories.waqf")}
-                          subtitle={`${getSectionWeight("waqf")} ${t("jury.categories.deduction")}`}
+                          subtitle={`${getSectionWeight("waqf")} `}
                           disabled={isQuestionDone}
                           labels={[
                             t("jury.categories.waqf_ibtida_incorrect"),
@@ -844,25 +844,23 @@ function RouteComponent() {
                         {/* Combined Performance */}
                         <ScoreCategory
                           title={t("jury.categories.performance_bonus")}
-                          subtitle={`${getSectionWeight("husn_al_ada")} ${t("jury.categories.performance")}`}
-                          labels={[t("jury.categories.husn_al_ada_score")]}
-                          disabled={isQuestionDone}
+                          subtitle={getSectionWeight("husn_al_ada")}
+                          labels={[t("jury.categories.husn_al_ada_mistakes_count")]}
                           fields={["husn_al_ada_score"]}
                           scores={currentScores}
                           onScoreChange={handleScoreChange}
-                          cols={1} // Use 2 columns
+                          disabled={isQuestionDone || !participant?.isActive}
+                          cols={1} // Single column for Husn al-Ada
                         />
                       </div>
                       <ScoreCategory
                         title={t("jury.categories.overall_bonus_title")}
-                        subtitle={`${getSectionWeight("overall_bonus")}. Bonus applies to the total overall score`}
-                        labels={[t("jury.categories.bonus")]}
-                        disabled={isQuestionDone}
+                        subtitle={`${getSectionWeight("overall_bonus")} ${t("jury.categories.bonus")}`}
+                        labels={[t("jury.categories.overall_bonus")]}
                         fields={["overall_bonus"]}
                         scores={{ overall_bonus: overallBonus }}
-                        onScoreChange={(_field, val) =>
-                          handleOverallBonusChange(val)
-                        }
+                        onScoreChange={(_field, value) => handleOverallBonusChange(value)}
+                        disabled={isQuestionDone || !participant?.isActive}
                         cols={1}
                       />
                     </>
