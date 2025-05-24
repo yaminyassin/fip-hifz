@@ -30,7 +30,7 @@
         "monitoring_type": 0,
         "private_settings": {}
     },
-    "current_scene": "countdown",
+    "current_scene": "participant-intro",
     "current_program_scene": "participant-intro",
     "scene_order": [
         {
@@ -77,9 +77,6 @@
         },
         {
             "name": "Intro animation"
-        },
-        {
-            "name": "countdown"
         }
     ],
     "name": "Hifz-scene 2",
@@ -108,14 +105,7 @@
         }
     ],
     "transitions": [],
-    "saved_projectors": [
-        {
-            "monitor": -1,
-            "type": 2,
-            "geometry": "AdnQywADAAAAAAfUAAACxQAACbMAAAPuAAAH1AAAAuEAAAmzAAAD7gAAAAAAAAAADIAAAAfUAAAC4QAACbMAAAPu",
-            "alwaysOnTopOverridden": false
-        }
-    ],
+    "saved_projectors": [],
     "current_transition": "Fade",
     "transition_duration": 300,
     "preview_locked": false,
@@ -147,6 +137,10 @@
         },
         "scripts-tool": []
     },
+    "resolution": {
+        "x": 1920,
+        "y": 1080
+    },
     "version": 2,
     "sources": [
         {
@@ -156,15 +150,15 @@
             "id": "text_ft2_source",
             "versioned_id": "text_ft2_source_v2",
             "settings": {
+                "text": "14",
+                "undo_uuid": "076d3b53-12fa-4ed6-a128-618ccba35f98",
                 "font": {
-                    "face": "Helvetica",
-                    "style": "Regular",
+                    "face": "Cera-Bold",
+                    "style": "☞",
                     "size": 144,
                     "flags": 0
                 },
-                "text": "15",
                 "color1": 4284367681,
-                "undo_uuid": "076d3b53-12fa-4ed6-a128-618ccba35f98",
                 "color2": 4284367681
             },
             "mixers": 0,
@@ -191,9 +185,11 @@
             "id": "browser_source",
             "versioned_id": "browser_source",
             "settings": {
-                "url": "https://fip-hifz.web.app/randomizer",
+                "url": "http://localhost:5173/randomizer",
                 "width": 1920,
-                "height": 1080
+                "height": 1080,
+                "fps_custom": true,
+                "fps": 60
             },
             "mixers": 255,
             "sync": 0,
@@ -226,8 +222,8 @@
             "versioned_id": "macos-avcapture",
             "settings": {
                 "device_name": "C505e HD Webcam",
-                "preset": "AVCaptureSessionPreset1280x720",
-                "device": "0x8400000046d08e4"
+                "device": "0x8400000046d08e4",
+                "preset": "AVCaptureSessionPreset1280x720"
             },
             "mixers": 255,
             "sync": 0,
@@ -279,125 +275,12 @@
         },
         {
             "prev_ver": 520093699,
-            "name": "countdown",
-            "uuid": "23516fcb-393d-440d-a4b7-c69501e9f765",
-            "id": "scene",
-            "versioned_id": "scene",
-            "settings": {
-                "id_counter": 2,
-                "custom_size": false,
-                "items": [
-                    {
-                        "name": "countdown-background",
-                        "source_uuid": "84ed666f-5e9b-4e2d-a9b5-67045a0d7ed1",
-                        "visible": true,
-                        "locked": false,
-                        "rot": 0.0,
-                        "scale_ref": {
-                            "x": 1920.0,
-                            "y": 1080.0
-                        },
-                        "align": 5,
-                        "bounds_type": 0,
-                        "bounds_align": 0,
-                        "bounds_crop": false,
-                        "crop_left": 0,
-                        "crop_top": 0,
-                        "crop_right": 0,
-                        "crop_bottom": 0,
-                        "id": 2,
-                        "group_item_backup": false,
-                        "pos": {
-                            "x": 0.0,
-                            "y": 0.0
-                        },
-                        "pos_rel": {
-                            "x": -1.7777777910232544,
-                            "y": -1.0
-                        },
-                        "scale": {
-                            "x": 1.0,
-                            "y": 1.0
-                        },
-                        "scale_rel": {
-                            "x": 1.0,
-                            "y": 1.0
-                        },
-                        "bounds": {
-                            "x": 0.0,
-                            "y": 0.0
-                        },
-                        "bounds_rel": {
-                            "x": 0.0,
-                            "y": 0.0
-                        },
-                        "scale_filter": "disable",
-                        "blend_method": "default",
-                        "blend_type": "normal",
-                        "show_transition": {
-                            "duration": 0
-                        },
-                        "hide_transition": {
-                            "duration": 0
-                        },
-                        "private_settings": {}
-                    }
-                ]
-            },
-            "mixers": 0,
-            "sync": 0,
-            "flags": 0,
-            "volume": 1.0,
-            "balance": 0.5,
-            "enabled": true,
-            "muted": false,
-            "push-to-mute": false,
-            "push-to-mute-delay": 0,
-            "push-to-talk": false,
-            "push-to-talk-delay": 0,
-            "hotkeys": {
-                "OBSBasic.SelectScene": [],
-                "libobs.show_scene_item.2": [],
-                "libobs.hide_scene_item.2": []
-            },
-            "deinterlace_mode": 0,
-            "deinterlace_field_order": 0,
-            "monitoring_type": 0,
-            "private_settings": {}
-        },
-        {
-            "prev_ver": 520093699,
-            "name": "countdown-background",
-            "uuid": "84ed666f-5e9b-4e2d-a9b5-67045a0d7ed1",
-            "id": "image_source",
-            "versioned_id": "image_source",
-            "settings": {
-                "file": "/Users/yaminyassin/Work/fip-hifz/obs/assets/intro/intro7.png"
-            },
-            "mixers": 0,
-            "sync": 0,
-            "flags": 0,
-            "volume": 1.0,
-            "balance": 0.5,
-            "enabled": true,
-            "muted": false,
-            "push-to-mute": false,
-            "push-to-mute-delay": 0,
-            "push-to-talk": false,
-            "push-to-talk-delay": 0,
-            "hotkeys": {},
-            "deinterlace_mode": 0,
-            "deinterlace_field_order": 0,
-            "monitoring_type": 0,
-            "private_settings": {}
-        },
-        {
-            "prev_ver": 520093699,
             "name": "country",
             "uuid": "851d0820-e954-414b-86bd-583d41bff53c",
             "id": "text_ft2_source",
             "versioned_id": "text_ft2_source_v2",
             "settings": {
+                "text": "Portugal",
                 "font": {
                     "face": "Cera-Regular",
                     "style": "☞",
@@ -405,8 +288,7 @@
                     "flags": 0
                 },
                 "color1": 4282658864,
-                "color2": 4282658864,
-                "text": "Portugal"
+                "color2": 4282658864
             },
             "mixers": 0,
             "sync": 0,
@@ -572,7 +454,6 @@
             "id": "slideshow",
             "versioned_id": "slideshow_v2",
             "settings": {
-                "slide_time": 5000,
                 "files": [
                     {
                         "value": "/Users/yaminyassin/Work/fip-hifz/obs/assets/intro/intro1.png",
@@ -609,9 +490,16 @@
                         "uuid": "39ae703c-9af9-48f2-b9a5-860c7242d839",
                         "selected": false,
                         "hidden": false
+                    },
+                    {
+                        "value": "/Users/yaminyassin/Work/fip-hifz/obs/assets/intro/intro7.png",
+                        "uuid": "87961c71-74e3-4738-a8b2-0cbacedb54a0",
+                        "selected": false,
+                        "hidden": false
                     }
                 ],
-                "transition_speed": 1000
+                "slide_time": 5000,
+                "transition_speed": 2000
             },
             "mixers": 0,
             "sync": 0,
@@ -643,7 +531,7 @@
             "id": "scene",
             "versioned_id": "scene",
             "settings": {
-                "id_counter": 1,
+                "id_counter": 2,
                 "custom_size": false,
                 "items": [
                     {
@@ -700,6 +588,61 @@
                             "duration": 0
                         },
                         "private_settings": {}
+                    },
+                    {
+                        "name": "timer",
+                        "source_uuid": "25731599-ac7c-4ea3-b837-33e4c4e0c6cf",
+                        "visible": true,
+                        "locked": false,
+                        "rot": 0.0,
+                        "scale_ref": {
+                            "x": 1920.0,
+                            "y": 1080.0
+                        },
+                        "align": 5,
+                        "bounds_type": 0,
+                        "bounds_align": 0,
+                        "bounds_crop": false,
+                        "crop_left": 0,
+                        "crop_top": 0,
+                        "crop_right": 0,
+                        "crop_bottom": 0,
+                        "id": 2,
+                        "group_item_backup": false,
+                        "pos": {
+                            "x": 597.0,
+                            "y": 864.5
+                        },
+                        "pos_rel": {
+                            "x": -0.67222219705581665,
+                            "y": 0.60092592239379883
+                        },
+                        "scale": {
+                            "x": 0.66700202226638794,
+                            "y": 0.66803276538848877
+                        },
+                        "scale_rel": {
+                            "x": 0.66700202226638794,
+                            "y": 0.66803276538848877
+                        },
+                        "bounds": {
+                            "x": 0.0,
+                            "y": 0.0
+                        },
+                        "bounds_rel": {
+                            "x": 0.0,
+                            "y": 0.0
+                        },
+                        "scale_filter": "disable",
+                        "blend_method": "default",
+                        "blend_type": "normal",
+                        "show_transition": {
+                            "duration": 0
+                        },
+                        "hide_transition": {
+                            "duration": 0
+                        },
+                        "private_settings": {}
                     }
                 ]
             },
@@ -717,7 +660,9 @@
             "hotkeys": {
                 "OBSBasic.SelectScene": [],
                 "libobs.show_scene_item.1": [],
-                "libobs.hide_scene_item.1": []
+                "libobs.hide_scene_item.1": [],
+                "libobs.show_scene_item.2": [],
+                "libobs.hide_scene_item.2": []
             },
             "deinterlace_mode": 0,
             "deinterlace_field_order": 0,
@@ -1135,15 +1080,15 @@
             "id": "text_ft2_source",
             "versioned_id": "text_ft2_source_v2",
             "settings": {
-                "color1": 4282658864,
-                "color2": 4282658864,
+                "text": "Ridhwan Teshin",
                 "font": {
-                    "face": "Helvetica",
-                    "style": "Regular",
+                    "face": "Cera-Bold",
+                    "style": "☞",
                     "size": 256,
                     "flags": 0
                 },
-                "text": "Ahmad"
+                "color1": 4282658864,
+                "color2": 4282658864
             },
             "mixers": 0,
             "sync": 0,
@@ -1169,15 +1114,15 @@
             "id": "text_ft2_source",
             "versioned_id": "text_ft2_source_v2",
             "settings": {
-                "color1": 4282658864,
-                "color2": 4282658864,
+                "text": "Omar",
                 "font": {
-                    "face": "Helvetica",
-                    "style": "Light",
+                    "face": "Cera-Regular",
+                    "style": "☞",
                     "size": 256,
                     "flags": 0
                 },
-                "text": "Agouda"
+                "color1": 4282658864,
+                "color2": 4282658864
             },
             "mixers": 0,
             "sync": 0,
@@ -1379,7 +1324,7 @@
             "id": "image_source",
             "versioned_id": "image_source",
             "settings": {
-                "file": "/Users/yaminyassin/Work/fip-hifz/obs/assets/patricipants/placeholder.png"
+                "file": "/Users/yaminyassin/Work/fip-hifz/obs/assets/patricipants/FUSSENE_TANEGA.jpg"
             },
             "mixers": 0,
             "sync": 0,
@@ -1484,20 +1429,20 @@
                         "id": 3,
                         "group_item_backup": false,
                         "pos": {
-                            "x": 74.0,
-                            "y": 80.0
+                            "x": 80.0,
+                            "y": 79.0
                         },
                         "pos_rel": {
-                            "x": -1.6407407522201538,
-                            "y": -0.85185182094573975
+                            "x": -1.6296296119689941,
+                            "y": -0.85370373725891113
                         },
                         "scale": {
-                            "x": 1.0,
-                            "y": 1.0
+                            "x": 1.0053004026412964,
+                            "y": 1.0054347515106201
                         },
                         "scale_rel": {
-                            "x": 1.0,
-                            "y": 1.0
+                            "x": 1.0053004026412964,
+                            "y": 1.0054347515106201
                         },
                         "bounds": {
                             "x": 0.0,
@@ -1539,12 +1484,12 @@
                         "id": 6,
                         "group_item_backup": false,
                         "pos": {
-                            "x": 963.0,
-                            "y": 477.0
+                            "x": 962.0,
+                            "y": 464.0
                         },
                         "pos_rel": {
-                            "x": 0.0055555556900799274,
-                            "y": -0.11666667461395264
+                            "x": 0.0037037036381661892,
+                            "y": -0.14074075222015381
                         },
                         "scale": {
                             "x": 0.64935064315795898,
@@ -1704,20 +1649,20 @@
                         "id": 13,
                         "group_item_backup": false,
                         "pos": {
-                            "x": 1478.0,
-                            "y": 522.0
+                            "x": 1483.0,
+                            "y": 470.0
                         },
                         "pos_rel": {
-                            "x": 0.9592592716217041,
-                            "y": -0.033333361148834229
+                            "x": 0.96851849555969238,
+                            "y": -0.12962961196899414
                         },
                         "scale": {
-                            "x": 0.20018281042575836,
-                            "y": 0.20000000298023224
+                            "x": 1.2620320320129395,
+                            "y": 1.2641509771347046
                         },
                         "scale_rel": {
-                            "x": 0.20018281042575836,
-                            "y": 0.20000000298023224
+                            "x": 1.2620320320129395,
+                            "y": 1.2641509771347046
                         },
                         "bounds": {
                             "x": 0.0,
@@ -1875,10 +1820,10 @@
                 "libobs.hide_scene_item.8": [],
                 "libobs.show_scene_item.13": [],
                 "libobs.hide_scene_item.13": [],
-                "libobs.show_scene_item.14": [],
-                "libobs.hide_scene_item.14": [],
                 "libobs.show_scene_item.16": [],
-                "libobs.hide_scene_item.16": []
+                "libobs.hide_scene_item.16": [],
+                "libobs.show_scene_item.14": [],
+                "libobs.hide_scene_item.14": []
             },
             "deinterlace_mode": 0,
             "deinterlace_field_order": 0,
@@ -2081,20 +2026,20 @@
                         "id": 13,
                         "group_item_backup": false,
                         "pos": {
-                            "x": 518.0,
-                            "y": 711.5
+                            "x": 473.0,
+                            "y": 708.0
                         },
                         "pos_rel": {
-                            "x": -0.81851851940155029,
-                            "y": 0.31763052940368652
+                            "x": -0.9018518328666687,
+                            "y": 0.31111109256744385
                         },
                         "scale": {
-                            "x": 0.19044062495231628,
-                            "y": 0.1906614750623703
+                            "x": 0.20344457030296326,
+                            "y": 0.20350876450538635
                         },
                         "scale_rel": {
-                            "x": 0.19044062495231628,
-                            "y": 0.1906614750623703
+                            "x": 0.20344457030296326,
+                            "y": 0.20350876450538635
                         },
                         "bounds": {
                             "x": 0.0,
@@ -2136,12 +2081,12 @@
                         "id": 3,
                         "group_item_backup": false,
                         "pos": {
-                            "x": 102.0,
-                            "y": 710.0
+                            "x": 97.0,
+                            "y": 690.0
                         },
                         "pos_rel": {
-                            "x": -1.5888888835906982,
-                            "y": 0.31481480598449707
+                            "x": -1.5981481075286865,
+                            "y": 0.27777779102325439
                         },
                         "scale": {
                             "x": 1.0,
@@ -2152,12 +2097,12 @@
                             "y": 1.0
                         },
                         "bounds": {
-                            "x": 406.0,
-                            "y": 51.0
+                            "x": 357.0,
+                            "y": 69.0
                         },
                         "bounds_rel": {
-                            "x": 0.75185185670852661,
-                            "y": 0.094444446265697479
+                            "x": 0.66111111640930176,
+                            "y": 0.12777778506278992
                         },
                         "scale_filter": "disable",
                         "blend_method": "default",
@@ -2246,20 +2191,20 @@
                         "id": 15,
                         "group_item_backup": false,
                         "pos": {
-                            "x": 173.0,
-                            "y": 839.0
+                            "x": 167.0,
+                            "y": 797.0
                         },
                         "pos_rel": {
-                            "x": -1.4574073553085327,
-                            "y": 0.5537036657333374
+                            "x": -1.4685184955596924,
+                            "y": 0.47592592239379883
                         },
                         "scale": {
-                            "x": 0.1911381334066391,
-                            "y": 0.18518517911434174
+                            "x": 0.97860962152481079,
+                            "y": 0.98113209009170532
                         },
                         "scale_rel": {
-                            "x": 0.1911381334066391,
-                            "y": 0.18518517911434174
+                            "x": 0.97860962152481079,
+                            "y": 0.98113209009170532
                         },
                         "bounds": {
                             "x": 0.0,
@@ -2301,20 +2246,20 @@
                         "id": 16,
                         "group_item_backup": false,
                         "pos": {
-                            "x": 467.0,
-                            "y": 781.0
+                            "x": 405.0,
+                            "y": 777.0
                         },
                         "pos_rel": {
-                            "x": -0.91296297311782837,
-                            "y": 0.4462963342666626
+                            "x": -1.0277777910232544,
+                            "y": 0.43888890743255615
                         },
                         "scale": {
-                            "x": 0.80975610017776489,
-                            "y": 0.81000000238418579
+                            "x": 0.88048779964447021,
+                            "y": 0.87999999523162842
                         },
                         "scale_rel": {
-                            "x": 0.80975610017776489,
-                            "y": 0.81000000238418579
+                            "x": 0.88048779964447021,
+                            "y": 0.87999999523162842
                         },
                         "bounds": {
                             "x": 0.0,
@@ -2350,16 +2295,16 @@
             "push-to-talk-delay": 0,
             "hotkeys": {
                 "OBSBasic.SelectScene": [],
-                "libobs.show_scene_item.3": [],
-                "libobs.hide_scene_item.3": [],
-                "libobs.show_scene_item.5": [],
-                "libobs.hide_scene_item.5": [],
-                "libobs.show_scene_item.10": [],
-                "libobs.hide_scene_item.10": [],
                 "libobs.show_scene_item.12": [],
                 "libobs.hide_scene_item.12": [],
+                "libobs.show_scene_item.10": [],
+                "libobs.hide_scene_item.10": [],
+                "libobs.show_scene_item.5": [],
+                "libobs.hide_scene_item.5": [],
                 "libobs.show_scene_item.13": [],
                 "libobs.hide_scene_item.13": [],
+                "libobs.show_scene_item.3": [],
+                "libobs.hide_scene_item.3": [],
                 "libobs.show_scene_item.14": [],
                 "libobs.hide_scene_item.14": [],
                 "libobs.show_scene_item.15": [],
@@ -2645,8 +2590,8 @@
             "versioned_id": "image_source",
             "settings": {
                 "undo_uuid": "c8bd6995-445e-48ed-a72a-4fcacff1cf97",
-                "linear_alpha": false,
-                "file": "/Users/yaminyassin/Work/fip-hifz/obs/assets/quran/001.png"
+                "file": "/Users/yaminyassin/Work/fip-hifz/obs/assets/quran/464.png",
+                "linear_alpha": false
             },
             "mixers": 0,
             "sync": 0,
@@ -2886,6 +2831,40 @@
         },
         {
             "prev_ver": 520093699,
+            "name": "timer",
+            "uuid": "25731599-ac7c-4ea3-b837-33e4c4e0c6cf",
+            "id": "text_ft2_source",
+            "versioned_id": "text_ft2_source_v2",
+            "settings": {
+                "text": "00:00:00",
+                "font": {
+                    "face": "CeraPRO-Bold",
+                    "style": "☞",
+                    "size": 256,
+                    "flags": 0
+                },
+                "color1": 4293786878,
+                "color2": 4293786878
+            },
+            "mixers": 0,
+            "sync": 0,
+            "flags": 0,
+            "volume": 1.0,
+            "balance": 0.5,
+            "enabled": true,
+            "muted": false,
+            "push-to-mute": false,
+            "push-to-mute-delay": 0,
+            "push-to-talk": false,
+            "push-to-talk-delay": 0,
+            "hotkeys": {},
+            "deinterlace_mode": 0,
+            "deinterlace_field_order": 0,
+            "monitoring_type": 0,
+            "private_settings": {}
+        },
+        {
+            "prev_ver": 520093699,
             "name": "Video Capture Device",
             "uuid": "87e07528-8a1a-4f1b-817f-15b9a0f27697",
             "id": "macos-avcapture",
@@ -2923,8 +2902,8 @@
             "id": "macos-avcapture",
             "versioned_id": "macos-avcapture",
             "settings": {
-                "device_name": "Blackmagic Design",
-                "device": "0x144000001edbbe55"
+                "device_name": "OsmoAction5pro",
+                "device": "0x210000005c68004"
             },
             "mixers": 255,
             "sync": 0,

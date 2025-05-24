@@ -64,13 +64,13 @@ const RandomNumber = React.memo(
     }, [number]);
 
     return (
-      <div className="w-full aspect-square flex flex-col items-center justify-center shadow-lg border border-[#5E618B80]">
-        <div className="flex flex-col items-center justify-center">
-          <div className="text-4xl text-[#3D435D] pb-4">
+      <div className="w-48 h-48 flex flex-col items-center justify-center shadow-lg border border-[#5E618B80] p-4">
+        <div className="flex flex-col items-center justify-center space-y-4 w-full">
+          <div className="text-2xl sm:text-3xl lg:text-4xl text-[#3D435D] text-center whitespace-nowrap">
             {t("randomizer.questionLabel", { number: index + 1 })}
           </div>
-          <div className="flex items-center justify-center rounded-lg border-2 border-[#9DA3AE] px-8 py-3 shadow-sm">
-            <Label className="font-cera text-3xl md:text-4xl font-bold text-[#2F3046]">
+          <div className="flex items-center justify-center rounded-lg border-2 border-[#9DA3AE] px-6 py-3 shadow-sm min-w-[100px]">
+            <Label className="font-cera text-2xl sm:text-3xl lg:text-4xl font-bold text-[#2F3046]">
               {displayNumber === 0 ? "..." : displayNumber}
             </Label>
           </div>
@@ -91,7 +91,7 @@ const RandomizerContentView = React.memo(
     isGeneratingAll,
     isLoadingButton, // Renamed for clarity in button context
     handleStartAllQuestions,
-    gridLayoutClass,
+    layoutClass,
     randomNumberComponents,
     t,
     categoryImageMap,
@@ -101,7 +101,7 @@ const RandomizerContentView = React.memo(
     isGeneratingAll: boolean;
     isLoadingButton: boolean;
     handleStartAllQuestions: () => void;
-    gridLayoutClass: string;
+    layoutClass: string;
     randomNumberComponents: JSX.Element[];
     t: TFunction;
     categoryImageMap: Record<string, string>;
@@ -125,7 +125,7 @@ const RandomizerContentView = React.memo(
 
           {questionNumbers.length > 0 ? (
             <div
-              className={`grid ${gridLayoutClass} gap-4 md:gap-6 w-full max-w-xl mx-auto flex-grow`}
+              className={`${layoutClass} gap-8  w-full max-w-4xl mx-auto flex-grow`}
             >
               {randomNumberComponents}
             </div>
@@ -331,13 +331,10 @@ const RouteComponent = () => {
     // generateRandomPage is stable as it's an import
   ]);
 
-  const gridLayoutClass = useMemo(() => {
-    const num = questionNumbers.length;
-    if (num === 0) return "grid-cols-1"; // Avoid error, provide default
-    if (num <= 2) return "grid-cols-1 sm:grid-cols-2";
-    if (num === 3) return "grid-cols-1 sm:grid-cols-3";
-    return "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"; // General fallback
-  }, [questionNumbers.length]);
+  const layoutClass = useMemo(() => {
+    // Use flexbox for horizontal flow instead of grid
+    return "flex flex-wrap justify-center";
+  }, []);
 
   const randomNumberComponents = useMemo(() => {
     return questionNumbers.map((number, index) => (
@@ -381,7 +378,7 @@ const RouteComponent = () => {
             isGeneratingAll={isGeneratingAll}
             isLoadingButton={isLoading || isParticipantLoading} // Pass combined loading state for button
             handleStartAllQuestions={handleStartAllQuestions}
-            gridLayoutClass={gridLayoutClass}
+            layoutClass={layoutClass}
             randomNumberComponents={randomNumberComponents}
             t={t}
             categoryImageMap={categoryImageMap}

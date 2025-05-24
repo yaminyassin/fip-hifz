@@ -11,19 +11,23 @@ export const useActiveParticipant = () => {
     const participantsRef = collection(firestore, "participants");
     const q = query(participantsRef, where("isActive", "==", true));
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      if (!querySnapshot.empty) {
-        const activeParticipant = {
-          id: querySnapshot.docs[0].id,
-          ...querySnapshot.docs[0].data()
-        } as Participant;
-        queryClient.setQueryData(["activeParticipant"], activeParticipant);
-      } else {
-        queryClient.setQueryData(["activeParticipant"], null);
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        if (!querySnapshot.empty) {
+          const activeParticipant = {
+            id: querySnapshot.docs[0].id,
+            ...querySnapshot.docs[0].data(),
+          } as Participant;
+          queryClient.setQueryData(["activeParticipant"], activeParticipant);
+        } else {
+          queryClient.setQueryData(["activeParticipant"], null);
+        }
+      },
+      (error) => {
+        console.error("Error fetching active participant:", error);
       }
-    }, (error) => {
-      console.error("Error fetching active participant:", error);
-    });
+    );
 
     return () => unsubscribe();
   }, [queryClient]);
