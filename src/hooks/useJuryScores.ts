@@ -16,8 +16,7 @@ const defaultScores: QuestionFields = {
   waqf_ibtida_meaning: 0,
   // Husn al-Ada
   husn_al_ada_score: 0,
-  // Bonus
-  overall_bonus: 0,
+  // Overall bonus is now in separate collection
 };
 
 export const useJuryScores = (

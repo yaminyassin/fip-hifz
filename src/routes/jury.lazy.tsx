@@ -1,5 +1,4 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
-import { useTranslation } from "react-i18next";
 
 import { useActiveParticipant } from "../hooks/useActiveParticipant";
 import { useJuryAuth } from "../hooks/useJuryAuth";
@@ -8,13 +7,14 @@ import { useJuryNavigation } from "../hooks/useJuryNavigation";
 import { JuryLogin } from "@/components/ui/JuryLogin";
 import { JuryHeader } from "../components/ui/JuryHeader";
 import { ScoreForm } from "../components/ui/ScoreForm";
-import { JuryBottomNav } from "../components/ui/JuryBottomNav";
+import { Button } from "@/components/shadcn/button";
+import { useTranslation } from "react-i18next";
 
 // This component has been moved to ../components/ui/ScoreCategory.tsx
 
 function RouteComponent() {
-  const { t } = useTranslation();
   const { data: participant } = useActiveParticipant();
+  const { t } = useTranslation();
 
   // Use custom hooks for modular functionality
   const {
@@ -53,6 +53,32 @@ function RouteComponent() {
     return <JuryLogin onLoginSuccess={handleLoginSuccess} />;
   }
 
+  // Check if jury member is active
+  if (juryMember && !juryMember.isActive) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-400">
+        <JuryHeader
+          participant={participant || null}
+          juryMember={juryMember || null}
+          onLogout={handleLogout}
+        />
+        <div className="flex flex-col items-center justify-center flex-grow">
+          <div className="bg-white rounded-lg shadow-lg p-8 max-w-md mx-4">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+              {t("jury.messages.inactiveTitle")}
+            </h2>
+            <p className="text-gray-600 mb-6">
+              {t("jury.messages.inactiveDesc")}
+            </p>
+            <Button onClick={handleLogout} variant="outline">
+              {t("jury.actions.logout")}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-400">
       <JuryHeader
@@ -73,18 +99,11 @@ function RouteComponent() {
               allScores={allScores}
               onScoreChange={handleScoreChange}
               onOverallBonusChange={handleOverallBonusChange}
+              onQuestionChange={handleQuestionChange}
+              onDone={handleDone}
+              isSaving={saveScoresMutation.isPending}
               setCurrentScores={setCurrentScores}
               defaultQuestionScores={defaultQuestionScores}
-            />
-
-            <JuryBottomNav
-              participant={participant}
-              selectedQuestion={selectedQuestion}
-              juryMember={juryMember}
-              handleQuestionChange={handleQuestionChange}
-              handleDone={handleDone}
-              isSaving={saveScoresMutation.isPending}
-              t={t}
             />
           </div>
         </div>

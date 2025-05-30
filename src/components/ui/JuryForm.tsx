@@ -63,7 +63,7 @@ export const JuryForm = ({ jury, onSuccess, onCancel }: JuryFormProps) => {
         await updateJury(jury.id, {
           name: formData.name,
         });
-        
+
         // No need to manually update the cache for updates
         // The Firestore listener in useJuryMembers will handle it
       } else {
@@ -72,8 +72,9 @@ export const JuryForm = ({ jury, onSuccess, onCancel }: JuryFormProps) => {
           name: formData.name,
           currentQuestion: 1,
           hasFinishedEvaluating: false,
+          isActive: true,
         });
-        
+
         // No need to manually add to the cache
         // The Firestore listener in useJuryMembers will add it
       }
@@ -93,31 +94,43 @@ export const JuryForm = ({ jury, onSuccess, onCancel }: JuryFormProps) => {
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-2">
         <h3 className="text-xl font-semibold">
-          {jury 
-            ? getFallbackText(t("admin.jury.editJury"), "Edit Jury Member") 
-            : getFallbackText(t("admin.jury.addNewJury"), "Add New Jury Member")}
+          {jury
+            ? getFallbackText(t("admin.jury.editJury"), "Edit Jury Member")
+            : getFallbackText(
+                t("admin.jury.addNewJury"),
+                "Add New Jury Member"
+              )}
         </h3>
         <p className="text-sm text-muted-foreground">
           {jury
-            ? getFallbackText(t("admin.jury.editJuryDescription"), "Update the details of the jury member.") 
-            : getFallbackText(t("admin.jury.addJuryDescription"), "Add a new jury member to the system.")}
+            ? getFallbackText(
+                t("admin.jury.editJuryDescription"),
+                "Update the details of the jury member."
+              )
+            : getFallbackText(
+                t("admin.jury.addJuryDescription"),
+                "Add a new jury member to the system."
+              )}
         </p>
       </div>
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="name">{getFallbackText(t("admin.jury.form.name"), "Name")}</Label>
+          <Label htmlFor="name">
+            {getFallbackText(t("admin.jury.form.name"), "Name")}
+          </Label>
           <Input
             id="name"
             name="name"
             value={formData.name}
             onChange={handleChange}
-            placeholder={getFallbackText(t("admin.jury.form.namePlaceholder"), "Enter jury member name")}
+            placeholder={getFallbackText(
+              t("admin.jury.form.namePlaceholder"),
+              "Enter jury member name"
+            )}
             className={errors.name ? "border-red-500" : ""}
           />
-          {errors.name && (
-            <p className="text-xs text-red-500">{errors.name}</p>
-          )}
+          {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
         </div>
       </div>
 
@@ -139,10 +152,10 @@ export const JuryForm = ({ jury, onSuccess, onCancel }: JuryFormProps) => {
           {isSubmitting
             ? t("common.saving", "Saving...")
             : jury
-            ? t("common.update", "Update")
-            : t("common.save", "Save")}
+              ? t("common.update", "Update")
+              : t("common.save", "Save")}
         </Button>
       </div>
     </form>
   );
-}; 
+};

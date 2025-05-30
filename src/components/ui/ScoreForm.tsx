@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { useCallback, useEffect } from "react";
 import { ScoreCategory } from "./ScoreCategory";
+import { QuestionTabs } from "./QuestionTabs";
 import { getSectionWeight } from "../../utils/scoreUtils";
 import { QuestionFields } from "../../models/models";
 
@@ -36,6 +37,9 @@ interface ScoreFormProps {
     selectedQuestion: number
   ) => void;
   onOverallBonusChange: (value: number) => void;
+  onQuestionChange: (questionNumber: number) => void;
+  onDone: () => void;
+  isSaving: boolean;
   setCurrentScores: (scores: QuestionOnlyFields) => void;
   defaultQuestionScores: QuestionOnlyFields;
 }
@@ -49,6 +53,9 @@ export const ScoreForm = ({
   allScores,
   onScoreChange,
   onOverallBonusChange,
+  onQuestionChange,
+  onDone,
+  isSaving,
   setCurrentScores,
   defaultQuestionScores,
 }: ScoreFormProps) => {
@@ -81,23 +88,25 @@ export const ScoreForm = ({
     juryMember.currentQuestion > selectedQuestion ||
     juryMember.hasFinishedEvaluating;
 
+  // Determine if overall bonus should be disabled (only disable if jury has finished evaluation)
+  const isOverallBonusDisabled =
+    juryMember.hasFinishedEvaluating || !participant.isActive;
+
   // Calculate Hifdh mistakes sum and apply warning class
   const hifdhWarningClass =
     currentScores.hifdh_judge_correction >= 4 ? "border-2 border-red-500" : "";
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-2xl font-bold mb-4">
-        {participant.assignedQuestions &&
-        participant.assignedQuestions.length > 0 ? (
-          <>
-            {t("jury.question")} {selectedQuestion} - {t("jury.page")}{" "}
-            {participant.assignedQuestions[selectedQuestion - 1]}
-          </>
-        ) : (
-          <span className="text-gray-600">{t("jury.noQuestionsAssigned")}</span>
-        )}
-      </h2>
+    <div className="space-y-2">
+      <QuestionTabs
+        participant={participant}
+        juryMember={juryMember}
+        selectedQuestion={selectedQuestion}
+        onQuestionChange={onQuestionChange}
+        onDone={onDone}
+        isSaving={isSaving}
+        disabled={isQuestionDone}
+      />
 
       <div className="grid grid-cols-2 gap-4">
         {/* Hifdh Section */}
@@ -159,18 +168,46 @@ export const ScoreForm = ({
         />
       </div>
 
-      {/* Overall Bonus Section */}
+      {/* Overall Bonus Section - Participant Level */}
       <ScoreCategory
         title={t("jury.categories.overall_bonus_title")}
-        subtitle={`${getSectionWeight("overall_bonus")} ${t("jury.categories.bonus")}`}
-        labels={[t("jury.categories.overall_bonus")]}
-        fields={["overall_bonus"]}
-        scores={{ overall_bonus: overallBonus }}
-        onScoreChange={(_field: keyof QuestionFields, value: number) =>
-          onOverallBonusChange(value)
+        subtitle={`${getSectionWeight("overall_bonus")} - ${t("jury.categories.participant_level_bonus")}`}
+        labels={[]}
+        fields={[]}
+        scores={{}}
+        onScoreChange={() => {}}
+        customInput={
+          <div className="flex flex-col items-center space-y-4">
+            <div className="w-full max-w-md">
+              <div className="space-y-2">
+                <label htmlFor="overall-bonus" className="text-sm font-medium">
+                  {t("jury.categories.overall_bonus")}
+                </label>
+                <input
+                  id="overall-bonus"
+                  type="range"
+                  min={0}
+                  max={5}
+                  step={1}
+                  value={overallBonus}
+                  onChange={(e) => onOverallBonusChange(Number(e.target.value))}
+                  disabled={isOverallBonusDisabled}
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>0</span>
+                  <span className="font-medium">{overallBonus}</span>
+                  <span>5</span>
+                </div>
+              </div>
+            </div>
+            <div className="text-center">
+              <span className="text-xs text-muted-foreground">
+                {t("jury.categories.overall_bonus_description")}
+              </span>
+            </div>
+          </div>
         }
-        disabled={isQuestionDone || !participant.isActive}
-        cols={1}
       />
     </div>
   );

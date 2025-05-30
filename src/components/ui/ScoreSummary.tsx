@@ -1,17 +1,33 @@
 import { Card } from "@/components/shadcn/card";
 import { Progress } from "@/components/shadcn/progress";
 import { QuestionFields } from "@/models/models";
-import { calculateFinalScore, CalculatedScoreResult, BASE_SCORE_PER_QUESTION, MAX_HIFDH_DEDUCTION, MAX_TAJWEED_DEDUCTION, MAX_WAQF_IBTIDA_DEDUCTION, MAX_HUSN_AL_ADA_DEDUCTION, TOTAL_OVERALL_BONUS_CAP } from "@/utils/scoreUtils";
+import {
+  calculateFinalScore,
+  CalculatedScoreResult,
+  BASE_SCORE_PER_QUESTION,
+  MAX_HIFDH_DEDUCTION,
+  MAX_TAJWEED_DEDUCTION,
+  MAX_WAQF_IBTIDA_DEDUCTION,
+  MAX_HUSN_AL_ADA_DEDUCTION,
+  TOTAL_OVERALL_BONUS_CAP,
+} from "@/utils/scoreUtils";
 import { useTranslation } from "react-i18next";
 
 interface ScoreSummaryProps {
   allScores: { [questionNumber: number]: QuestionFields };
+  overallBonus?: number;
 }
 
-export const ScoreSummary = ({ allScores }: ScoreSummaryProps) => {
+export const ScoreSummary = ({
+  allScores,
+  overallBonus,
+}: ScoreSummaryProps) => {
   const { t } = useTranslation();
 
-  const result: CalculatedScoreResult = calculateFinalScore(allScores as any);
+  const result: CalculatedScoreResult = calculateFinalScore(
+    allScores,
+    overallBonus
+  );
   const { percentage, breakdownBySection } = result;
 
   const formattedPercentage = percentage.toFixed(1);
@@ -114,7 +130,9 @@ export const ScoreSummary = ({ allScores }: ScoreSummaryProps) => {
               </span>
             </div>
             <Progress
-              value={(breakdownBySection.waqf / MAX_WAQF_IBTIDA_DEDUCTION) * 100}
+              value={
+                (breakdownBySection.waqf / MAX_WAQF_IBTIDA_DEDUCTION) * 100
+              }
               className="h-1.5 bg-yellow-100"
               indicatorClassName="bg-yellow-600"
             />
@@ -133,7 +151,10 @@ export const ScoreSummary = ({ allScores }: ScoreSummaryProps) => {
               </span>
             </div>
             <Progress
-              value={(breakdownBySection.husn_al_ada / MAX_HUSN_AL_ADA_DEDUCTION) * 100}
+              value={
+                (breakdownBySection.husn_al_ada / MAX_HUSN_AL_ADA_DEDUCTION) *
+                100
+              }
               className="h-1.5 bg-red-100"
               indicatorClassName="bg-red-600"
             />
@@ -152,7 +173,10 @@ export const ScoreSummary = ({ allScores }: ScoreSummaryProps) => {
               </span>
             </div>
             <Progress
-              value={(breakdownBySection.overall_bonus / TOTAL_OVERALL_BONUS_CAP) * 100}
+              value={
+                (breakdownBySection.overall_bonus / TOTAL_OVERALL_BONUS_CAP) *
+                100
+              }
               className="h-1.5 bg-purple-100"
               indicatorClassName="bg-purple-600"
             />

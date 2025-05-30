@@ -1,7 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { collection, onSnapshot, query } from "firebase/firestore";
+import {
+  collection,
+  onSnapshot,
+  query,
+  QuerySnapshot,
+  DocumentData,
+} from "firebase/firestore";
 import { firestore } from "@/main";
-import { Participant, QuestionFields } from "@/models/models";
+import { Participant, QuestionFields, OverallBonus } from "@/models/models";
 import { useEffect } from "react";
 import {
   calculateAverageScores,
@@ -25,6 +31,7 @@ export type ParticipantWithScores = Participant & {
     average: { [questionNumber: number]: QuestionFields };
     juryIds: string[];
   };
+  overallBonuses: Record<string, number>; // juryId -> overallBonus value
 };
 
 export const useParticipants = () => {
@@ -46,6 +53,7 @@ export const useParticipants = () => {
               average: {},
               juryIds: [],
             },
+            overallBonuses: {},
           } as ParticipantWithScores;
         });
 
@@ -56,7 +64,24 @@ export const useParticipants = () => {
         const scoresRef = collection(firestore, "scores");
         const scoresQuery = query(scoresRef);
 
+        // Set up real-time listener for overall bonuses
+        const overallBonusesRef = collection(firestore, "overallBonuses");
+        const overallBonusesQuery = query(overallBonusesRef);
+
         const scoresUnsubscribe = onSnapshot(scoresQuery, (scoresSnapshot) => {
+          updateParticipantsWithScores(scoresSnapshot);
+        });
+
+        const overallBonusesUnsubscribe = onSnapshot(
+          overallBonusesQuery,
+          (overallBonusesSnapshot) => {
+            updateParticipantsWithOverallBonuses(overallBonusesSnapshot);
+          }
+        );
+
+        const updateParticipantsWithScores = (
+          scoresSnapshot: QuerySnapshot<DocumentData>
+        ) => {
           // Get current participants from cache
           const currentParticipants =
             queryClient.getQueryData<ParticipantWithScores[]>([
@@ -107,7 +132,7 @@ export const useParticipants = () => {
                       createEmptyQuestionFields();
                   }
 
-                  // Merge in the scores
+                  // Merge in the scores (excluding overall_bonus which is now in separate collection)
                   Object.keys(scores).forEach((field) => {
                     const fieldKey = field as keyof QuestionFields;
                     if (typeof scores[fieldKey] === "number") {
@@ -134,9 +159,44 @@ export const useParticipants = () => {
 
           // Update React Query cache with the updated scores
           queryClient.setQueryData(["participants"], updatedParticipants);
-        });
+        };
 
-        return () => scoresUnsubscribe();
+        const updateParticipantsWithOverallBonuses = (
+          overallBonusesSnapshot: QuerySnapshot<DocumentData>
+        ) => {
+          // Get current participants from cache
+          const currentParticipants =
+            queryClient.getQueryData<ParticipantWithScores[]>([
+              "participants",
+            ]) || [];
+
+          // Create a new array with updated overall bonuses
+          const updatedParticipants = currentParticipants.map((participant) => {
+            const overallBonuses: Record<string, number> = {};
+
+            // Process overall bonuses for this participant
+            overallBonusesSnapshot.docs.forEach((bonusDoc) => {
+              const bonusData = bonusDoc.data() as OverallBonus;
+
+              if (bonusData.participantId === participant.id) {
+                overallBonuses[bonusData.juryId] = bonusData.overallBonus;
+              }
+            });
+
+            return {
+              ...participant,
+              overallBonuses,
+            };
+          });
+
+          // Update React Query cache with the updated overall bonuses
+          queryClient.setQueryData(["participants"], updatedParticipants);
+        };
+
+        return () => {
+          scoresUnsubscribe();
+          overallBonusesUnsubscribe();
+        };
       }
     );
 

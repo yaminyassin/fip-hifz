@@ -16,6 +16,7 @@ import { Route as rootRoute } from './routes/__root'
 
 // Create Virtual Routes
 
+const RandomizerAudienceLazyImport = createFileRoute('/randomizer-audience')()
 const RandomizerLazyImport = createFileRoute('/randomizer')()
 const ParticipantsLazyImport = createFileRoute('/participants')()
 const JuryLazyImport = createFileRoute('/jury')()
@@ -24,6 +25,14 @@ const AdminLazyImport = createFileRoute('/admin')()
 const IndexLazyImport = createFileRoute('/')()
 
 // Create/Update Routes
+
+const RandomizerAudienceLazyRoute = RandomizerAudienceLazyImport.update({
+  id: '/randomizer-audience',
+  path: '/randomizer-audience',
+  getParentRoute: () => rootRoute,
+} as any).lazy(() =>
+  import('./routes/randomizer-audience.lazy').then((d) => d.Route),
+)
 
 const RandomizerLazyRoute = RandomizerLazyImport.update({
   id: '/randomizer',
@@ -107,6 +116,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RandomizerLazyImport
       parentRoute: typeof rootRoute
     }
+    '/randomizer-audience': {
+      id: '/randomizer-audience'
+      path: '/randomizer-audience'
+      fullPath: '/randomizer-audience'
+      preLoaderRoute: typeof RandomizerAudienceLazyImport
+      parentRoute: typeof rootRoute
+    }
   }
 }
 
@@ -119,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/jury': typeof JuryLazyRoute
   '/participants': typeof ParticipantsLazyRoute
   '/randomizer': typeof RandomizerLazyRoute
+  '/randomizer-audience': typeof RandomizerAudienceLazyRoute
 }
 
 export interface FileRoutesByTo {
@@ -128,6 +145,7 @@ export interface FileRoutesByTo {
   '/jury': typeof JuryLazyRoute
   '/participants': typeof ParticipantsLazyRoute
   '/randomizer': typeof RandomizerLazyRoute
+  '/randomizer-audience': typeof RandomizerAudienceLazyRoute
 }
 
 export interface FileRoutesById {
@@ -138,6 +156,7 @@ export interface FileRoutesById {
   '/jury': typeof JuryLazyRoute
   '/participants': typeof ParticipantsLazyRoute
   '/randomizer': typeof RandomizerLazyRoute
+  '/randomizer-audience': typeof RandomizerAudienceLazyRoute
 }
 
 export interface FileRouteTypes {
@@ -149,8 +168,16 @@ export interface FileRouteTypes {
     | '/jury'
     | '/participants'
     | '/randomizer'
+    | '/randomizer-audience'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/big-screen' | '/jury' | '/participants' | '/randomizer'
+  to:
+    | '/'
+    | '/admin'
+    | '/big-screen'
+    | '/jury'
+    | '/participants'
+    | '/randomizer'
+    | '/randomizer-audience'
   id:
     | '__root__'
     | '/'
@@ -159,6 +186,7 @@ export interface FileRouteTypes {
     | '/jury'
     | '/participants'
     | '/randomizer'
+    | '/randomizer-audience'
   fileRoutesById: FileRoutesById
 }
 
@@ -169,6 +197,7 @@ export interface RootRouteChildren {
   JuryLazyRoute: typeof JuryLazyRoute
   ParticipantsLazyRoute: typeof ParticipantsLazyRoute
   RandomizerLazyRoute: typeof RandomizerLazyRoute
+  RandomizerAudienceLazyRoute: typeof RandomizerAudienceLazyRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -178,6 +207,7 @@ const rootRouteChildren: RootRouteChildren = {
   JuryLazyRoute: JuryLazyRoute,
   ParticipantsLazyRoute: ParticipantsLazyRoute,
   RandomizerLazyRoute: RandomizerLazyRoute,
+  RandomizerAudienceLazyRoute: RandomizerAudienceLazyRoute,
 }
 
 export const routeTree = rootRoute
@@ -195,7 +225,8 @@ export const routeTree = rootRoute
         "/big-screen",
         "/jury",
         "/participants",
-        "/randomizer"
+        "/randomizer",
+        "/randomizer-audience"
       ]
     },
     "/": {
@@ -215,6 +246,9 @@ export const routeTree = rootRoute
     },
     "/randomizer": {
       "filePath": "randomizer.lazy.tsx"
+    },
+    "/randomizer-audience": {
+      "filePath": "randomizer-audience.lazy.tsx"
     }
   }
 }

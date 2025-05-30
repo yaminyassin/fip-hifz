@@ -86,6 +86,8 @@
       "decrease": "Diminuir pontuação",
       "increase": "Aumentar pontuação"
     },
+    "selectQuestion": "Selecionar Questão",
+    "currentQuestion": "Questão Atual",
     "messages": {
       "evaluationComplete": "Avaliação Concluída",
       "errorSavingScores": "Ocorreu um erro ao salvar as pontuações. Por favor, tente novamente.",
@@ -101,7 +103,10 @@
       "scoresSavedTitle": "[FALTA] jury.messages.scoresSavedTitle",
       "scoresSavedNavDesc": "[FALTA] jury.messages.scoresSavedNavDesc",
       "errorSavingScoresNav": "[FALTA] jury.messages.errorSavingScoresNav",
-      "noData": "Nenhum dado para exibir para a seleção atual."
+      "noData": "Nenhum dado para exibir para a seleção atual.",
+      "inactiveTitle": "Acesso de Avaliação Desabilitado",
+      "inactiveDesc": "Seu acesso de avaliação foi temporariamente desabilitado. Entre em contato com o administrador.",
+      "contactAdmin": "Entrar em Contato com Administrador"
     },
     "questionBreakdown": "Detalhamento por Questão"
   },
@@ -120,7 +125,9 @@
       "success": "Sucesso",
       "successDesc": "A questão foi gerada e atribuída",
       "error": "Erro",
-      "errorDesc": "Falha ao atualizar a questão"
+      "errorDesc": "Falha ao atualizar a questão",
+      "scoresInitialized": "Pontuações inicializadas para todos os membros ativos do júri",
+      "scoresInitializationError": "Erro ao inicializar pontuações para membros do júri"
     }
   },
   "participants": {
@@ -218,12 +225,24 @@
     "table": {
       "juryName": "Nome do Jurado",
       "currentQuestion": "Questão Atual",
-      "status": "Status"
+      "status": "Status",
+      "evaluationStatus": "Status de Avaliação",
+      "activeStatus": "Status Ativo",
+      "actions": "Ações",
+      "juryMembers": "Membros do Júri"
     },
     "actions": {
       "save": "Salvar Alterações",
       "prevQuestion": "Questão Anterior",
-      "nextQuestion": "Próxima Questão"
+      "nextQuestion": "Próxima Questão",
+      "setAllActive": "Definir Todos como Ativos",
+      "activate": "Ativar",
+      "deactivate": "Desativar",
+      "toggle": "Alternar"
+    },
+    "status": {
+      "active": "Ativo",
+      "inactive": "Inativo"
     },
     "messages": {},
     "tabs": {
@@ -349,6 +368,7 @@
     "close": "Fechar",
     "reset": "Redefinir",
     "update": "Atualizar",
+    "updating": "Atualizando...",
     "saving": "Salvando...",
     "active": "Ativo",
     "inactive": "Inativo",
@@ -386,6 +406,10 @@
     "category_d": "Categoria D (D1 & D2)",
     "byJury": "Filtrar por Júri",
     "selectJury": "Selecionar Júri/Média"
+  },
+  "tabs": {
+    "overview": "Visão Geral",
+    "perQuestion": "Por Pergunta"
   },
   "actions": {
     "setActive": "Definir como Ativo",

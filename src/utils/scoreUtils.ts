@@ -11,7 +11,7 @@ export const defaultScores: QuestionFields = {
   waqf_ibtida_incorrect: 0,
   waqf_ibtida_meaning: 0,
   husn_al_ada_score: 0, // Count of mistakes
-  overall_bonus: 0,
+  // overall_bonus is now in separate collection
 };
 
 // Scoring constants
@@ -33,8 +33,8 @@ export const MAX_WAQF_IBTIDA_DEDUCTION = 10;
 export const HUSN_AL_ADA_MISTAKE_PENALTY = 1;
 export const MAX_HUSN_AL_ADA_DEDUCTION = 10;
 
-export const OVERALL_BONUS_CAP_PER_QUESTION = 3; // Max bonus points per question
-export const TOTAL_OVERALL_BONUS_CAP = 3; // Max total bonus points added to final average
+export const OVERALL_BONUS_CAP_PER_QUESTION = 5; // Max bonus points per question
+export const TOTAL_OVERALL_BONUS_CAP = 5; // Max total bonus points added to final average
 
 export interface ScoreBreakdown {
   hifdh: number; // Average points achieved in Hifdh (e.g., 50 - avg_deduction)
@@ -45,16 +45,16 @@ export interface ScoreBreakdown {
 }
 
 export interface CalculatedScoreResult {
-  percentage: number;
+  percentage: number; // Actually total points (0-105), keeping name for compatibility
   breakdownBySection: ScoreBreakdown;
 }
 
-const calculateScoreLogic = (allScores: {
-  [questionNumber: number]: QuestionFields;
-}): CalculatedScoreResult => {
+const calculateScoreLogic = (
+  allScores: { [questionNumber: number]: QuestionFields },
+  participantBonusOverride?: number // New parameter for participant-level bonus
+): CalculatedScoreResult => {
   let totalPointsSum = 0;
   let validQuestionCount = 0;
-  let totalOverallBonusSum = 0;
 
   // For breakdown: sum of (max_deductible_points - actual_deduction_for_category) for each question
   let totalHifdhContribution = 0;
@@ -78,6 +78,7 @@ const calculateScoreLogic = (allScores: {
   }
 
   questionScoresArray.forEach((scores) => {
+    // Each question starts with 100 points
     let questionPoints = BASE_SCORE_PER_QUESTION;
     let isVoid = false;
 
@@ -110,7 +111,8 @@ const calculateScoreLogic = (allScores: {
         tajweedDeduction
       );
       questionPoints -= cappedTajweedDeduction;
-      totalTajweedContribution += MAX_TAJWEED_DEDUCTION - cappedTajweedDeduction;
+      totalTajweedContribution +=
+        MAX_TAJWEED_DEDUCTION - cappedTajweedDeduction;
 
       // --- 3. Waqf & Ibtida ---
       const waqfDeduction =
@@ -140,93 +142,99 @@ const calculateScoreLogic = (allScores: {
       // Husn Al-Ada deduction is 0 for a voided question in terms of impact
     }
 
-    // Ensure question points are not negative
+    // Ensure question points are not negative (minimum 0 per question)
     questionPoints = Math.max(0, questionPoints);
 
-    // --- Accumulate Scores and Bonus ---
-    // Overall bonus is per question, capped at OVERALL_BONUS_CAP_PER_QUESTION
-    const questionOverallBonus = Math.min(
-      scores.overall_bonus || 0,
-      OVERALL_BONUS_CAP_PER_QUESTION
-    );
-    totalOverallBonusSum += questionOverallBonus;
-
+    // --- Accumulate Question Scores ---
+    // Only count non-voided questions for the average
     if (!isVoid) {
       totalPointsSum += questionPoints;
       validQuestionCount++;
     }
-    // If void, it does not count towards valid questions for averaging points.
-    // However, its overall_bonus IS counted towards the total bonus sum.
   });
 
-  // --- Calculate Final Average and Bonus ---
-  const averagePointScorePerQuestion =
+  // --- Calculate Final Score: Average of Question Scores + Overall Bonus ---
+  // Step 1: Calculate average of question scores
+  const averageQuestionScore =
     validQuestionCount > 0 ? totalPointsSum / validQuestionCount : 0;
 
-  const cappedTotalOverallBonus = Math.min(
-    TOTAL_OVERALL_BONUS_CAP,
-    totalOverallBonusSum
+  // Step 2: Add overall bonus (participant-level)
+  let overallBonusPoints = 0;
+  if (participantBonusOverride !== undefined) {
+    overallBonusPoints = Math.min(
+      TOTAL_OVERALL_BONUS_CAP,
+      participantBonusOverride
+    );
+  }
+
+  // Step 3: Final total score = average question score + overall bonus
+  const finalTotalScore = averageQuestionScore + overallBonusPoints;
+
+  // Ensure final score is within reasonable bounds (0 to 105 max)
+  const maxPossibleScore = BASE_SCORE_PER_QUESTION + TOTAL_OVERALL_BONUS_CAP;
+  const cappedFinalScore = Math.max(
+    0,
+    Math.min(maxPossibleScore, finalTotalScore)
   );
 
-  // Final score is the average points per question + capped total bonus
-  // Since base is 100, this average point score can be directly used as percentage component
-  let finalPercentage = averagePointScorePerQuestion + cappedTotalOverallBonus;
-
-  // Ensure final percentage is within reasonable bounds (e.g., 0 to 100 + max bonus)
-  finalPercentage = Math.max(0, finalPercentage);
-  // If all questions were void, averagePointScorePerQuestion will be 0. Bonus can still be added.
-
-  // --- Calculate Average Breakdown ---
-  // For Hifz, Tajweed, Waqf: average points *achieved* in that category
-  // For Husn Al-Ada: average points *deducted*
-  // Overall Bonus: total bonus *added*
-  const numQuestionsForBreakdown = questionScoresArray.length > 0 ? questionScoresArray.length : 1; // Avoid division by zero for breakdown if all questions voided
+  // --- Calculate Average Breakdown for Display ---
+  // For breakdown visualization: average contribution per category
+  const numQuestionsForBreakdown =
+    questionScoresArray.length > 0 ? questionScoresArray.length : 1;
 
   const avgBreakdown: ScoreBreakdown = {
     hifdh:
-      Math.round((totalHifdhContribution / numQuestionsForBreakdown) * 100) / 100,
+      Math.round((totalHifdhContribution / numQuestionsForBreakdown) * 100) /
+      100,
     tajweed:
-      Math.round((totalTajweedContribution / numQuestionsForBreakdown) * 100) / 100,
+      Math.round((totalTajweedContribution / numQuestionsForBreakdown) * 100) /
+      100,
     waqf:
-      Math.round((totalWaqfContribution / numQuestionsForBreakdown) * 100) / 100,
-    husn_al_ada: // This is average DEDUCTION
-      Math.round((totalHusnAlAdaDeduction / numQuestionsForBreakdown) * 100) / 100,
-    overall_bonus: Math.round(cappedTotalOverallBonus * 100) / 100,
+      Math.round((totalWaqfContribution / numQuestionsForBreakdown) * 100) /
+      100,
+    // This is average DEDUCTION per question
+    husn_al_ada:
+      Math.round((totalHusnAlAdaDeduction / numQuestionsForBreakdown) * 100) /
+      100,
+    overall_bonus: Math.round(overallBonusPoints * 100) / 100,
   };
-  
-  // Final percentage can exceed 100 due to bonus, but not above 100 + TOTAL_OVERALL_BONUS_CAP
-  // It also shouldn't be negative.
-  const maxPossibleScore = BASE_SCORE_PER_QUESTION + TOTAL_OVERALL_BONUS_CAP;
 
   return {
-    percentage: Math.max(0, Math.min(maxPossibleScore, Math.round(finalPercentage * 100) / 100)),
+    percentage: Math.round(cappedFinalScore * 100) / 100,
     breakdownBySection: avgBreakdown,
   };
 };
 
 /**
- * Calculate the final average score for a participant based on scores from all questions.
+ * Calculate the final total score for a participant based on scores from all questions.
+ * Returns: (average of question scores) + overall bonus
+ * Each question can have a maximum of 100 points, overall bonus can add up to 5 points.
+ * Final result range: 0-105 points
  */
-export const calculateFinalScore = (allScores: {
-  [questionNumber: string]: QuestionFields; // Changed key to string to match common usage
-  // Ensure this matches how it's called, typically object keys are strings even if numbers
-}): CalculatedScoreResult => {
-   const normalizedScores: { [questionNumber: number]: QuestionFields } = {};
-   for (const key in allScores) {
+export const calculateFinalScore = (
+  allScores: {
+    [questionNumber: string]: QuestionFields;
+  },
+  participantBonusOverride?: number // Participant-level overall bonus (0-5 points)
+): CalculatedScoreResult => {
+  const normalizedScores: { [questionNumber: number]: QuestionFields } = {};
+  for (const key in allScores) {
     if (Object.prototype.hasOwnProperty.call(allScores, key)) {
       normalizedScores[Number(key)] = allScores[key];
     }
   }
-  return calculateScoreLogic(normalizedScores);
+  return calculateScoreLogic(normalizedScores, participantBonusOverride);
 };
 
 /**
  * Calculates the final score for a single jury's evaluation of a participant.
+ * Returns: (average of question scores) + overall bonus
  */
-export const calculateSingleJuryEvaluationScore = (allScores: {
-  [questionNumber: number]: QuestionFields; // Kept as number as it's often internally managed this way
-}): CalculatedScoreResult => {
-  return calculateScoreLogic(allScores);
+export const calculateSingleJuryEvaluationScore = (
+  allScores: { [questionNumber: number]: QuestionFields },
+  participantBonusOverride?: number // Participant-level overall bonus (0-5 points)
+): CalculatedScoreResult => {
+  return calculateScoreLogic(allScores, participantBonusOverride);
 };
 
 /**
@@ -243,7 +251,7 @@ export const getErrorPenalty = (errorType: keyof QuestionFields): string => {
     waqf_ibtida_incorrect: `-${WAQF_IBTIDA_INCORRECT_PENALTY} pts`,
     waqf_ibtida_meaning: `-${WAQF_IBTIDA_MEANING_PENALTY} pts`,
     husn_al_ada_score: `-${HUSN_AL_ADA_MISTAKE_PENALTY} pt / mistake`, // husn_al_ada_score is count of mistakes
-    overall_bonus: `+(0-${OVERALL_BONUS_CAP_PER_QUESTION}) pts`, // Bonus per question
+    // overall_bonus removed as it's no longer part of QuestionFields
   };
 
   return penalties[errorType] || "";
@@ -261,7 +269,7 @@ export const getSectionWeight = (
     tajweed: `Max ${MAX_TAJWEED_DEDUCTION} pts deduction`,
     waqf: `Max ${MAX_WAQF_IBTIDA_DEDUCTION} pts deduction`,
     husn_al_ada: `Max ${MAX_HUSN_AL_ADA_DEDUCTION} pts deduction`, // Max deduction for Husn Al-Ada
-    overall_bonus: `+${TOTAL_OVERALL_BONUS_CAP} pts max total`, // Max total bonus to final score
+    overall_bonus: `+${TOTAL_OVERALL_BONUS_CAP} pts (participant total)`, // Updated to reflect participant-level bonus
   };
 
   return weights[section] || "";
@@ -271,21 +279,23 @@ export const getSectionWeight = (
 // and calculate the average score from multiple juries.
 export const calculateJuryAverageScore = (
   participantRawScores: RawScoreData[] // This is an array of ALL score documents for a participant
-): CalculatedScoreResult & { juryCount: number } | null => {
+): (CalculatedScoreResult & { juryCount: number }) | null => {
   if (!participantRawScores || participantRawScores.length === 0) {
     return null;
   }
 
   // Group scores by juryId
-  const scoresByJury: { [juryId: string]: { [questionNumber: number]: QuestionFields } } = {};
-  participantRawScores.forEach(rawScore => {
+  const scoresByJury: {
+    [juryId: string]: { [questionNumber: number]: QuestionFields };
+  } = {};
+  participantRawScores.forEach((rawScore) => {
     if (!scoresByJury[rawScore.juryId]) {
       scoresByJury[rawScore.juryId] = {};
     }
     // Ensure scores are complete, fill with defaults if necessary
     scoresByJury[rawScore.juryId][rawScore.questionNumber] = {
-        ...defaultScores, // Start with defaults
-        ...rawScore.scores, // Override with actual scores
+      ...defaultScores, // Start with defaults
+      ...rawScore.scores, // Override with actual scores
     };
   });
 
@@ -311,12 +321,12 @@ export const calculateJuryAverageScore = (
     waqf: 0,
     husn_al_ada: 0,
     overall_bonus: 0, // This will be the capped bonus from one of the jury calculations, then averaged.
-                      // Or, more accurately, average the final percentages that already include the bonus.
+    // Or, more accurately, average the final percentages that already include the bonus.
   };
 
   let totalOverallBonusApplied = 0; // Sum of capped bonuses applied by each jury
 
-  juryIds.forEach(juryId => {
+  juryIds.forEach((juryId) => {
     const juryScores = scoresByJury[juryId];
     // Calculate score for this specific jury
     const juryResult = calculateSingleJuryEvaluationScore(juryScores);
@@ -330,7 +340,6 @@ export const calculateJuryAverageScore = (
     // The `overall_bonus` in `juryResult.breakdownBySection` is the capped bonus for *that jury's set of questions*.
     // We need to average these capped bonuses.
     totalOverallBonusApplied += juryResult.breakdownBySection.overall_bonus;
-
   });
 
   const juryCount = juryIds.length;
@@ -340,14 +349,19 @@ export const calculateJuryAverageScore = (
     hifdh: Math.round((aggregateBreakdown.hifdh / juryCount) * 100) / 100,
     tajweed: Math.round((aggregateBreakdown.tajweed / juryCount) * 100) / 100,
     waqf: Math.round((aggregateBreakdown.waqf / juryCount) * 100) / 100,
-    husn_al_ada: Math.round((aggregateBreakdown.husn_al_ada / juryCount) * 100) / 100, // Average of average deductions
-    overall_bonus: Math.round((totalOverallBonusApplied / juryCount) * 100) / 100, // Average of bonuses applied by each jury
+    husn_al_ada:
+      Math.round((aggregateBreakdown.husn_al_ada / juryCount) * 100) / 100, // Average of average deductions
+    overall_bonus:
+      Math.round((totalOverallBonusApplied / juryCount) * 100) / 100, // Average of bonuses applied by each jury
   };
-  
+
   const maxPossibleScore = BASE_SCORE_PER_QUESTION + TOTAL_OVERALL_BONUS_CAP;
 
   return {
-    percentage: Math.max(0, Math.min(maxPossibleScore, Math.round(averagePercentage * 100) / 100)),
+    percentage: Math.max(
+      0,
+      Math.min(maxPossibleScore, Math.round(averagePercentage * 100) / 100)
+    ),
     breakdownBySection: averageBreakdown,
     juryCount: juryCount,
   };
@@ -359,5 +373,5 @@ export const calculateJuryAverageScore = (
  * @returns True if scores exist, false otherwise.
  */
 export const hasScores = (participantRawScores: RawScoreData[]): boolean => {
-    return participantRawScores && participantRawScores.length > 0;
+  return participantRawScores && participantRawScores.length > 0;
 };

@@ -33,7 +33,7 @@ export const ScoreInput = ({
   };
 
   return (
-    <Card className={`w-36 p-2 ${disabled ? 'opacity-60' : ''}`}>
+    <Card className={`w-36 p-2 ${disabled ? "opacity-60" : ""}`}>
       <div className="flex flex-col gap-y-4 justify-center">
         <div className="flex text-center justify-center w-full">
           <Label className="flex items-center justify-center px-1 text-muted-foreground">
@@ -42,7 +42,7 @@ export const ScoreInput = ({
         </div>
         <div className="flex justify-center flex-row gap-2">
           <Button
-            size="sm"
+            size="default"
             onClick={handleDecrement}
             disabled={value <= 0 || disabled}
             aria-label={t("jury.actions.decrease")}
@@ -57,7 +57,7 @@ export const ScoreInput = ({
           </div>
 
           <Button
-            size="sm"
+            size="default"
             onClick={handleIncrement}
             disabled={value >= 10 || disabled}
             aria-label={t("jury.actions.increase")}

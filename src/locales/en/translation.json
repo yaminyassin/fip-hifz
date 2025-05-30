@@ -68,7 +68,9 @@
       "husn_al_ada": "Husn al-Adā' (Performance)",
       "husn_al_ada_score": "Fluency/Performance Mistakes",
       "husn_al_ada_mistakes_count": "Fluency/Performance Mistakes",
-      "overall_bonus": "Bonus (0-3 pts)",
+      "overall_bonus": "Bonus (0-5 pts)",
+      "participant_level_bonus": "Applied at participant level",
+      "overall_bonus_description": "This bonus is applied once per participant, not per question",
       "deduction": "Deduction",
       "contribution": "Contribution"
     },
@@ -87,6 +89,10 @@
       "decrease": "Decrease score",
       "increase": "Increase score"
     },
+    "selectQuestion": "Select Question",
+    "currentQuestion": "Current Question",
+    "point": "point",
+    "points": "points",
     "messages": {
       "evaluationComplete": "Evaluation Complete",
       "errorSavingScores": "There was an error saving the scores. Please try again.",
@@ -102,7 +108,10 @@
       "scoresSavedTitle": "[MISSING] jury.messages.scoresSavedTitle",
       "scoresSavedNavDesc": "[MISSING] jury.messages.scoresSavedNavDesc",
       "errorSavingScoresNav": "Error saving scores for question {{number}}. Please try again.",
-      "noData": "No data to display for the current selection."
+      "noData": "No data to display for the current selection.",
+      "inactiveTitle": "Evaluation Access Disabled",
+      "inactiveDesc": "Your evaluation access has been temporarily disabled. Please contact the administrator.",
+      "contactAdmin": "Contact Administrator"
     },
     "questionBreakdown": "Per-Question Breakdown"
   },
@@ -123,7 +132,9 @@
       "success": "Success",
       "successDesc": "Question has been generated and assigned",
       "error": "Error",
-      "errorDesc": "Failed to update question"
+      "errorDesc": "Failed to update question",
+      "scoresInitialized": "Scores initialized for all active jury members",
+      "scoresInitializationError": "Error initializing scores for jury members"
     }
   },
   "participants": {
@@ -218,12 +229,23 @@
       "juryName": "Jury Name",
       "currentQuestion": "Current Question",
       "status": "Status",
-      "actions": "Actions"
+      "evaluationStatus": "Evaluation Status",
+      "activeStatus": "Active Status",
+      "actions": "Actions",
+      "juryMembers": "Jury Members"
     },
     "actions": {
       "save": "Save Changes",
       "prevQuestion": "[MISSING] admin.actions.prevQuestion",
-      "nextQuestion": "[MISSING] admin.actions.nextQuestion"
+      "nextQuestion": "[MISSING] admin.actions.nextQuestion",
+      "setAllActive": "Set All Active",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "toggle": "Toggle"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
     },
     "messages": {},
     "tabs": {
@@ -348,6 +370,7 @@
     "previous": "Previous",
     "next": "Next",
     "update": "Update",
+    "updating": "Updating...",
     "saving": "Saving...",
     "unnamed": "Unnamed",
     "markingDone": "Marking as complete...",
@@ -361,13 +384,16 @@
     "general": "An error occurred. Please try again."
   },
   "status": {
-    "noDeductions": "No Deductions",
-    "noBonusAwarded": "No Bonus Awarded",
-    "voided": "Voided",
-    "complete": "Complete",
-    "pending": "Pending",
     "active": "Active",
-    "inactive": "Inactive"
+    "inactive": "Inactive",
+    "pending": "Pending",
+    "done": "Done",
+    "completed": "Completed",
+    "inProgress": "In Progress",
+    "notStarted": "Not Started",
+    "voided": "Voided",
+    "noDeductions": "No Deductions",
+    "noBonusAwarded": "No Bonus Awarded"
   },
   "filter": {
     "by_category": "Filter by Category",
@@ -378,6 +404,10 @@
     "category_d": "Category D (D1 & D2)",
     "byJury": "Filter by Jury",
     "selectJury": "Select Jury/Average"
+  },
+  "tabs": {
+    "overview": "Overview",
+    "perQuestion": "Per Question"
   },
   "actions": {
     "setActive": "Set Active",

@@ -1,19 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
 import {
+  collection,
   doc,
   setDoc,
-  collection,
+  deleteDoc,
   query,
   where,
   getDocs,
-  deleteDoc,
   updateDoc,
 } from "firebase/firestore";
-import { firestore } from "../main";
-import { useToast } from "../components/shadcn/use-toast";
-import { QuestionFields } from "../models/models";
+import { firestore } from "@/main";
+import { QuestionFields } from "@/models/models";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
 // Define a type for scores that don't include overall_bonus
 type QuestionOnlyFields = Omit<QuestionFields, "overall_bonus">;
@@ -48,6 +47,17 @@ interface UseJuryScoresProps {
   juryId: string | null;
 }
 
+interface SaveScoresParams {
+  questionNumToSave: number;
+  scoresToSave: QuestionOnlyFields; // Remove overall_bonus from question scores
+}
+
+interface SaveOverallBonusParams {
+  participantId: string;
+  juryId: string;
+  overallBonus: number;
+}
+
 export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
   const [currentScores, setCurrentScores] = useState<QuestionOnlyFields>(
     defaultQuestionScores
@@ -61,9 +71,9 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
   );
 
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const bonusDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const previousQuestionsRef = useRef<string>("");
 
-  const { toast } = useToast();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
@@ -96,43 +106,31 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
         console.log(
           `Cleared ${deletePromises.length} previous scores for participant ${participantId}`
         );
-        toast({
-          title: t("jury.messages.scoreReset"),
-          description: t("jury.messages.scoreResetDesc"),
-        });
       } catch (error) {
         console.error("Error clearing previous scores:", error);
       }
     },
-    [t, queryClient, toast]
+    [t, queryClient]
   );
 
   // Save scores mutation
-  const saveScoresMutation = useMutation({
-    mutationFn: async ({
-      questionNumToSave,
-      scoresToSave,
-    }: {
-      questionNumToSave: number;
-      scoresToSave: QuestionFields;
-    }) => {
-      if (!juryId || !participant) return;
+  const saveScoresMutation = useMutation<void, Error, SaveScoresParams>({
+    mutationFn: async ({ questionNumToSave, scoresToSave }) => {
+      if (!participant?.id || !juryId) return;
 
       const pageNumber = participant.assignedQuestions?.[questionNumToSave - 1];
-      if (pageNumber === undefined) {
-        throw new Error(
-          `Page number not found for question ${questionNumToSave}`
-        );
+      if (!pageNumber) {
+        throw new Error(`No page assigned for question ${questionNumToSave}`);
       }
 
-      const scoreRef = doc(
+      const scoreDoc = doc(
         firestore,
         "scores",
-        `${participant.id}_${juryId}_q${questionNumToSave}_p${pageNumber}`
+        `${participant.id}_${juryId}_${questionNumToSave}`
       );
 
       await setDoc(
-        scoreRef,
+        scoreDoc,
         {
           participantId: participant.id,
           juryId,
@@ -146,11 +144,9 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
       );
     },
     onSuccess: (_, variables) => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { overall_bonus, ...questionOnlyScores } = variables.scoresToSave;
       setAllScores((prev) => ({
         ...prev,
-        [variables.questionNumToSave]: questionOnlyScores,
+        [variables.questionNumToSave]: variables.scoresToSave,
       }));
       queryClient.invalidateQueries({ queryKey: ["juryScores"] });
       queryClient.invalidateQueries({ queryKey: ["jury", juryId] });
@@ -160,11 +156,40 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
         `Error saving scores for Q${variables.questionNumToSave}:`,
         error
       );
-      toast({
-        title: t("common.error"),
-        description: t("jury.messages.errorSavingScores"),
-        variant: "destructive",
-      });
+    },
+  });
+
+  // Mutation for saving overall bonus (participant-level)
+  const saveOverallBonusMutation = useMutation<
+    void,
+    Error,
+    SaveOverallBonusParams
+  >({
+    mutationFn: async ({ participantId, juryId, overallBonus }) => {
+      const bonusDoc = doc(
+        firestore,
+        "overallBonuses",
+        `${participantId}_${juryId}`
+      );
+
+      await setDoc(
+        bonusDoc,
+        {
+          participantId,
+          juryId,
+          overallBonus,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        { merge: true }
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["juryScores"] });
+      queryClient.invalidateQueries({ queryKey: ["jury", juryId] });
+    },
+    onError: (error) => {
+      console.error("Error saving overall bonus:", error);
     },
   });
 
@@ -174,9 +199,7 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
     value: number,
     selectedQuestion: number
   ) => {
-    if (receivedField === "overall_bonus") {
-      return;
-    }
+    // Since overall_bonus is no longer part of QuestionFields, we can directly cast
     const field = receivedField as keyof QuestionOnlyFields;
 
     let cappedValue = value;
@@ -185,17 +208,6 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
     // Cap husn_al_ada_score between 0 and 10
     if (field === "husn_al_ada_score") {
       cappedValue = Math.min(10, Math.max(0, value));
-      if (value > 10 || value < 0) {
-        toast({
-          title: t("jury.messages.scoreCappedTitle"),
-          description: t("jury.messages.scoreCappedDesc", {
-            field: t("jury.categories.husn_al_ada_score"),
-            min: 0,
-            max: 10,
-            value: cappedValue,
-          }),
-        });
-      }
     }
 
     setCurrentScores((prev) => {
@@ -213,33 +225,34 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
 
     debounceTimeoutRef.current = setTimeout(() => {
       if (newScores && juryId && participant?.id) {
-        const scoresToSaveForQuestion: QuestionFields = {
-          ...newScores,
-          overall_bonus: overallBonus,
-        };
         saveScoresMutation.mutate({
           questionNumToSave: selectedQuestion,
-          scoresToSave: scoresToSaveForQuestion,
+          scoresToSave: newScores,
         });
       }
     }, 500);
   };
 
-  // Handle overall bonus changes
+  // Handle overall bonus changes with debouncing
   const handleOverallBonusChange = (value: number) => {
-    const cappedValue = Math.min(3, Math.max(0, value));
-    if (value > 3 || value < 0) {
-      toast({
-        title: t("jury.messages.scoreCappedTitle"),
-        description: t("jury.messages.scoreCappedDesc", {
-          field: t("jury.categories.overall_bonus"),
-          min: 0,
-          max: 3,
-          value: cappedValue,
-        }),
-      });
-    }
+    const cappedValue = Math.min(5, Math.max(0, value));
     setOverallBonus(cappedValue);
+
+    // Debounced save for overall bonus
+    if (bonusDebounceTimeoutRef.current) {
+      clearTimeout(bonusDebounceTimeoutRef.current);
+    }
+
+    bonusDebounceTimeoutRef.current = setTimeout(() => {
+      if (juryId && participant?.id) {
+        console.log("Saving overall bonus:", cappedValue);
+        saveOverallBonusMutation.mutate({
+          participantId: participant.id,
+          juryId,
+          overallBonus: cappedValue,
+        });
+      }
+    }, 500);
   };
 
   // Reset scores when participant changes
@@ -260,6 +273,7 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
         return;
 
       try {
+        // Fetch question scores
         const scoresRef = collection(firestore, "scores");
         const q = query(
           scoresRef,
@@ -271,7 +285,6 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
         const scoresByQuestion: {
           [questionNumber: number]: QuestionOnlyFields;
         } = {};
-        let initialOverallBonus: number | undefined = undefined;
 
         const currentPages = new Set(participant.assignedQuestions);
 
@@ -297,27 +310,32 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
             };
           }
 
-          const allFieldsFromDoc = data.scores as QuestionFields;
-          const { overall_bonus: bonusFromDoc, ...questionOnlyScoresFromDoc } =
-            allFieldsFromDoc;
+          const questionScoresFromDoc = data.scores as QuestionOnlyFields;
 
-          Object.keys(questionOnlyScoresFromDoc).forEach((key) => {
+          Object.keys(questionScoresFromDoc).forEach((key) => {
             const fieldKey = key as keyof QuestionOnlyFields;
-            const newValue = questionOnlyScoresFromDoc[fieldKey];
+            const newValue = questionScoresFromDoc[fieldKey];
             scoresByQuestion[currentQuestionNumber][fieldKey] = newValue ?? 0;
           });
-
-          if (
-            initialOverallBonus === undefined &&
-            currentQuestionNumber === 1 &&
-            bonusFromDoc !== undefined
-          ) {
-            initialOverallBonus = bonusFromDoc;
-          }
         });
 
         setAllScores(scoresByQuestion);
-        setOverallBonus(initialOverallBonus ?? 0);
+
+        // Fetch overall bonus separately
+        const bonusSnapshot = await getDocs(
+          query(
+            collection(firestore, "overallBonuses"),
+            where("participantId", "==", participant.id),
+            where("juryId", "==", juryId)
+          )
+        );
+
+        if (!bonusSnapshot.empty) {
+          const bonusData = bonusSnapshot.docs[0].data();
+          setOverallBonus(bonusData.overallBonus ?? 0);
+        } else {
+          setOverallBonus(0);
+        }
       } catch (error) {
         console.error("Error fetching all scores:", error);
       }
@@ -355,8 +373,10 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
     handleScoreChange,
     handleOverallBonusChange,
     saveScoresMutation,
+    saveOverallBonusMutation,
     clearPreviousScores,
     debounceTimeoutRef,
+    bonusDebounceTimeoutRef,
     defaultQuestionScores,
   };
 };

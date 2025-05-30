@@ -21,6 +21,7 @@ type ParticipantWithScores = Participant & {
     average: { [questionNumber: number]: QuestionFields };
     juryIds: string[];
   };
+  overallBonuses?: Record<string, number>; // juryId -> overallBonus value
 };
 
 interface ParticipantsTableProps {
@@ -75,8 +76,25 @@ export const ParticipantsTable = ({ participants }: ParticipantsTableProps) => {
                 ).length;
                 if (totalQuestions === 0) return 0;
 
+                // Calculate average overall bonus across all juries
+                let averageOverallBonus = 0;
+                if (
+                  participant.overallBonuses &&
+                  participant.questionScores.juryIds.length > 0
+                ) {
+                  const totalBonus = participant.questionScores.juryIds.reduce(
+                    (sum, juryId) => {
+                      return sum + (participant.overallBonuses?.[juryId] || 0);
+                    },
+                    0
+                  );
+                  averageOverallBonus =
+                    totalBonus / participant.questionScores.juryIds.length;
+                }
+
                 const result = calculateFinalScore(
-                  participant.questionScores.average
+                  participant.questionScores.average,
+                  averageOverallBonus
                 );
                 return result.percentage;
               };
@@ -99,7 +117,7 @@ export const ParticipantsTable = ({ participants }: ParticipantsTableProps) => {
                       : t("participants.table.statusPending")}
                   </TableCell>
                   <TableCell className="font-bold">
-                    {finalScore > 0 ? `${finalScore.toFixed(1)}%` : "-"}
+                    {finalScore > 0 ? `${finalScore.toFixed(1)} pts` : "-"}
                   </TableCell>
                   <TableCell>{juryCount > 0 ? juryCount : "-"}</TableCell>
                   <TableCell>

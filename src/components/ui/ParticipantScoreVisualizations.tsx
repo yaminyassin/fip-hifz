@@ -35,6 +35,7 @@ type ParticipantWithScores = Participant & {
     average: { [questionNumber: number]: QuestionFields };
     juryIds: string[];
   };
+  overallBonuses?: Record<string, number>; // juryId -> overallBonus value
 };
 
 interface ParticipantScoreVisualizationsProps {
@@ -68,8 +69,25 @@ export const ParticipantScoreVisualizations = ({
           Object.keys(p.questionScores.average).length > 0
       )
       .map((participant) => {
+        // Calculate average overall bonus across all juries
+        let averageOverallBonus = 0;
+        if (
+          participant.overallBonuses &&
+          participant.questionScores?.juryIds.length
+        ) {
+          const totalBonus = participant.questionScores.juryIds.reduce(
+            (sum, juryId) => {
+              return sum + (participant.overallBonuses?.[juryId] || 0);
+            },
+            0
+          );
+          averageOverallBonus =
+            totalBonus / participant.questionScores.juryIds.length;
+        }
+
         const scoreResult = calculateFinalScore(
-          participant.questionScores?.average || {}
+          participant.questionScores?.average || {},
+          averageOverallBonus
         );
 
         return {
@@ -237,7 +255,7 @@ export const ParticipantScoreVisualizations = ({
                             {participant.name}
                           </p>
                           <p className="text-sm font-bold">
-                            {participant.finalScore.toFixed(1)}%
+                            {participant.finalScore.toFixed(1)} pts
                           </p>
                         </div>
                         <Progress
@@ -455,7 +473,7 @@ export const ParticipantScoreVisualizations = ({
                       {t("participants.visualizations.highestScore")}
                     </p>
                     <p className="text-3xl font-bold mt-1">
-                      {participantsWithScores[0]?.finalScore.toFixed(1)}%
+                      {participantsWithScores[0]?.finalScore.toFixed(1)} pts
                     </p>
                   </div>
                   <div className="h-12 w-12 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">

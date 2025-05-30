@@ -27,8 +27,16 @@ export type QuestionFields = {
   // Husn al-Adā' (Fluency & Performance - حسن الأداء)
   husn_al_ada_score: number; // Count of Husn Al-Ada mistakes: -1 point each mistake
 
-  // Overall Bonus
-  overall_bonus: number; // Bonus points (0-3) added per question, total capped at 3 points to final average.
+  // Overall Bonus moved to separate collection
+};
+
+export type OverallBonus = {
+  id: string; // Format: `${participantId}_${juryId}`
+  participantId: string;
+  juryId: string;
+  overallBonus: number; // Bonus points (0-3) added per question, total capped at 3 points to final average.
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 };
 
 export type Scores = {
@@ -36,6 +44,7 @@ export type Scores = {
   participantId: string;
   juryId: string;
   questionNumber: number;
+  pageNumber: number;
   scores: QuestionFields;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -65,4 +74,5 @@ export type Jury = {
   name: string;
   currentQuestion: number;
   hasFinishedEvaluating: boolean;
+  isActive: boolean;
 };
