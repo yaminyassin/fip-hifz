@@ -65,10 +65,10 @@ export const categoryConfigs: Record<string, CategoryConfig> = {
     ],
   },
   D: {
-    numQuestions: 4,
+    numQuestions: 3,
     questionRanges: [
-      { name: "D1", juzRange: [1, 30], numParts: 4 },
-      { name: "D2", juzRange: [1, 30], numParts: 4 },
+      { name: "D1", juzRange: [1, 30], numParts: 3 },
+      { name: "D2", juzRange: [1, 30], numParts: 3 },
     ],
   },
 };
@@ -84,28 +84,30 @@ export const getRandomPageFromJuzRange = (
   const startPage = juzToPageMap[startJuz].start;
   const endPage = juzToPageMap[endJuz].end;
   const totalPages = endPage - startPage + 1;
-  
+
   // Calculate the part size and range
   const partSize = Math.floor(totalPages / totalParts);
   const partStartPage = startPage + partIndex * partSize;
-  const partEndPage = partIndex === totalParts - 1 
-    ? endPage 
-    : partStartPage + partSize - 1;
-  
+  const partEndPage =
+    partIndex === totalParts - 1 ? endPage : partStartPage + partSize - 1;
+
   // Return a random page from the part range
-  return Math.floor(Math.random() * (partEndPage - partStartPage + 1)) + partStartPage;
+  return (
+    Math.floor(Math.random() * (partEndPage - partStartPage + 1)) +
+    partStartPage
+  );
 };
 
 // Get the category configuration for a participant
 export const getCategoryConfig = (category: string): CategoryConfig => {
   // Handle subcategories by extracting the main category (first character)
   const mainCategory = category.charAt(0).toUpperCase();
-  
+
   // Check if the main category exists in our configs
   if (categoryConfigs[mainCategory]) {
     return categoryConfigs[mainCategory];
   }
-  
+
   // Default to category A if the category is not found
   return categoryConfigs.A;
 };
@@ -116,14 +118,14 @@ export const getQuestionConfig = (
   questionIndex: number
 ): { juzRange: [number, number]; partIndex: number; totalParts: number } => {
   const config = getCategoryConfig(category);
-  
+
   // Calculate which range this question belongs to
   let currentRangeIndex = 0;
   let questionCounter = 0;
-  
+
   for (const range of config.questionRanges) {
     const questionsInRange = range.numParts;
-    
+
     if (questionIndex < questionCounter + questionsInRange) {
       const partIndex = questionIndex - questionCounter;
       return {
@@ -132,16 +134,16 @@ export const getQuestionConfig = (
         totalParts: range.numParts,
       };
     }
-    
+
     questionCounter += questionsInRange;
     currentRangeIndex++;
-    
+
     // If we've gone through all ranges, wrap around to the first range
     if (currentRangeIndex >= config.questionRanges.length) {
       currentRangeIndex = 0;
     }
   }
-  
+
   // Default fallback (should not reach here if configuration is correct)
   return {
     juzRange: [1, 30],
@@ -158,23 +160,27 @@ export const generateRandomPage = (
   // Get the main category configuration
   const mainCategory = category.charAt(0).toUpperCase();
   const config = getCategoryConfig(mainCategory);
-  
+
   // Determine which subcategory to use based on the participant's category
   // If the category includes a number (like C1, C2), use that to select the range
   let rangeIndex = 0;
   if (category.length > 1) {
     const subcategoryNum = parseInt(category.substring(1), 10);
-    if (!isNaN(subcategoryNum) && subcategoryNum > 0 && subcategoryNum <= config.questionRanges.length) {
+    if (
+      !isNaN(subcategoryNum) &&
+      subcategoryNum > 0 &&
+      subcategoryNum <= config.questionRanges.length
+    ) {
       rangeIndex = subcategoryNum - 1;
     }
   }
-  
+
   // Get the selected range
   const selectedRange = config.questionRanges[rangeIndex];
-  
+
   // Calculate the part index within the selected range
   const partIndex = questionIndex % selectedRange.numParts;
-  
+
   // Generate a random page from the selected range and part
   return getRandomPageFromJuzRange(
     selectedRange.juzRange[0],
@@ -182,4 +188,4 @@ export const generateRandomPage = (
     partIndex,
     selectedRange.numParts
   );
-}; 
+};

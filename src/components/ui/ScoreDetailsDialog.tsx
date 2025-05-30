@@ -16,6 +16,7 @@ import {
   WAQF_IBTIDA_MEANING_PENALTY,
   HUSN_AL_ADA_MISTAKE_PENALTY,
 } from "@/utils/scoreUtils";
+import { getCategoryConfig } from "@/lib/quranUtils";
 import {
   Card,
   CardContent,
@@ -78,6 +79,77 @@ interface ScoreDetailsDialogProps {
   onClose: () => void;
 }
 
+// Helper function to create perfect question scores (100 points)
+const createPerfectQuestionScore = (): QuestionFields => ({
+  hifdh_judge_correction: 0,
+  hifdh_self_correction: 0,
+  hifdh_stuck_count: 0,
+  tajweed_major: 0,
+  tajweed_minor: 0,
+  waqf_ibtida_incorrect: 0,
+  waqf_ibtida_meaning: 0,
+  husn_al_ada_score: 0,
+});
+
+// Helper function to fill missing questions with perfect scores
+const fillMissingQuestionsWithPerfectScores = (
+  questionScores: { [questionNumber: number]: QuestionFields },
+  category: string
+): { [questionNumber: number]: QuestionFields } => {
+  const categoryConfig = getCategoryConfig(category);
+  const expectedQuestions = categoryConfig.numQuestions;
+  const filledScores = { ...questionScores };
+
+  // Fill missing questions (1 to expectedQuestions) with perfect scores
+  for (let i = 1; i <= expectedQuestions; i++) {
+    if (!filledScores[i]) {
+      filledScores[i] = createPerfectQuestionScore();
+    }
+  }
+
+  return filledScores;
+};
+
+// Helper function to fill missing questions for all juries
+const fillMissingQuestionsForAllJuries = (
+  questionScores: {
+    byJury: Record<string, { [questionNumber: number]: QuestionFields }>;
+    average: { [questionNumber: number]: QuestionFields };
+    juryIds: string[];
+  },
+  category: string
+): {
+  byJury: Record<string, { [questionNumber: number]: QuestionFields }>;
+  average: { [questionNumber: number]: QuestionFields };
+  juryIds: string[];
+} => {
+  const filledByJury: Record<
+    string,
+    { [questionNumber: number]: QuestionFields }
+  > = {};
+
+  // Fill missing questions for each jury
+  questionScores.juryIds.forEach((juryId) => {
+    const juryScores = questionScores.byJury[juryId] || {};
+    filledByJury[juryId] = fillMissingQuestionsWithPerfectScores(
+      juryScores,
+      category
+    );
+  });
+
+  // Fill missing questions for average scores
+  const filledAverage = fillMissingQuestionsWithPerfectScores(
+    questionScores.average,
+    category
+  );
+
+  return {
+    byJury: filledByJury,
+    average: filledAverage,
+    juryIds: questionScores.juryIds,
+  };
+};
+
 export const ScoreDetailsDialog = ({
   participant,
   isOpen,
@@ -103,31 +175,36 @@ export const ScoreDetailsDialog = ({
       return;
     }
 
+    // Fill missing questions with perfect scores based on participant's category
+    const filledQuestionScores = fillMissingQuestionsForAllJuries(
+      participant.questionScores,
+      participant.category
+    );
+
     let scoresToCalculate: { [questionNumber: number]: QuestionFields } | null =
       null;
     let overallBonusForSelectedJury = 0;
 
     if (selectedJuryId === "average") {
-      scoresToCalculate = participant.questionScores.average;
+      scoresToCalculate = filledQuestionScores.average;
       setJuryName(t("jury.scoreSummary.averageOfAll"));
 
       // Calculate average overall bonus across all juries
       if (
         participant.overallBonuses &&
-        participant.questionScores.juryIds.length > 0
+        filledQuestionScores.juryIds.length > 0
       ) {
-        const totalBonus = participant.questionScores.juryIds.reduce(
+        const totalBonus = filledQuestionScores.juryIds.reduce(
           (sum, juryId) => {
             return sum + (participant.overallBonuses?.[juryId] || 0);
           },
           0
         );
         overallBonusForSelectedJury =
-          totalBonus / participant.questionScores.juryIds.length;
+          totalBonus / filledQuestionScores.juryIds.length;
       }
     } else {
-      scoresToCalculate =
-        participant.questionScores.byJury?.[selectedJuryId] || {};
+      scoresToCalculate = filledQuestionScores.byJury?.[selectedJuryId] || {};
       const juryMember = juryMembers.find((jury) => jury.id === selectedJuryId);
       setJuryName(
         juryMember?.name ||
@@ -155,6 +232,7 @@ export const ScoreDetailsDialog = ({
     selectedJuryId,
     participant.questionScores,
     participant.overallBonuses,
+    participant.category,
     juryMembers,
     t,
   ]);
@@ -476,205 +554,214 @@ export const ScoreDetailsDialog = ({
     </>
   );
 
-  const renderPerQuestionTab = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {questionNumbers.map((qNum) => {
-          const questionScores = activeQuestionDetailScores[qNum];
-          if (!questionScores) return null;
+  const renderPerQuestionTab = () => {
+    // Get the original questions that had scores before filling
+    const originalQuestionNumbers = participant.questionScores
+      ? Object.keys(participant.questionScores.average || {}).map(Number)
+      : [];
 
-          const { score, isVoid } = calculateQuestionScore(questionScores);
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {questionNumbers.map((qNum) => {
+            const questionScores = activeQuestionDetailScores[qNum];
+            if (!questionScores) return null;
 
-          return (
-            <Card
-              key={qNum}
-              className={`${isVoid ? "border-red-300 bg-red-50 dark:bg-red-900/20" : "border-border"}`}
-            >
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center justify-between">
-                  {t("jury.question")} {qNum}
-                  <span
-                    className={`text-2xl font-bold ${getScoreColor(score)}`}
-                  >
-                    {score.toFixed(1)} pts
-                  </span>
-                </CardTitle>
-                {isVoid && (
-                  <CardDescription className="text-red-600 dark:text-red-400 font-semibold">
-                    {t("status.voided")} -{" "}
-                    {t("jury.categories.hifdh_judge_correction")}:{" "}
-                    {questionScores.hifdh_judge_correction}
-                  </CardDescription>
-                )}
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {/* Hifdh Section */}
-                <div className="space-y-1">
-                  <div className="text-sm font-medium text-muted-foreground">
-                    {t("jury.categories.hifdh")}
-                  </div>
-                  <div className="text-xs space-y-1">
-                    {questionScores.hifdh_judge_correction > 0 && (
-                      <div className="flex justify-between">
-                        <span>
-                          {t("jury.categories.hifdh_judge_correction")}:
-                        </span>
-                        <span className="text-red-600">
-                          -
-                          {(
-                            questionScores.hifdh_judge_correction *
-                            HIFDH_JUDGE_CORRECTION_PENALTY
-                          ).toFixed(1)}{" "}
-                          pts
-                        </span>
-                      </div>
-                    )}
-                    {questionScores.hifdh_self_correction > 0 && (
-                      <div className="flex justify-between">
-                        <span>
-                          {t("jury.categories.hifdh_self_correction")}:
-                        </span>
-                        <span className="text-orange-600">
-                          -
-                          {(
-                            questionScores.hifdh_self_correction *
-                            HIFDH_SELF_CORRECTION_PENALTY
-                          ).toFixed(1)}{" "}
-                          pts
-                        </span>
-                      </div>
-                    )}
-                    {questionScores.hifdh_stuck_count > 0 && (
-                      <div className="flex justify-between">
-                        <span>{t("jury.categories.hifdh_stuck_count")}:</span>
-                        <span className="text-muted-foreground">
-                          {questionScores.hifdh_stuck_count} (Info)
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
+            const { score, isVoid } = calculateQuestionScore(questionScores);
+            const wasOriginallyMissing =
+              !originalQuestionNumbers.includes(qNum);
 
-                {/* Tajweed Section */}
-                {(questionScores.tajweed_major > 0 ||
-                  questionScores.tajweed_minor > 0) && (
-                  <div className="space-y-1">
-                    <div className="text-sm font-medium text-muted-foreground">
-                      {t("jury.categories.tajweed")}
-                    </div>
-                    <div className="text-xs space-y-1">
-                      {questionScores.tajweed_major > 0 && (
-                        <div className="flex justify-between">
-                          <span>{t("jury.categories.tajweed_major")}:</span>
-                          <span className="text-red-600">
-                            -
-                            {(
-                              questionScores.tajweed_major *
-                              TAJWEED_MAJOR_PENALTY
-                            ).toFixed(1)}{" "}
-                            pts
-                          </span>
-                        </div>
-                      )}
-                      {questionScores.tajweed_minor > 0 && (
-                        <div className="flex justify-between">
-                          <span>{t("jury.categories.tajweed_minor")}:</span>
-                          <span className="text-orange-600">
-                            -
-                            {(
-                              questionScores.tajweed_minor *
-                              TAJWEED_MINOR_PENALTY
-                            ).toFixed(1)}{" "}
-                            pts
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Waqf Section */}
-                {(questionScores.waqf_ibtida_incorrect > 0 ||
-                  questionScores.waqf_ibtida_meaning > 0) && (
-                  <div className="space-y-1">
-                    <div className="text-sm font-medium text-muted-foreground">
-                      {t("jury.categories.waqf")}
-                    </div>
-                    <div className="text-xs space-y-1">
-                      {questionScores.waqf_ibtida_incorrect > 0 && (
-                        <div className="flex justify-between">
-                          <span>
-                            {t("jury.categories.waqf_ibtida_incorrect")}:
-                          </span>
-                          <span className="text-orange-600">
-                            -
-                            {(
-                              questionScores.waqf_ibtida_incorrect *
-                              WAQF_IBTIDA_INCORRECT_PENALTY
-                            ).toFixed(1)}{" "}
-                            pts
-                          </span>
-                        </div>
-                      )}
-                      {questionScores.waqf_ibtida_meaning > 0 && (
-                        <div className="flex justify-between">
-                          <span>
-                            {t("jury.categories.waqf_ibtida_meaning")}:
-                          </span>
-                          <span className="text-red-600">
-                            -
-                            {(
-                              questionScores.waqf_ibtida_meaning *
-                              WAQF_IBTIDA_MEANING_PENALTY
-                            ).toFixed(1)}{" "}
-                            pts
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Husn Al-Ada Section */}
-                {questionScores.husn_al_ada_score > 0 && (
-                  <div className="space-y-1">
-                    <div className="text-sm font-medium text-muted-foreground">
-                      {t("jury.categories.husn_al_ada")}
-                    </div>
-                    <div className="text-xs">
-                      <div className="flex justify-between">
-                        <span>
-                          {t("jury.categories.husn_al_ada_mistakes_count")}:
-                        </span>
-                        <span className="text-red-600">
-                          -
-                          {(
-                            questionScores.husn_al_ada_score *
-                            HUSN_AL_ADA_MISTAKE_PENALTY
-                          ).toFixed(1)}{" "}
-                          pts
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Perfect Performance */}
-                {score === BASE_SCORE_PER_QUESTION && !isVoid && (
-                  <div className="flex items-center justify-center gap-2 text-green-600 dark:text-green-400">
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span className="text-sm font-medium">
-                      {t("jury.categories.perfectPerformance")}
+            return (
+              <Card
+                key={qNum}
+                className={`${isVoid ? "border-red-300 bg-red-50 dark:bg-red-900/20" : "border-border"}`}
+              >
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center justify-between">
+                    {t("jury.question")} {qNum}
+                    <span
+                      className={`text-2xl font-bold ${getScoreColor(score)}`}
+                    >
+                      {score.toFixed(1)} pts
                     </span>
+                  </CardTitle>
+                  {isVoid && (
+                    <CardDescription className="text-red-600 dark:text-red-400 font-semibold">
+                      {t("status.voided")} -{" "}
+                      {t("jury.categories.hifdh_judge_correction")}:{" "}
+                      {questionScores.hifdh_judge_correction}
+                    </CardDescription>
+                  )}
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {/* Hifdh Section */}
+                  <div className="space-y-1">
+                    <div className="text-sm font-medium text-muted-foreground">
+                      {t("jury.categories.hifdh")}
+                    </div>
+                    <div className="text-xs space-y-1">
+                      {questionScores.hifdh_judge_correction > 0 && (
+                        <div className="flex justify-between">
+                          <span>
+                            {t("jury.categories.hifdh_judge_correction")}:
+                          </span>
+                          <span className="text-red-600">
+                            -
+                            {(
+                              questionScores.hifdh_judge_correction *
+                              HIFDH_JUDGE_CORRECTION_PENALTY
+                            ).toFixed(1)}{" "}
+                            pts
+                          </span>
+                        </div>
+                      )}
+                      {questionScores.hifdh_self_correction > 0 && (
+                        <div className="flex justify-between">
+                          <span>
+                            {t("jury.categories.hifdh_self_correction")}:
+                          </span>
+                          <span className="text-orange-600">
+                            -
+                            {(
+                              questionScores.hifdh_self_correction *
+                              HIFDH_SELF_CORRECTION_PENALTY
+                            ).toFixed(1)}{" "}
+                            pts
+                          </span>
+                        </div>
+                      )}
+                      {questionScores.hifdh_stuck_count > 0 && (
+                        <div className="flex justify-between">
+                          <span>{t("jury.categories.hifdh_stuck_count")}:</span>
+                          <span className="text-muted-foreground">
+                            {questionScores.hifdh_stuck_count} (Info)
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+
+                  {/* Tajweed Section */}
+                  {(questionScores.tajweed_major > 0 ||
+                    questionScores.tajweed_minor > 0) && (
+                    <div className="space-y-1">
+                      <div className="text-sm font-medium text-muted-foreground">
+                        {t("jury.categories.tajweed")}
+                      </div>
+                      <div className="text-xs space-y-1">
+                        {questionScores.tajweed_major > 0 && (
+                          <div className="flex justify-between">
+                            <span>{t("jury.categories.tajweed_major")}:</span>
+                            <span className="text-red-600">
+                              -
+                              {(
+                                questionScores.tajweed_major *
+                                TAJWEED_MAJOR_PENALTY
+                              ).toFixed(1)}{" "}
+                              pts
+                            </span>
+                          </div>
+                        )}
+                        {questionScores.tajweed_minor > 0 && (
+                          <div className="flex justify-between">
+                            <span>{t("jury.categories.tajweed_minor")}:</span>
+                            <span className="text-orange-600">
+                              -
+                              {(
+                                questionScores.tajweed_minor *
+                                TAJWEED_MINOR_PENALTY
+                              ).toFixed(1)}{" "}
+                              pts
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Waqf Section */}
+                  {(questionScores.waqf_ibtida_incorrect > 0 ||
+                    questionScores.waqf_ibtida_meaning > 0) && (
+                    <div className="space-y-1">
+                      <div className="text-sm font-medium text-muted-foreground">
+                        {t("jury.categories.waqf")}
+                      </div>
+                      <div className="text-xs space-y-1">
+                        {questionScores.waqf_ibtida_incorrect > 0 && (
+                          <div className="flex justify-between">
+                            <span>
+                              {t("jury.categories.waqf_ibtida_incorrect")}:
+                            </span>
+                            <span className="text-orange-600">
+                              -
+                              {(
+                                questionScores.waqf_ibtida_incorrect *
+                                WAQF_IBTIDA_INCORRECT_PENALTY
+                              ).toFixed(1)}{" "}
+                              pts
+                            </span>
+                          </div>
+                        )}
+                        {questionScores.waqf_ibtida_meaning > 0 && (
+                          <div className="flex justify-between">
+                            <span>
+                              {t("jury.categories.waqf_ibtida_meaning")}:
+                            </span>
+                            <span className="text-red-600">
+                              -
+                              {(
+                                questionScores.waqf_ibtida_meaning *
+                                WAQF_IBTIDA_MEANING_PENALTY
+                              ).toFixed(1)}{" "}
+                              pts
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Husn Al-Ada Section */}
+                  {questionScores.husn_al_ada_score > 0 && (
+                    <div className="space-y-1">
+                      <div className="text-sm font-medium text-muted-foreground">
+                        {t("jury.categories.husn_al_ada")}
+                      </div>
+                      <div className="text-xs">
+                        <div className="flex justify-between">
+                          <span>
+                            {t("jury.categories.husn_al_ada_mistakes_count")}:
+                          </span>
+                          <span className="text-red-600">
+                            -
+                            {(
+                              questionScores.husn_al_ada_score *
+                              HUSN_AL_ADA_MISTAKE_PENALTY
+                            ).toFixed(1)}{" "}
+                            pts
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Perfect Performance */}
+                  {score === BASE_SCORE_PER_QUESTION && !isVoid && (
+                    <div className="flex items-center justify-center gap-2 text-green-600 dark:text-green-400">
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span className="text-sm font-medium">
+                        {t("jury.categories.perfectPerformance")}
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <DialogRoot open={isOpen} onOpenChange={onClose}>
