@@ -19,7 +19,7 @@ export const BASE_SCORE_PER_QUESTION = 100;
 
 export const HIFDH_JUDGE_CORRECTION_PENALTY = 3;
 export const HIFDH_SELF_CORRECTION_PENALTY = 2;
-export const HIFDH_MISTAKE_VOID_THRESHOLD = 4; // Judge corrections >= 4 voids question
+export const HIFDH_MISTAKE_VOID_THRESHOLD = 3; // Judge corrections >= 3 voids question
 export const MAX_HIFDH_DEDUCTION = 50;
 
 export const TAJWEED_MAJOR_PENALTY = 2;
