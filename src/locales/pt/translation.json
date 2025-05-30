@@ -216,7 +216,9 @@
     "page": "Página",
     "filter": {
       "category": "Filtrar por Categoria",
-      "allCategories": "Todas as Categorias"
+      "allCategories": "Todas as Categorias",
+      "search": "Pesquisar",
+      "searchPlaceholder": "Pesquisar por nome..."
     },
     "participant": {
       "category": "Categoria",

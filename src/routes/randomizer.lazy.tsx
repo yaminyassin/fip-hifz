@@ -287,6 +287,14 @@ const RouteComponent = () => {
         updated[i] = randomPage;
         return updated;
       });
+
+      // Update the active question immediately when the first question is generated
+      if (i === 0) {
+        updateActiveQuestion.mutate({
+          participantId: participant.id,
+          activeQuestionPage: randomPage,
+        });
+      }
     }
 
     for (let i = 0; i < numQuestions; i++) {
@@ -316,13 +324,8 @@ const RouteComponent = () => {
 
     setIsGeneratingAll(false);
 
-    // Update the active question to the first generated question number
-    if (generatedPages.length > 0) {
-      updateActiveQuestion.mutate({
-        participantId: participant.id,
-        activeQuestionPage: generatedPages[0],
-      });
-    }
+    // Note: Active question is now updated immediately when first question is generated (above)
+    // instead of waiting for all questions to be processed
   }, [
     participant,
     isGeneratingAll,

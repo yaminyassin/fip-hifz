@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/shadcn/select";
 import { Button } from "@/components/shadcn/button";
+import { Input } from "@/components/shadcn/input";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { doc, writeBatch } from "firebase/firestore";
 import { firestore } from "@/main";
@@ -34,6 +35,7 @@ export function ParticipantStatusTable() {
     isFetching: isFetchingParticipants,
   } = useParticipants();
   const [selectedCategory, setSelectedCategory] = React.useState<string>("all");
+  const [searchTerm, setSearchTerm] = React.useState<string>("");
   const queryClient = useQueryClient();
 
   // Set Active Participant Mutation
@@ -111,12 +113,25 @@ export function ParticipantStatusTable() {
     return ["all", ...Array.from(uniqueCategories).sort()];
   }, [participants]);
 
-  // Filter participants based on selected category
+  // Filter participants based on selected category and search term
   const filteredParticipants = React.useMemo(() => {
-    // Use the participants data directly from the hook
-    if (selectedCategory === "all") return participants;
-    return participants.filter((p) => p.category === selectedCategory);
-  }, [participants, selectedCategory]);
+    let filtered = participants;
+
+    // Filter by category
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter((p) => p.category === selectedCategory);
+    }
+
+    // Filter by search term (case-insensitive)
+    if (searchTerm.trim()) {
+      const normalizedSearchTerm = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter((p) =>
+        (p.name || "").toLowerCase().includes(normalizedSearchTerm)
+      );
+    }
+
+    return filtered;
+  }, [participants, selectedCategory, searchTerm]);
 
   // Group filtered participants by scheduled value
   const groupedParticipants = React.useMemo(() => {
@@ -257,25 +272,42 @@ export function ParticipantStatusTable() {
 
   return (
     <div className="space-y-4">
-      {/* Category Filter */}
-      <div className="flex items-center space-x-2">
-        <label htmlFor="category-filter" className="text-sm font-medium">
-          {t("admin.filter.category")}:
-        </label>
-        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger id="category-filter" className="w-[180px]">
-            <SelectValue placeholder={t("admin.filter.allCategories")} />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map((category) => (
-              <SelectItem key={category} value={category}>
-                {category === "all"
-                  ? t("admin.filter.allCategories")
-                  : category}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        {/* Category Filter */}
+        <div className="flex items-center space-x-2">
+          <label htmlFor="category-filter" className="text-sm font-medium">
+            {t("admin.filter.category")}:
+          </label>
+          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+            <SelectTrigger id="category-filter" className="w-[180px]">
+              <SelectValue placeholder={t("admin.filter.allCategories")} />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((category) => (
+                <SelectItem key={category} value={category}>
+                  {category === "all"
+                    ? t("admin.filter.allCategories")
+                    : category}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Search Input */}
+        <div className="flex items-center space-x-2">
+          <label htmlFor="search-input" className="text-sm font-medium">
+            {t("admin.filter.search")}:
+          </label>
+          <Input
+            id="search-input"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder={t("admin.filter.searchPlaceholder")}
+            className="w-[200px]"
+          />
+        </div>
       </div>
 
       {/* Loading indicator for refetches */}

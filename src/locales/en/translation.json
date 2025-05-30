@@ -219,7 +219,9 @@
     "page": "Page",
     "filter": {
       "category": "Filter by Category",
-      "allCategories": "All Categories"
+      "allCategories": "All Categories",
+      "search": "Search",
+      "searchPlaceholder": "Search by name..."
     },
     "participant": {
       "category": "Category",
