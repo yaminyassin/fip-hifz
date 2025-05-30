@@ -78,7 +78,6 @@ export const JuryTable = () => {
               <TableHead>{t("admin.table.juryName")}</TableHead>
               <TableHead>{t("admin.table.currentQuestion")}</TableHead>
               <TableHead>{t("admin.table.evaluationStatus")}</TableHead>
-              <TableHead>{t("admin.table.activeStatus")}</TableHead>
               <TableHead>{t("admin.table.actions")}</TableHead>
             </TableRow>
           </TableHeader>
@@ -100,19 +99,6 @@ export const JuryTable = () => {
                     {jury.hasFinishedEvaluating
                       ? t("jury.actions.completed")
                       : t("jury.messages.inProgress")}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      jury.isActive
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {jury.isActive
-                      ? t("admin.status.active")
-                      : t("admin.status.inactive")}
                   </span>
                 </TableCell>
                 <TableCell>

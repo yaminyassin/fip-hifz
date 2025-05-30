@@ -118,6 +118,37 @@ export function ParticipantStatusTable() {
     return participants.filter((p) => p.category === selectedCategory);
   }, [participants, selectedCategory]);
 
+  // Group filtered participants by scheduled value
+  const groupedParticipants = React.useMemo(() => {
+    const groups = new Map<string, Participant[]>();
+
+    filteredParticipants.forEach((participant) => {
+      const scheduledValue = participant.scheduled || "Unscheduled";
+      if (!groups.has(scheduledValue)) {
+        groups.set(scheduledValue, []);
+      }
+      groups.get(scheduledValue)!.push(participant);
+    });
+
+    // Sort groups by scheduled value (treat as numbers if possible, otherwise alphabetically)
+    const sortedGroups = Array.from(groups.entries()).sort(([a], [b]) => {
+      // Try to parse as numbers first
+      const numA = parseInt(a);
+      const numB = parseInt(b);
+
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return numA - numB;
+      }
+
+      // If not numbers, sort alphabetically, but put "Unscheduled" last
+      if (a === "Unscheduled") return 1;
+      if (b === "Unscheduled") return -1;
+      return a.localeCompare(b);
+    });
+
+    return sortedGroups;
+  }, [filteredParticipants]);
+
   // Helper function for status styling
   const getStatusClasses = (status: DisplayStatus): string => {
     switch (status) {
@@ -147,6 +178,69 @@ export function ParticipantStatusTable() {
     // Prevent mutation if already processing
     if (setActiveMutation.isPending) return;
     setActiveMutation.mutate(participantId);
+  };
+
+  // Render participant row
+  const renderParticipantRow = (participant: Participant) => {
+    const displayStatus = getParticipantDisplayStatus(participant);
+    const isMutatingThisParticipant =
+      setActiveMutation.isPending &&
+      setActiveMutation.variables === participant.id;
+
+    return (
+      <TableRow
+        key={participant.id}
+        aria-current={participant.isActive ? "page" : undefined}
+      >
+        <TableCell className="font-medium">
+          {participant.name || t("common.unnamed")}
+        </TableCell>
+        <TableCell>{participant.category || "-"}</TableCell>
+        <TableCell>{participant.scheduled || "-"}</TableCell>
+        <TableCell>
+          <span
+            className={cn(
+              "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+              getStatusClasses(displayStatus.status)
+            )}
+          >
+            {displayStatus.text}
+          </span>
+        </TableCell>
+        <TableCell className="text-right">
+          <Button
+            variant={participant.isActive ? "outline" : "default"}
+            size="sm"
+            disabled={
+              participant.isDone ||
+              participant.isActive ||
+              setActiveMutation.isPending
+            }
+            onClick={() => handleSetActive(participant.id)}
+            aria-label={
+              participant.isActive
+                ? t("admin.participants.currentlyActive")
+                : t("admin.participants.setActiveAria")
+            }
+            aria-disabled={
+              participant.isDone ||
+              participant.isActive ||
+              setActiveMutation.isPending
+            }
+          >
+            {isMutatingThisParticipant ? (
+              <Loader2
+                className="h-4 w-4 animate-spin mr-2"
+                aria-hidden="true"
+              />
+            ) : null}
+            {participant.isActive
+              ? t("admin.participants.currentlyActive")
+              : t("admin.participants.setActive")}
+          </Button>
+        </TableCell>
+      </TableRow>
+    );
   };
 
   // Use isLoading for initial load, isFetching for subsequent loads
@@ -184,108 +278,82 @@ export function ParticipantStatusTable() {
         </Select>
       </div>
 
-      {/* Participants Table */}
-      {/* Add a loading indicator for refetches as well */}
+      {/* Loading indicator for refetches */}
       {isFetchingParticipants && !isLoadingParticipants && (
         <div className="absolute top-0 left-0 right-0 flex justify-center p-2 opacity-75">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       )}
-      <div className="border rounded-md overflow-x-auto relative">
-        {" "}
-        {/* Added relative positioning for potential loading overlay */}
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t("admin.participants.name")}</TableHead>
-              <TableHead>{t("admin.participants.category")}</TableHead>
-              <TableHead>{t("admin.participants.status")}</TableHead>
-              <TableHead className="text-right">
-                {t("admin.participants.actions")}
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {/* Handle case where there are no participants */}
-            {filteredParticipants.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={4}
-                  className="h-24 text-center text-muted-foreground"
-                >
-                  {t("admin.participants.noParticipants")}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredParticipants.map((participant) => {
-                const displayStatus = getParticipantDisplayStatus(participant);
-                // Check if the mutation is pending for this specific participant
-                const isMutatingThisParticipant =
-                  setActiveMutation.isPending &&
-                  setActiveMutation.variables === participant.id;
 
-                return (
-                  <TableRow
-                    key={participant.id}
-                    aria-current={participant.isActive ? "page" : undefined}
+      {/* Grouped Participants Tables */}
+      <div className="space-y-6 relative">
+        {groupedParticipants.length === 0 ? (
+          <div className="border rounded-md">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>{t("admin.participants.name")}</TableHead>
+                  <TableHead>{t("admin.participants.category")}</TableHead>
+                  <TableHead>{t("admin.participants.scheduled")}</TableHead>
+                  <TableHead>{t("admin.participants.status")}</TableHead>
+                  <TableHead className="text-right">
+                    {t("admin.participants.actions")}
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="h-24 text-center text-muted-foreground"
                   >
-                    <TableCell className="font-medium">
-                      {participant.name || t("common.unnamed")}
-                    </TableCell>
-                    <TableCell>{participant.category || "-"}</TableCell>
-                    <TableCell>
-                      <span
-                        className={cn(
-                          "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
-                          getStatusClasses(displayStatus.status)
-                        )}
-                      >
-                        {displayStatus.text}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant={participant.isActive ? "outline" : "default"}
-                        size="sm"
-                        // Disable if:
-                        // 1. Participant is already done.
-                        // 2. Participant is already active.
-                        // 3. Any 'setActive' mutation is currently pending (to prevent race conditions).
-                        disabled={
-                          participant.isDone ||
-                          participant.isActive ||
-                          setActiveMutation.isPending
-                        }
-                        onClick={() => handleSetActive(participant.id)}
-                        aria-label={
-                          participant.isActive
-                            ? t("admin.participants.currentlyActive")
-                            : t("admin.participants.setActiveAria")
-                        }
-                        aria-disabled={
-                          participant.isDone ||
-                          participant.isActive ||
-                          setActiveMutation.isPending
-                        }
-                      >
-                        {/* Show loader only if this specific participant is being mutated */}
-                        {isMutatingThisParticipant ? (
-                          <Loader2
-                            className="h-4 w-4 animate-spin mr-2"
-                            aria-hidden="true"
-                          />
-                        ) : null}
-                        {participant.isActive
-                          ? t("admin.participants.currentlyActive")
-                          : t("admin.participants.setActive")}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
+                    {t("admin.participants.noParticipants")}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          groupedParticipants.map(([scheduledValue, groupParticipants]) => (
+            <div key={scheduledValue} className="space-y-2">
+              {/* Group Header */}
+              <div className="flex items-center space-x-2">
+                <h3 className="text-sm font-medium text-muted-foreground">
+                  {t("admin.participants.scheduledGroup", {
+                    scheduled: scheduledValue,
+                  })}
+                </h3>
+                <span className="text-xs text-muted-foreground">
+                  ({groupParticipants.length}{" "}
+                  {groupParticipants.length === 1
+                    ? t("admin.participants.participant")
+                    : t("admin.participants.participants")}
+                  )
+                </span>
+              </div>
+
+              {/* Group Table */}
+              <div className="border rounded-md overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t("admin.participants.name")}</TableHead>
+                      <TableHead>{t("admin.participants.category")}</TableHead>
+                      <TableHead>{t("admin.participants.scheduled")}</TableHead>
+                      <TableHead>{t("admin.participants.status")}</TableHead>
+                      <TableHead className="text-right">
+                        {t("admin.participants.actions")}
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {groupParticipants.map(renderParticipantRow)}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

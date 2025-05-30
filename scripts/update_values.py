@@ -149,26 +149,6 @@ def initialize_firebase():
         logging.error(f"Error initializing Firebase Admin SDK: {e}")
         return None
 
-def get_active_participant_data(db_client):
-    """Fetches the first active participant's data from Firestore."""
-    if not db_client:
-        return None
-    try:
-        participants_ref = db_client.collection(Config.FIRESTORE_PARTICIPANTS_COLLECTION)
-        query = participants_ref.where(filter=firestore.FieldFilter("isActive", "==", True)).limit(1)
-        active_participants = list(query.stream())
-
-        if active_participants:
-            participant = active_participants[0]
-            logging.info(f"Found active participant: {participant.id} - {participant.to_dict().get('name', 'N/A')}")
-            return participant.to_dict()
-        else:
-            logging.warning(f"No active participant found in '{Config.FIRESTORE_PARTICIPANTS_COLLECTION}'.")
-            return None
-    except Exception as e:
-        logging.error(f"Error fetching active participant from Firestore: {e}")
-        return None
-
 # --- Data Processing and OBS Updates ---
 def process_participant_updates(obs_ctrl: OBSController, participant_data: dict | None):
     """Processes participant data and updates relevant OBS sources.
@@ -182,7 +162,6 @@ def process_participant_updates(obs_ctrl: OBSController, participant_data: dict 
         logging.info("No active participant data. Clearing/resetting OBS sources.")
         obs_ctrl.update_image_file_source(Config.SOURCE_QURAN_IMAGE, Config.QURAN_IMAGES_DIR, "") # Or a default "no question" image
         obs_ctrl.update_text_source(Config.SOURCE_NAME_1, "")
-        obs_ctrl.update_text_source(Config.SOURCE_NAME_2, "")
         obs_ctrl.update_text_source(Config.SOURCE_AGE, "")
         obs_ctrl.update_text_source(Config.SOURCE_COUNTRY_TEXT, "")
         obs_ctrl.update_image_file_source(Config.SOURCE_FLAG, Config.FLAG_IMAGES_DIR, "_global.png") # Default flag
@@ -207,27 +186,15 @@ def process_participant_updates(obs_ctrl: OBSController, participant_data: dict 
         logging.warning("No 'activeQuestion' field. Clearing Quran image.")
         obs_ctrl.update_image_file_source(Config.SOURCE_QURAN_IMAGE, Config.QURAN_IMAGES_DIR, "")
 
-    # Update Name (split into Name1 and Name2)
+    # Update Name (full name in SOURCE_NAME_1)
     full_name = participant_data.get('name')
     if full_name and full_name.strip():
-        words = full_name.strip().split()
-        num_words = len(words)
-        name1_text, name2_text = "", ""
-        
-        if num_words == 1:
-            name1_text = words[0]
-        elif num_words > 1:
-            midpoint = (num_words + (num_words % 2)) // 2 # Ensure name2 gets more on odd counts
-            name1_text = " ".join(words[:midpoint])
-            name2_text = " ".join(words[midpoint:])
-        
-        obs_ctrl.update_text_source(Config.SOURCE_NAME_1, name1_text)
-        obs_ctrl.update_text_source(Config.SOURCE_NAME_2, name2_text)
-        logging.info(f"Updated name sources: '{Config.SOURCE_NAME_1}'='{name1_text}', '{Config.SOURCE_NAME_2}'='{name2_text}'.")
+        obs_ctrl.update_text_source(Config.SOURCE_NAME_1, full_name.strip())
+        obs_ctrl.update_text_source(Config.SOURCE_NAME_2, full_name.strip())
+        logging.info(f"Updated name source: '{Config.SOURCE_NAME_1}'='{full_name.strip()}'.")
     else:
-        logging.warning(f"No 'name' field or name is empty. Clearing sources '{Config.SOURCE_NAME_1}' and '{Config.SOURCE_NAME_2}'.")
+        logging.warning(f"No 'name' field or name is empty. Clearing source '{Config.SOURCE_NAME_1}'.")
         obs_ctrl.update_text_source(Config.SOURCE_NAME_1, "")
-        obs_ctrl.update_text_source(Config.SOURCE_NAME_2, "")
 
     # Update Age
     age = participant_data.get('age')

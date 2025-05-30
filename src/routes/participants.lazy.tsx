@@ -1,6 +1,5 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { ParticipantsTable } from "@/components/ui/ParticipantsTable";
-import { FloatingParticipantList } from "@/components/ui/FloatingParticipantList";
 import { ParticipantScoreVisualizations } from "@/components/ui/ParticipantScoreVisualizations";
 import { useTranslation } from "react-i18next";
 
@@ -30,7 +29,9 @@ function RouteComponent() {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6 space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold tracking-tight">{t("participants.header.title")}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {t("participants.header.title")}
+          </h1>
           <div className="relative w-72">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -45,10 +46,8 @@ function RouteComponent() {
         <div className="rounded-lg border bg-card">
           <ParticipantsTable participants={filteredParticipants} />
         </div>
-        
-        <ParticipantScoreVisualizations participants={filteredParticipants} />
 
-        <FloatingParticipantList participants={filteredParticipants} />
+        <ParticipantScoreVisualizations participants={filteredParticipants} />
       </div>
     </div>
   );

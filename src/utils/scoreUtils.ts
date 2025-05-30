@@ -54,7 +54,7 @@ const calculateScoreLogic = (
   participantBonusOverride?: number // New parameter for participant-level bonus
 ): CalculatedScoreResult => {
   let totalPointsSum = 0;
-  let validQuestionCount = 0;
+  let totalQuestionCount = 0; // Changed: now counts ALL questions including voided
 
   // For breakdown: sum of (max_deductible_points - actual_deduction_for_category) for each question
   let totalHifdhContribution = 0;
@@ -146,17 +146,15 @@ const calculateScoreLogic = (
     questionPoints = Math.max(0, questionPoints);
 
     // --- Accumulate Question Scores ---
-    // Only count non-voided questions for the average
-    if (!isVoid) {
-      totalPointsSum += questionPoints;
-      validQuestionCount++;
-    }
+    // CHANGED: Now count ALL questions including voided ones (which have score = 0)
+    totalPointsSum += questionPoints;
+    totalQuestionCount++;
   });
 
   // --- Calculate Final Score: Average of Question Scores + Overall Bonus ---
-  // Step 1: Calculate average of question scores
+  // Step 1: Calculate average of question scores (now includes voided questions with score = 0)
   const averageQuestionScore =
-    validQuestionCount > 0 ? totalPointsSum / validQuestionCount : 0;
+    totalQuestionCount > 0 ? totalPointsSum / totalQuestionCount : 0;
 
   // Step 2: Add overall bonus (participant-level)
   let overallBonusPoints = 0;

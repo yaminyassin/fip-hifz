@@ -10,6 +10,7 @@ import React, {
   useMemo,
 } from "react";
 import { useUpdateParticipantQuestion } from "@/hooks/useUpdateParticipantQuestion";
+import { useUpdateActiveQuestion } from "@/hooks/useUpdateActiveQuestion";
 import { useActiveParticipant } from "@/hooks/useActiveParticipant";
 import { useTranslation } from "react-i18next";
 import { TFunction } from "i18next";
@@ -187,6 +188,7 @@ const RouteComponent = () => {
   const lastActiveParticipantRef = useRef<Participant | null>(null);
 
   const updateQuestion = useUpdateParticipantQuestion();
+  const updateActiveQuestion = useUpdateActiveQuestion();
   const { data: activeParticipant, isLoading: isParticipantLoading } =
     useActiveParticipant();
   const { t } = useTranslation();
@@ -313,11 +315,20 @@ const RouteComponent = () => {
     }
 
     setIsGeneratingAll(false);
+
+    // Update the active question to the first generated question number
+    if (generatedPages.length > 0) {
+      updateActiveQuestion.mutate({
+        participantId: participant.id,
+        activeQuestionPage: generatedPages[0],
+      });
+    }
   }, [
     participant,
     isGeneratingAll,
     getNumQuestions,
     updateQuestion,
+    updateActiveQuestion,
     t,
     setQuestionNumbers,
     setIsGeneratingAll,

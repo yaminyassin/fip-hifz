@@ -57,7 +57,7 @@ export type Participant = {
   country: string;
   category: string;
   school: string;
-  scheduled: string; // ?
+  scheduled: string; // order of the participant in the competition
   isDone: boolean;
   isActive: boolean;
   flag: string; // flag symbol of the country

@@ -164,14 +164,14 @@
       "country": "País",
       "category": "Categoria",
       "school": "Escola",
-      "scheduled": "Horário",
+      "scheduled": "Programado",
       "status": "Status",
-      "actions": "Ações",
       "totalScore": "Pontuação Total",
       "juryCount": "Avaliações do Júri",
       "statusComplete": "Concluído",
       "statusPending": "Pendente",
-      "questions": "Questões"
+      "questions": "Questões",
+      "actions": "Ações"
     },
     "visualizations": {
       "title": "Visualizações de Pontuação",
@@ -215,7 +215,7 @@
     "question": "Questão",
     "page": "Página",
     "filter": {
-      "category": "Categoria",
+      "category": "Filtrar por Categoria",
       "allCategories": "Todas as Categorias"
     },
     "participant": {
@@ -323,7 +323,11 @@
       "setActive": "Definir como Ativo",
       "currentlyActive": "Ativo Atualmente",
       "setActiveAria": "Definir participante como ativo",
-      "markDoneAria": "[FALTA] admin.participants.markDoneAria"
+      "markDoneAria": "[FALTA] admin.participants.markDoneAria",
+      "scheduled": "Programado",
+      "scheduledGroup": "Grupo da Programação {{scheduled}}",
+      "participant": "participante",
+      "participants": "participantes"
     },
     "jury": {
       "title": "Gerenciamento de Jurados",

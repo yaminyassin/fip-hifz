@@ -218,7 +218,7 @@
     "question": "Question",
     "page": "Page",
     "filter": {
-      "category": "Category",
+      "category": "Filter by Category",
       "allCategories": "All Categories"
     },
     "participant": {
@@ -315,8 +315,12 @@
       "markDoneAria": "Set as complete",
       "name": "Name",
       "category": "Category",
+      "scheduled": "Scheduled",
       "status": "Status",
-      "actions": "Actions"
+      "actions": "Actions",
+      "scheduledGroup": "Schedule Group {{scheduled}}",
+      "participant": "participant",
+      "participants": "participants"
     },
     "jury": {
       "title": "Jury Management",
