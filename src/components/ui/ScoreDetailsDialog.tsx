@@ -555,11 +555,6 @@ export const ScoreDetailsDialog = ({
   );
 
   const renderPerQuestionTab = () => {
-    // Get the original questions that had scores before filling
-    const originalQuestionNumbers = participant.questionScores
-      ? Object.keys(participant.questionScores.average || {}).map(Number)
-      : [];
-
     return (
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
