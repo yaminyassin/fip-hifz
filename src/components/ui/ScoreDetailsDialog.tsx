@@ -568,8 +568,6 @@ export const ScoreDetailsDialog = ({
             if (!questionScores) return null;
 
             const { score, isVoid } = calculateQuestionScore(questionScores);
-            const wasOriginallyMissing =
-              !originalQuestionNumbers.includes(qNum);
 
             return (
               <Card
