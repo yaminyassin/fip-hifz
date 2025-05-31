@@ -17,7 +17,9 @@
     "schools": "Escolas",
     "schoolsDesc": "Instituições participantes",
     "results": "Resultados",
-    "resultsDesc": "Resultados da competição"
+    "resultsDesc": "Resultados da competição",
+    "quranPage": "Página do Alcorão",
+    "quranPageDesc": "Ver página ativa do Alcorão"
   },
   "home": {
     "title": "Bem-vindo à Competição de Hifz",
@@ -431,5 +433,18 @@
     "increase": "Aumentar pontuação",
     "prevQuestion": "Questão Anterior",
     "nextQuestion": "Próxima Questão"
+  },
+  "quranPage": {
+    "noParticipant": {
+      "title": "Nenhum Participante Ativo",
+      "description": "Selecione um participante ativo para ver a página do Alcorão."
+    },
+    "noQuestion": {
+      "title": "Nenhuma Questão Ativa",
+      "description": "Aguardando uma questão ser atribuída ao participante."
+    },
+    "category": "Categoria",
+    "question": "Questão",
+    "page": "Página"
   }
 }

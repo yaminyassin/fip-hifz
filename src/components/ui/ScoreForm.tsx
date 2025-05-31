@@ -94,7 +94,7 @@ export const ScoreForm = ({
 
   // Calculate Hifdh mistakes sum and apply warning class
   const hifdhWarningClass =
-    currentScores.hifdh_judge_correction >= 4 ? "border-2 border-red-500" : "";
+    currentScores.hifdh_judge_correction >= 3 ? "border-2 border-red-500" : "";
 
   return (
     <div className="space-y-2">

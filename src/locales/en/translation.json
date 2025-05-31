@@ -17,7 +17,9 @@
     "schools": "Schools",
     "schoolsDesc": "Participating institutions",
     "results": "Results",
-    "resultsDesc": "Competition results"
+    "resultsDesc": "Competition results",
+    "quranPage": "Quran Page",
+    "quranPageDesc": "View active Quran page"
   },
   "home": {
     "title": "Welcome to Hifz Competition",
@@ -429,5 +431,18 @@
     "increase": "Increase score",
     "prevQuestion": "[MISSING] actions.prevQuestion",
     "nextQuestion": "[MISSING] actions.nextQuestion"
+  },
+  "quranPage": {
+    "noParticipant": {
+      "title": "No Active Participant",
+      "description": "Please select an active participant to view the Quran page."
+    },
+    "noQuestion": {
+      "title": "No Active Question",
+      "description": "Waiting for a question to be assigned to the participant."
+    },
+    "category": "Category",
+    "question": "Question",
+    "page": "Page"
   }
 }

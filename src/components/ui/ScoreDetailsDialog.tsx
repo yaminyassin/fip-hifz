@@ -291,8 +291,8 @@ export const ScoreDetailsDialog = ({
   ): { score: number; isVoid: boolean } => {
     let questionPoints = BASE_SCORE_PER_QUESTION;
 
-    // Check if question is voided (4+ judge corrections)
-    if (questionScores.hifdh_judge_correction >= 4) {
+    // Check if question is voided (3+ judge corrections)
+    if (questionScores.hifdh_judge_correction >= 3) {
       return { score: 0, isVoid: true };
     }
 
@@ -507,7 +507,7 @@ export const ScoreDetailsDialog = ({
                   const scoresForQuestion = activeQuestionDetailScores[qNum];
                   if (!scoresForQuestion) return null;
                   const isHifzVoided =
-                    scoresForQuestion.hifdh_judge_correction >= 4;
+                    scoresForQuestion.hifdh_judge_correction >= 3;
 
                   return (
                     <tr
@@ -537,7 +537,7 @@ export const ScoreDetailsDialog = ({
                             {scoresForQuestion[key]}
                             {key === "hifdh_judge_correction" &&
                               scoresForQuestion[key] > 0 &&
-                              scoresForQuestion[key] < 4 &&
+                              scoresForQuestion[key] < 3 &&
                               isHifzVoided && (
                                 <AlertTriangle className="h-4 w-4 text-red-500 inline-block ml-1" />
                               )}

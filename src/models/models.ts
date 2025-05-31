@@ -14,7 +14,7 @@ export type QuestionFields = {
   hifdh_judge_correction: number; // فتح (Judge Correction): -3 points each
   hifdh_self_correction: number; // تنبيه (Self Correction): -2 points each
   hifdh_stuck_count: number; // Times Stuck: Informational, not directly penalized in new system.
-  // Note: 4+ Hifdh judge corrections voids the question (score=0)
+  // Note: 3+ Hifdh judge corrections voids the question (score=0)
 
   // Tajweed (التجويد)
   tajweed_major: number; // Major Mistake (اللحن الجلي): -2 points each

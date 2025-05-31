@@ -18,6 +18,7 @@ import { Route as rootRoute } from './routes/__root'
 
 const RandomizerAudienceLazyImport = createFileRoute('/randomizer-audience')()
 const RandomizerLazyImport = createFileRoute('/randomizer')()
+const QuranPageLazyImport = createFileRoute('/quran-page')()
 const ParticipantsLazyImport = createFileRoute('/participants')()
 const JuryLazyImport = createFileRoute('/jury')()
 const BigScreenLazyImport = createFileRoute('/big-screen')()
@@ -39,6 +40,12 @@ const RandomizerLazyRoute = RandomizerLazyImport.update({
   path: '/randomizer',
   getParentRoute: () => rootRoute,
 } as any).lazy(() => import('./routes/randomizer.lazy').then((d) => d.Route))
+
+const QuranPageLazyRoute = QuranPageLazyImport.update({
+  id: '/quran-page',
+  path: '/quran-page',
+  getParentRoute: () => rootRoute,
+} as any).lazy(() => import('./routes/quran-page.lazy').then((d) => d.Route))
 
 const ParticipantsLazyRoute = ParticipantsLazyImport.update({
   id: '/participants',
@@ -109,6 +116,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ParticipantsLazyImport
       parentRoute: typeof rootRoute
     }
+    '/quran-page': {
+      id: '/quran-page'
+      path: '/quran-page'
+      fullPath: '/quran-page'
+      preLoaderRoute: typeof QuranPageLazyImport
+      parentRoute: typeof rootRoute
+    }
     '/randomizer': {
       id: '/randomizer'
       path: '/randomizer'
@@ -134,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/big-screen': typeof BigScreenLazyRoute
   '/jury': typeof JuryLazyRoute
   '/participants': typeof ParticipantsLazyRoute
+  '/quran-page': typeof QuranPageLazyRoute
   '/randomizer': typeof RandomizerLazyRoute
   '/randomizer-audience': typeof RandomizerAudienceLazyRoute
 }
@@ -144,6 +159,7 @@ export interface FileRoutesByTo {
   '/big-screen': typeof BigScreenLazyRoute
   '/jury': typeof JuryLazyRoute
   '/participants': typeof ParticipantsLazyRoute
+  '/quran-page': typeof QuranPageLazyRoute
   '/randomizer': typeof RandomizerLazyRoute
   '/randomizer-audience': typeof RandomizerAudienceLazyRoute
 }
@@ -155,6 +171,7 @@ export interface FileRoutesById {
   '/big-screen': typeof BigScreenLazyRoute
   '/jury': typeof JuryLazyRoute
   '/participants': typeof ParticipantsLazyRoute
+  '/quran-page': typeof QuranPageLazyRoute
   '/randomizer': typeof RandomizerLazyRoute
   '/randomizer-audience': typeof RandomizerAudienceLazyRoute
 }
@@ -167,6 +184,7 @@ export interface FileRouteTypes {
     | '/big-screen'
     | '/jury'
     | '/participants'
+    | '/quran-page'
     | '/randomizer'
     | '/randomizer-audience'
   fileRoutesByTo: FileRoutesByTo
@@ -176,6 +194,7 @@ export interface FileRouteTypes {
     | '/big-screen'
     | '/jury'
     | '/participants'
+    | '/quran-page'
     | '/randomizer'
     | '/randomizer-audience'
   id:
@@ -185,6 +204,7 @@ export interface FileRouteTypes {
     | '/big-screen'
     | '/jury'
     | '/participants'
+    | '/quran-page'
     | '/randomizer'
     | '/randomizer-audience'
   fileRoutesById: FileRoutesById
@@ -196,6 +216,7 @@ export interface RootRouteChildren {
   BigScreenLazyRoute: typeof BigScreenLazyRoute
   JuryLazyRoute: typeof JuryLazyRoute
   ParticipantsLazyRoute: typeof ParticipantsLazyRoute
+  QuranPageLazyRoute: typeof QuranPageLazyRoute
   RandomizerLazyRoute: typeof RandomizerLazyRoute
   RandomizerAudienceLazyRoute: typeof RandomizerAudienceLazyRoute
 }
@@ -206,6 +227,7 @@ const rootRouteChildren: RootRouteChildren = {
   BigScreenLazyRoute: BigScreenLazyRoute,
   JuryLazyRoute: JuryLazyRoute,
   ParticipantsLazyRoute: ParticipantsLazyRoute,
+  QuranPageLazyRoute: QuranPageLazyRoute,
   RandomizerLazyRoute: RandomizerLazyRoute,
   RandomizerAudienceLazyRoute: RandomizerAudienceLazyRoute,
 }
@@ -225,6 +247,7 @@ export const routeTree = rootRoute
         "/big-screen",
         "/jury",
         "/participants",
+        "/quran-page",
         "/randomizer",
         "/randomizer-audience"
       ]
@@ -243,6 +266,9 @@ export const routeTree = rootRoute
     },
     "/participants": {
       "filePath": "participants.lazy.tsx"
+    },
+    "/quran-page": {
+      "filePath": "quran-page.lazy.tsx"
     },
     "/randomizer": {
       "filePath": "randomizer.lazy.tsx"

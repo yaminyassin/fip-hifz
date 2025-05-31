@@ -57,6 +57,13 @@ const Home = () => {
       className: "md:col-span-2 row-span-1",
     },
     {
+      title: t("menu.quranPage"),
+      description: t("menu.quranPageDesc"),
+      icon: BookOpen,
+      route: "/quran-page",
+      className: "md:col-span-1 row-span-1",
+    },
+    {
       title: t("menu.competition"),
       description: t("menu.competitionDesc"),
       icon: Trophy,
