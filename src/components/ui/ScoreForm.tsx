@@ -83,14 +83,8 @@ export const ScoreForm = ({
     return null;
   }
 
-  // Determine if inputs should be disabled for the current question
-  const isQuestionDone =
-    juryMember.currentQuestion > selectedQuestion ||
-    juryMember.hasFinishedEvaluating;
-
-  // Determine if overall bonus should be disabled (only disable if jury has finished evaluation)
-  const isOverallBonusDisabled =
-    juryMember.hasFinishedEvaluating || !participant.isActive;
+  // Determine if inputs should be disabled - only disable if jury has finished evaluation
+  const isDisabled = juryMember.hasFinishedEvaluating;
 
   // Calculate Hifdh mistakes sum and apply warning class
   const hifdhWarningClass =
@@ -105,7 +99,7 @@ export const ScoreForm = ({
         onQuestionChange={onQuestionChange}
         onDone={onDone}
         isSaving={isSaving}
-        disabled={isQuestionDone}
+        disabled={isDisabled}
       />
 
       <div className="grid grid-cols-2 gap-4">
@@ -118,7 +112,7 @@ export const ScoreForm = ({
             t("jury.categories.hifdh_self_correction"),
           ]}
           fields={["hifdh_judge_correction", "hifdh_self_correction"]}
-          disabled={isQuestionDone}
+          disabled={isDisabled}
           scores={currentScores}
           onScoreChange={handleScoreChange}
           cols={2}
@@ -134,7 +128,7 @@ export const ScoreForm = ({
             t("jury.categories.tajweed_minor"),
           ]}
           fields={["tajweed_major", "tajweed_minor"]}
-          disabled={isQuestionDone}
+          disabled={isDisabled}
           scores={currentScores}
           onScoreChange={handleScoreChange}
           cols={2}
@@ -144,7 +138,7 @@ export const ScoreForm = ({
         <ScoreCategory
           title={t("jury.categories.waqf")}
           subtitle={`${getSectionWeight("waqf")} `}
-          disabled={isQuestionDone}
+          disabled={isDisabled}
           labels={[
             t("jury.categories.waqf_ibtida_incorrect"),
             t("jury.categories.waqf_ibtida_meaning"),
@@ -163,7 +157,7 @@ export const ScoreForm = ({
           fields={["husn_al_ada_score"]}
           scores={currentScores}
           onScoreChange={handleScoreChange}
-          disabled={isQuestionDone || !participant.isActive}
+          disabled={isDisabled}
           cols={1}
         />
       </div>
@@ -191,7 +185,7 @@ export const ScoreForm = ({
                   step={1}
                   value={overallBonus}
                   onChange={(e) => onOverallBonusChange(Number(e.target.value))}
-                  disabled={isOverallBonusDisabled}
+                  disabled={isDisabled}
                   className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">
