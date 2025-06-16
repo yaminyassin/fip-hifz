@@ -1,6 +1,6 @@
 // Mapping of juz numbers to page ranges
 export const juzToPageMap: Record<number, { start: number; end: number }> = {
-  1: { start: 1, end: 21 },
+  1: { start: 3, end: 21 },
   2: { start: 22, end: 41 },
   3: { start: 42, end: 61 },
   4: { start: 62, end: 81 },
@@ -29,7 +29,7 @@ export const juzToPageMap: Record<number, { start: number; end: number }> = {
   27: { start: 522, end: 541 },
   28: { start: 542, end: 561 },
   29: { start: 562, end: 581 },
-  30: { start: 582, end: 604 },
+  30: { start: 582, end: 596 },
 };
 
 // Category definitions

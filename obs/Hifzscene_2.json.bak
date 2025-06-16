@@ -30,8 +30,8 @@
         "monitoring_type": 0,
         "private_settings": {}
     },
-    "current_scene": "Intro animation",
-    "current_program_scene": "randomizer",
+    "current_scene": "participant-recital",
+    "current_program_scene": "participant-recital",
     "scene_order": [
         {
             "name": "intro - mosque"
@@ -109,7 +109,7 @@
     ],
     "transitions": [],
     "saved_projectors": [],
-    "current_transition": "Fade",
+    "current_transition": "Cut",
     "transition_duration": 200,
     "preview_locked": false,
     "scaling_enabled": false,
@@ -333,7 +333,7 @@
             "id": "text_ft2_source",
             "versioned_id": "text_ft2_source_v2",
             "settings": {
-                "text": "12",
+                "text": "",
                 "undo_uuid": "076d3b53-12fa-4ed6-a128-618ccba35f98",
                 "font": {
                     "face": "Cera-Regular",
@@ -540,7 +540,7 @@
             "id": "text_ft2_source",
             "versioned_id": "text_ft2_source_v2",
             "settings": {
-                "text": "Portugal",
+                "text": "",
                 "font": {
                     "face": "Cera-Regular",
                     "style": "☞",
@@ -840,7 +840,7 @@
             "id": "image_source",
             "versioned_id": "image_source",
             "settings": {
-                "file": "/Users/yaminyassin/Work/fip-hifz/obs/assets/flags/portugal.png"
+                "file": "/Users/yaminyassin/Work/fip-hifz/obs/assets/flags/_global.png"
             },
             "mixers": 0,
             "sync": 0,
@@ -943,7 +943,7 @@
             "id": "scene",
             "versioned_id": "scene",
             "settings": {
-                "id_counter": 2,
+                "id_counter": 3,
                 "custom_size": false,
                 "items": [
                     {
@@ -1668,7 +1668,7 @@
                 "color2": 4282658864,
                 "word_wrap": true,
                 "custom_width": 1087,
-                "text": "ABDUL SHAHIN ABDUL"
+                "text": ""
             },
             "mixers": 0,
             "sync": 0,
@@ -3201,7 +3201,7 @@
             "versioned_id": "image_source",
             "settings": {
                 "undo_uuid": "c8bd6995-445e-48ed-a72a-4fcacff1cf97",
-                "file": "/Users/yaminyassin/Work/fip-hifz/obs/assets/quran/505.png",
+                "file": "/Users/yaminyassin/Work/fip-hifz/obs/assets/quran/515.png",
                 "linear_alpha": false
             },
             "mixers": 0,
