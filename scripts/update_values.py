@@ -29,6 +29,7 @@ class Config:
     SOURCE_COUNTRY_TEXT = "country"  # New text source for country name
     SOURCE_FLAG = "flag"
     SOURCE_CATEGORY = "category" # Renamed from "Category" to "category"
+    SOURCE_PARTICIPANT_PHOTO = "participant"
 
     FIRESTORE_PARTICIPANTS_COLLECTION = "participants"
 
@@ -36,6 +37,7 @@ class Config:
     QURAN_IMAGES_DIR = "/Users/yaminyassin/Work/fip-hifz/obs/assets/quran"
     FLAG_IMAGES_DIR = "/Users/yaminyassin/Work/fip-hifz/obs/assets/flags"
     CATEGORY_IMAGES_DIR = "/Users/yaminyassin/Work/fip-hifz/obs/assets/categories" # New directory for category images
+    PARTICIPANT_IMAGES_DIR = "/Users/yaminyassin/Work/fip-hifz/obs/assets/participants" # New directory for participant images
 
 # ---------------------
 
@@ -166,6 +168,7 @@ def process_participant_updates(obs_ctrl: OBSController, participant_data: dict 
         obs_ctrl.update_text_source(Config.SOURCE_COUNTRY_TEXT, "")
         obs_ctrl.update_image_file_source(Config.SOURCE_FLAG, Config.FLAG_IMAGES_DIR, "_global.png") # Default flag
         obs_ctrl.update_image_file_source(Config.SOURCE_CATEGORY, Config.CATEGORY_IMAGES_DIR, "") # Or a default "no category" image
+        obs_ctrl.update_image_file_source(Config.SOURCE_PARTICIPANT_PHOTO, Config.PARTICIPANT_IMAGES_DIR, "") # Clear participant photo
         return
 
     # Update Quran Image
@@ -266,6 +269,23 @@ def process_participant_updates(obs_ctrl: OBSController, participant_data: dict 
     
     obs_ctrl.update_image_file_source(Config.SOURCE_CATEGORY, Config.CATEGORY_IMAGES_DIR, category_image_to_set)
 
+    # Update Participant Photo
+    participant_photo_path = participant_data.get('photo')
+    participant_image_to_set = "" # Default to empty if no photo
+    if participant_photo_path and participant_photo_path.strip():
+        participant_photo_filename = participant_photo_path.strip()
+        full_participant_image_path = os.path.join(Config.PARTICIPANT_IMAGES_DIR, participant_photo_filename)
+        
+        if os.path.exists(full_participant_image_path):
+            participant_image_to_set = participant_photo_filename
+            logging.info(f"Updating participant photo source '{Config.SOURCE_PARTICIPANT_PHOTO}' with '{participant_photo_filename}'.")
+        else:
+            logging.warning(f"Participant photo file '{participant_photo_filename}' not found at '{full_participant_image_path}'. Clearing participant photo.")
+    else:
+        logging.warning(f"No 'photo' field found or photo path is empty. Clearing participant photo source '{Config.SOURCE_PARTICIPANT_PHOTO}'.")
+    
+    obs_ctrl.update_image_file_source(Config.SOURCE_PARTICIPANT_PHOTO, Config.PARTICIPANT_IMAGES_DIR, participant_image_to_set)
+
 # --- Firestore Snapshot Listener Callback ---
 def on_firestore_snapshot(doc_snapshot, changes, read_time):
     """Callback for Firestore snapshot listener."""
@@ -309,7 +329,8 @@ def ensure_directories_exist():
     dirs_to_create = [
         Config.QURAN_IMAGES_DIR,
         Config.FLAG_IMAGES_DIR,
-        Config.CATEGORY_IMAGES_DIR
+        Config.CATEGORY_IMAGES_DIR,
+        Config.PARTICIPANT_IMAGES_DIR
     ]
     for directory in dirs_to_create:
         if not os.path.exists(directory):

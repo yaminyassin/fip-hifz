@@ -201,6 +201,9 @@ def csv_row_to_participant(row: Dict[str, str], row_index: int) -> Dict[str, Any
         flag_value = row.get('🔒_FLAG_IMAGE', '').strip()
         category = row.get('CATEGORY', '').strip()
         scheduled = row.get('SLOT SCHEDULE', '').strip()
+        participant_photo = row.get('🔒_PARTICIPANT_PHOTO', '').strip()
+
+        logging.info(f'participant photo: {participant_photo}')
         
         # Generate participant ID
         participant_id = generate_participant_id(first_name, last_name)
@@ -214,6 +217,13 @@ def csv_row_to_participant(row: Dict[str, str], row_index: int) -> Dict[str, Any
         
         # Convert flag value to country name
         country = normalize_country_name(flag_value)
+        
+        # Create photo path by concatenating category with participant photo
+        photo_path = ''
+        if participant_photo and category:
+            photo_path = f"{category}/{participant_photo}"
+        elif participant_photo:
+            photo_path = participant_photo
         
         # Create participant document following the Participant model
         participant_doc = {
@@ -229,12 +239,12 @@ def csv_row_to_participant(row: Dict[str, str], row_index: int) -> Dict[str, Any
             'parentsName': '',  # Default empty - can be filled manually later
             'phoneNum': '',  # Default empty - can be filled manually later
             'email': '',  # Default empty - can be filled manually later
-            'photo': '',  # Default empty - can be filled later with photo script
+            'photo': photo_path,  # Category concatenated with participant photo filename
             'assignedQuestions': [],  # Default empty array
             'activeQuestion': 0,  # Default to 0
         }
         
-        logging.info(f"Converted row {row_index}: {full_name} -> {participant_id}")
+        logging.info(f"Converted row {row_index}: {full_name} -> {participant_id} (photo: {photo_path})")
         return participant_id, participant_doc
         
     except Exception as e:
@@ -268,7 +278,7 @@ def import_participants_from_csv():
     
     # Get CSV file path
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    csv_file_path = os.path.join(script_dir, "pre-selection.csv")
+    csv_file_path = os.path.join(script_dir, "participants.csv")
     
     # Initialize Firebase
     db_client = initialize_firebase()
@@ -336,7 +346,6 @@ def import_participants_from_csv():
 
 if __name__ == "__main__":
     logging.info("Starting participants CSV import script...")
-    logging.info("This script will read from 'pre-selection.csv' and create participant documents.")
     
     # Ask for confirmation
     response = input("Do you want to import participants from CSV? (y/N): ")

@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "insert-participants": "export GOOGLE_APPLICATION_CREDENTIALS=google-services-key.json && python scripts/import_participants_from_csv.py",
     "get-quran-images": "export GOOGLE_APPLICATION_CREDENTIALS=google-services-key.json && python scripts/get_quran_images.py",
     "update-values": "export GOOGLE_APPLICATION_CREDENTIALS=google-services-key.json && python scripts/update_values.py",
     "export-scores-csv": "export GOOGLE_APPLICATION_CREDENTIALS=google-services-key.json && python scripts/export_participant_scores_csv.py",

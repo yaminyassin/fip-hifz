@@ -71,6 +71,10 @@ export const categoryConfigs: Record<string, CategoryConfig> = {
       { name: "D2", juzRange: [1, 30], numParts: 3 },
     ],
   },
+  M: {
+    numQuestions: 2,
+    questionRanges: [{ name: "M", juzRange: [30, 30], numParts: 2 }],
+  },
 };
 
 // Get a random page from a juz range
