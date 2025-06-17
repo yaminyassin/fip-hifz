@@ -3,26 +3,10 @@ import { useCallback, useEffect } from "react";
 import { ScoreCategory } from "./ScoreCategory";
 import { QuestionTabs } from "./QuestionTabs";
 import { getSectionWeight } from "../../utils/scoreUtils";
-import { QuestionFields } from "../../models/models";
+import { Jury, Participant, QuestionFields } from "../../models/models";
 
 // Define a type for scores that don't include overall_bonus
 type QuestionOnlyFields = Omit<QuestionFields, "overall_bonus">;
-
-interface Participant {
-  id: string;
-  name: string;
-  age: number;
-  category: string;
-  assignedQuestions?: number[];
-  isActive?: boolean;
-}
-
-interface Jury {
-  id: string;
-  name: string;
-  currentQuestion: number;
-  hasFinishedEvaluating: boolean;
-}
 
 interface ScoreFormProps {
   participant: Participant | null;
@@ -84,7 +68,7 @@ export const ScoreForm = ({
   }
 
   // Determine if inputs should be disabled - only disable if jury has finished evaluation
-  const isDisabled = juryMember.hasFinishedEvaluating;
+  const isDisabled = juryMember.hasFinishedEvaluating && juryMember.isActive;
 
   // Calculate Hifdh mistakes sum and apply warning class
   const hifdhWarningClass =
