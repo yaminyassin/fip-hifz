@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { getJuryMember } from "../services/jury";
+import { doc, onSnapshot } from "firebase/firestore";
+import { firestore } from "@/main";
 import {
   getAuthenticatedJury,
   clearAuthenticatedJury,
@@ -21,10 +22,38 @@ export const useJuryAuth = () => {
 
   const juryId = getAuthenticatedJury();
 
+  // Set up real-time listener for jury member data
+  useEffect(() => {
+    if (!juryId) return;
+
+    const juryRef = doc(firestore, "jury", juryId);
+
+    const unsubscribe = onSnapshot(
+      juryRef,
+      (docSnapshot) => {
+        if (docSnapshot.exists()) {
+          const juryMember = {
+            id: docSnapshot.id,
+            ...docSnapshot.data(),
+          } as Jury;
+          queryClient.setQueryData(["jury", juryId], juryMember);
+        } else {
+          queryClient.setQueryData(["jury", juryId], null);
+        }
+      },
+      (error) => {
+        console.error("Error fetching jury member:", error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [juryId, queryClient]);
+
   const { data: juryMember } = useQuery<Jury | null>({
     queryKey: ["jury", juryId],
-    queryFn: () => getJuryMember(juryId || ""),
+    queryFn: () => null, // Initial value, will be updated by the listener
     enabled: !!juryId,
+    staleTime: Infinity, // Never mark as stale since we're using real-time updates
   });
 
   const handleLoginSuccess = () => {

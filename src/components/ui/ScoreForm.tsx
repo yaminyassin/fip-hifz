@@ -68,7 +68,7 @@ export const ScoreForm = ({
   }
 
   // Determine if inputs should be disabled - only disable if jury has finished evaluation
-  const isDisabled = juryMember.hasFinishedEvaluating && juryMember.isActive;
+  const isDisabled = juryMember.hasFinishedEvaluating || !juryMember.isActive;
 
   // Calculate Hifdh mistakes sum and apply warning class
   const hifdhWarningClass =
