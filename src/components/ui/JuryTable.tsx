@@ -9,7 +9,11 @@ import {
 import { Button } from "@/components/shadcn/button";
 import { useTranslation } from "react-i18next";
 import { useJuryMembers } from "@/hooks/useJuryMembers";
-import { updateJuryActiveStatus, setAllJuryActive } from "@/services/jury";
+import {
+  updateJuryActiveStatus,
+  setAllJuryActive,
+  updateJuryEvaluationStatus,
+} from "@/services/jury";
 import { useState } from "react";
 
 export const JuryTable = () => {
@@ -17,6 +21,9 @@ export const JuryTable = () => {
   const { data: juryMembers, isLoading, refetch } = useJuryMembers();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [isUpdatingEvaluation, setIsUpdatingEvaluation] = useState<
+    string | null
+  >(null);
 
   const handleToggleActive = async (juryId: string, currentStatus: boolean) => {
     setIsUpdating(juryId);
@@ -32,6 +39,23 @@ export const JuryTable = () => {
     }
   };
 
+  const handleToggleEvaluationStatus = async (
+    juryId: string,
+    currentStatus: boolean
+  ) => {
+    setIsUpdatingEvaluation(juryId);
+    try {
+      await updateJuryEvaluationStatus(juryId, !currentStatus);
+      await refetch(); // Refresh the data
+      // TODO: Add success toast notification
+    } catch (error) {
+      console.error("Error updating jury evaluation status:", error);
+      // TODO: Add error toast notification
+    } finally {
+      setIsUpdatingEvaluation(null);
+    }
+  };
+
   const handleSetAllActive = async () => {
     setIsBulkUpdating(true);
     try {
@@ -43,6 +67,17 @@ export const JuryTable = () => {
       // TODO: Add error toast notification
     } finally {
       setIsBulkUpdating(false);
+    }
+  };
+
+  const handleKeyDown = (
+    event: React.KeyboardEvent,
+    juryId: string,
+    currentStatus: boolean
+  ) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleToggleEvaluationStatus(juryId, currentStatus);
     }
   };
 
@@ -90,15 +125,31 @@ export const JuryTable = () => {
                 </TableCell>
                 <TableCell>
                   <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer transition-colors hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
                       jury.hasFinishedEvaluating
-                        ? "bg-green-100 text-green-800"
-                        : "bg-yellow-100 text-yellow-800"
+                        ? "bg-green-100 text-green-800 hover:bg-green-200"
+                        : "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
+                    } ${isUpdatingEvaluation === jury.id ? "opacity-50 cursor-not-allowed" : ""}`}
+                    onClick={() =>
+                      handleToggleEvaluationStatus(
+                        jury.id,
+                        jury.hasFinishedEvaluating
+                      )
+                    }
+                    onKeyDown={(event) =>
+                      handleKeyDown(event, jury.id, jury.hasFinishedEvaluating)
+                    }
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Toggle evaluation status for ${jury.name}. Current status: ${
+                      jury.hasFinishedEvaluating ? "completed" : "in progress"
                     }`}
                   >
-                    {jury.hasFinishedEvaluating
-                      ? t("jury.actions.completed")
-                      : t("jury.messages.inProgress")}
+                    {isUpdatingEvaluation === jury.id
+                      ? t("common.updating")
+                      : jury.hasFinishedEvaluating
+                        ? t("jury.actions.completed")
+                        : t("jury.messages.inProgress")}
                   </span>
                 </TableCell>
                 <TableCell>

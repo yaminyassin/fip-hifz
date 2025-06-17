@@ -86,6 +86,19 @@ export const updateJuryActiveStatus = async (
   }
 };
 
+export const updateJuryEvaluationStatus = async (
+  juryId: string,
+  hasFinishedEvaluating: boolean
+): Promise<void> => {
+  try {
+    const juryRef = doc(firestore, "jury", juryId);
+    await updateDoc(juryRef, { hasFinishedEvaluating });
+  } catch (error) {
+    console.error("Error updating jury evaluation status:", error);
+    throw error;
+  }
+};
+
 export const setAllJuryActive = async (isActive: boolean): Promise<void> => {
   try {
     const juryCollection = collection(firestore, "jury");
