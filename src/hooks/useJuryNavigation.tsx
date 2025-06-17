@@ -64,7 +64,7 @@ export const useJuryNavigation = ({
       await updateJuryProgress(juryId, currentQuestion, hasFinishedEvaluating);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["jury"] });
+      // Removed invalidateQueries for jury data since we use real-time Firebase updates
     },
   });
 
@@ -80,7 +80,7 @@ export const useJuryNavigation = ({
     if (juryId && participant?.id) {
       setSelectedQuestion(1);
       queryClient.invalidateQueries({ queryKey: ["juryScores"] });
-      queryClient.invalidateQueries({ queryKey: ["jury", juryId] });
+      // Removed invalidateQueries for jury data since we use real-time Firebase updates
     }
   }, [juryId, queryClient, participant?.id]);
 
