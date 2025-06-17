@@ -54,6 +54,10 @@ export const useJuryAuth = () => {
     queryFn: () => null, // Initial value, will be updated by the listener
     enabled: !!juryId,
     staleTime: Infinity, // Never mark as stale since we're using real-time updates
+    refetchOnMount: false, // Don't refetch on mount
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnReconnect: false, // Don't refetch on reconnect
+    retry: false, // Don't retry failed requests
   });
 
   const handleLoginSuccess = () => {
@@ -66,7 +70,7 @@ export const useJuryAuth = () => {
     queryClient.clear();
     navigate({ to: "/" });
   };
-
+  console.log("juryMember", juryMember);
   return {
     isAuthenticated,
     juryId,

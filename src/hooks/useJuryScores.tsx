@@ -100,8 +100,7 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
         });
 
         queryClient.invalidateQueries({ queryKey: ["juryScores"] });
-        queryClient.invalidateQueries({ queryKey: ["jury", juryIdParam] });
-        queryClient.refetchQueries({ queryKey: ["jury", juryIdParam] });
+        // Removed invalidateQueries and refetchQueries for jury data since we use real-time updates
 
         console.log(
           `Cleared ${deletePromises.length} previous scores for participant ${participantId}`
@@ -149,7 +148,6 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
         [variables.questionNumToSave]: variables.scoresToSave,
       }));
       queryClient.invalidateQueries({ queryKey: ["juryScores"] });
-      queryClient.invalidateQueries({ queryKey: ["jury", juryId] });
     },
     onError: (error, variables) => {
       console.error(
@@ -186,7 +184,6 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["juryScores"] });
-      queryClient.invalidateQueries({ queryKey: ["jury", juryId] });
     },
     onError: (error) => {
       console.error("Error saving overall bonus:", error);
