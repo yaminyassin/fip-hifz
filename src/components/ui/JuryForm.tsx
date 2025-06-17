@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useQueryClient } from "@tanstack/react-query";
 import { Jury } from "@/models/models";
 import { addJury, updateJury } from "@/services/jury";
 import { Button } from "@/components/shadcn/button";
@@ -20,7 +19,6 @@ interface JuryFormProps {
 
 export const JuryForm = ({ jury, onSuccess, onCancel }: JuryFormProps) => {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<{
     name: string;
@@ -80,7 +78,7 @@ export const JuryForm = ({ jury, onSuccess, onCancel }: JuryFormProps) => {
       }
 
       // Invalidate the query to ensure data is fresh
-      queryClient.invalidateQueries({ queryKey: ["juryMembers"] });
+      // Removed invalidateQueries since the real-time Firebase listener will handle updates
       onSuccess();
     } catch (error) {
       console.error("Error saving jury member:", error);
