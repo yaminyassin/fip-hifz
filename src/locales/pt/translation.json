@@ -446,5 +446,13 @@
     "category": "Categoria",
     "question": "Questão",
     "page": "Página"
+  },
+  "login": {
+    "title": "Insira o Código de Acesso",
+    "subtitle": "Por favor, insira a senha do evento para continuar",
+    "password": "Senha",
+    "button": "Entrar",
+    "loggingIn": "Verificando...",
+    "error": "Senha inválida. Por favor, tente novamente."
   }
 }

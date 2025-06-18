@@ -15,10 +15,18 @@ import { cn } from "@/lib/utils";
 import BlurIn from "@/components/shadcn/blur-in";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/shadcn/button";
 
 const Home = () => {
-  const navigation = useNavigate();
+  const navigate = useNavigate();
   const { t } = useTranslation();
+  const { isAuthenticated, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate({ to: "/login" });
+  };
 
   const bentoItems = [
     {
@@ -85,8 +93,18 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted p-6 md:p-12">
-      <div className="fixed top-4 right-4 z-50">
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-4">
         <LanguageSwitcher />
+        {isAuthenticated && (
+          <Button
+            variant="outline"
+            onClick={handleLogout}
+            className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+            aria-label={t("actions.logout")}
+          >
+            {t("actions.logout")}
+          </Button>
+        )}
       </div>
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="space-y-2">
@@ -121,7 +139,7 @@ const Home = () => {
                 "group/bento transform transition-all duration-300 hover:scale-[1.02]",
                 item.className
               )}
-              onClick={() => item.route && navigation({ to: item.route })}
+              onClick={() => item.route && navigate({ to: item.route })}
             >
               <MagicCard
                 className="h-full cursor-pointer shadow-none transition-shadow duration-300 group-hover/bento:shadow-xl"

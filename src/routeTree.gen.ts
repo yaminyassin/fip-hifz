@@ -20,6 +20,7 @@ const RandomizerAudienceLazyImport = createFileRoute('/randomizer-audience')()
 const RandomizerLazyImport = createFileRoute('/randomizer')()
 const QuranPageLazyImport = createFileRoute('/quran-page')()
 const ParticipantsLazyImport = createFileRoute('/participants')()
+const LoginLazyImport = createFileRoute('/login')()
 const JuryLazyImport = createFileRoute('/jury')()
 const BigScreenLazyImport = createFileRoute('/big-screen')()
 const AdminLazyImport = createFileRoute('/admin')()
@@ -52,6 +53,12 @@ const ParticipantsLazyRoute = ParticipantsLazyImport.update({
   path: '/participants',
   getParentRoute: () => rootRoute,
 } as any).lazy(() => import('./routes/participants.lazy').then((d) => d.Route))
+
+const LoginLazyRoute = LoginLazyImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRoute,
+} as any).lazy(() => import('./routes/login.lazy').then((d) => d.Route))
 
 const JuryLazyRoute = JuryLazyImport.update({
   id: '/jury',
@@ -109,6 +116,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof JuryLazyImport
       parentRoute: typeof rootRoute
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginLazyImport
+      parentRoute: typeof rootRoute
+    }
     '/participants': {
       id: '/participants'
       path: '/participants'
@@ -147,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminLazyRoute
   '/big-screen': typeof BigScreenLazyRoute
   '/jury': typeof JuryLazyRoute
+  '/login': typeof LoginLazyRoute
   '/participants': typeof ParticipantsLazyRoute
   '/quran-page': typeof QuranPageLazyRoute
   '/randomizer': typeof RandomizerLazyRoute
@@ -158,6 +173,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminLazyRoute
   '/big-screen': typeof BigScreenLazyRoute
   '/jury': typeof JuryLazyRoute
+  '/login': typeof LoginLazyRoute
   '/participants': typeof ParticipantsLazyRoute
   '/quran-page': typeof QuranPageLazyRoute
   '/randomizer': typeof RandomizerLazyRoute
@@ -170,6 +186,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminLazyRoute
   '/big-screen': typeof BigScreenLazyRoute
   '/jury': typeof JuryLazyRoute
+  '/login': typeof LoginLazyRoute
   '/participants': typeof ParticipantsLazyRoute
   '/quran-page': typeof QuranPageLazyRoute
   '/randomizer': typeof RandomizerLazyRoute
@@ -183,6 +200,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/big-screen'
     | '/jury'
+    | '/login'
     | '/participants'
     | '/quran-page'
     | '/randomizer'
@@ -193,6 +211,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/big-screen'
     | '/jury'
+    | '/login'
     | '/participants'
     | '/quran-page'
     | '/randomizer'
@@ -203,6 +222,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/big-screen'
     | '/jury'
+    | '/login'
     | '/participants'
     | '/quran-page'
     | '/randomizer'
@@ -215,6 +235,7 @@ export interface RootRouteChildren {
   AdminLazyRoute: typeof AdminLazyRoute
   BigScreenLazyRoute: typeof BigScreenLazyRoute
   JuryLazyRoute: typeof JuryLazyRoute
+  LoginLazyRoute: typeof LoginLazyRoute
   ParticipantsLazyRoute: typeof ParticipantsLazyRoute
   QuranPageLazyRoute: typeof QuranPageLazyRoute
   RandomizerLazyRoute: typeof RandomizerLazyRoute
@@ -226,6 +247,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminLazyRoute: AdminLazyRoute,
   BigScreenLazyRoute: BigScreenLazyRoute,
   JuryLazyRoute: JuryLazyRoute,
+  LoginLazyRoute: LoginLazyRoute,
   ParticipantsLazyRoute: ParticipantsLazyRoute,
   QuranPageLazyRoute: QuranPageLazyRoute,
   RandomizerLazyRoute: RandomizerLazyRoute,
@@ -246,6 +268,7 @@ export const routeTree = rootRoute
         "/admin",
         "/big-screen",
         "/jury",
+        "/login",
         "/participants",
         "/quran-page",
         "/randomizer",
@@ -263,6 +286,9 @@ export const routeTree = rootRoute
     },
     "/jury": {
       "filePath": "jury.lazy.tsx"
+    },
+    "/login": {
+      "filePath": "login.lazy.tsx"
     },
     "/participants": {
       "filePath": "participants.lazy.tsx"

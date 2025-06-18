@@ -445,5 +445,13 @@
     "category": "Category",
     "question": "Question",
     "page": "Page"
+  },
+  "login": {
+    "title": "Enter Access Code",
+    "subtitle": "Please enter the event password to continue",
+    "password": "Password",
+    "button": "Enter",
+    "loggingIn": "Verifying...",
+    "error": "Invalid password. Please try again."
   }
 }

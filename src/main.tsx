@@ -10,6 +10,7 @@ import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./i18n"; // Import i18n configuration
+import { AuthProvider, useAuth } from "./hooks/useAuth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBXU4Jv-lSCp4IfeBPINGVmYJd3fs9ya5U",
@@ -27,7 +28,12 @@ getAnalytics(app);
 export const firestore = getFirestore(app);
 
 // TanStackRouter setup
-const router = createRouter({ routeTree });
+const router = createRouter({
+  routeTree,
+  context: {
+    auth: undefined!, // This will be overridden below
+  },
+});
 const client = new QueryClient();
 
 // Register the router instance for type safety
@@ -39,10 +45,20 @@ declare module "@tanstack/react-router" {
 
 const container = document.getElementById("root")!;
 const root = createRoot(container);
+
+function App() {
+  // This hook will grab the auth context from the provider
+  const auth = useAuth();
+  // Provide the auth context to the router
+  return <RouterProvider router={router} context={{ auth }} />;
+}
+
 root.render(
   <StrictMode>
     <QueryClientProvider client={client}>
-      <RouterProvider router={router} />
+      <AuthProvider>
+        <App />
+      </AuthProvider>
     </QueryClientProvider>
   </StrictMode>
 );
