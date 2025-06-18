@@ -73,7 +73,10 @@ export const categoryConfigs: Record<string, CategoryConfig> = {
   },
   M: {
     numQuestions: 2,
-    questionRanges: [{ name: "M", juzRange: [30, 30], numParts: 2 }],
+    questionRanges: [
+      { name: "M1", juzRange: [30, 30], numParts: 2 },
+      { name: "M2", juzRange: [28, 28], numParts: 2 },
+    ],
   },
 };
 
