@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { useCallback, useEffect } from "react";
 import { ScoreCategory } from "./ScoreCategory";
 import { QuestionTabs } from "./QuestionTabs";
+import { SliderInput } from "./SliderInput";
 import { getSectionWeight } from "../../utils/scoreUtils";
 import { Jury, Participant, QuestionFields } from "../../models/models";
 
@@ -149,31 +150,19 @@ export const ScoreForm = ({
         labels={[]}
         fields={[]}
         scores={{}}
-        onScoreChange={() => {}}
+        onScoreChange={() => { }}
         customInput={
           <div className="flex flex-col items-center space-y-4">
             <div className="w-full max-w-md">
-              <div className="space-y-2">
-                <label htmlFor="overall-bonus" className="text-sm font-medium">
-                  {t("jury.categories.overall_bonus")}
-                </label>
-                <input
-                  id="overall-bonus"
-                  type="range"
-                  min={0}
-                  max={5}
-                  step={1}
-                  value={overallBonus}
-                  onChange={(e) => onOverallBonusChange(Number(e.target.value))}
-                  disabled={isDisabled}
-                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-                />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>0</span>
-                  <span className="font-medium">{overallBonus}</span>
-                  <span>5</span>
-                </div>
-              </div>
+              <SliderInput
+                label="jury.categories.overall_bonus"
+                value={overallBonus}
+                onChange={onOverallBonusChange}
+                disabled={isDisabled}
+                min={0}
+                max={5}
+                step={1}
+              />
             </div>
             <div className="text-center">
               <span className="text-xs text-muted-foreground">

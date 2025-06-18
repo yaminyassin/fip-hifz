@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 
 export interface SliderInputProps {
   label: string;
-  field: keyof QuestionFields;
+  field?: keyof QuestionFields;
   value: number;
   onChange: (value: number) => void;
   disabled?: boolean;
@@ -35,6 +35,14 @@ export const SliderInput = ({
   return (
     <Card className={`w-full p-4 ${disabled ? "opacity-60" : ""}`}>
       <div className="flex flex-col gap-y-4">
+        <div className="flex justify-between items-center">
+          <label className="text-sm font-medium">
+            {t(label)}
+          </label>
+          <span className="text-lg font-bold text-primary">
+            {value}
+          </span>
+        </div>
         <div className="space-y-4">
           <div className="relative px-2">
             <Slider

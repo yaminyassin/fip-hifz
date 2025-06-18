@@ -45,7 +45,7 @@ export interface ScoreBreakdown {
 }
 
 export interface CalculatedScoreResult {
-  percentage: number; // Actually total points (0-105), keeping name for compatibility
+  percentage: number; // Average of question scores (0-100), bonus tracked separately
   breakdownBySection: ScoreBreakdown;
 }
 
@@ -151,12 +151,12 @@ const calculateScoreLogic = (
     totalQuestionCount++;
   });
 
-  // --- Calculate Final Score: Average of Question Scores + Overall Bonus ---
+  // --- Calculate Final Score: Average of Question Scores (bonus displayed separately) ---
   // Step 1: Calculate average of question scores (now includes voided questions with score = 0)
   const averageQuestionScore =
     totalQuestionCount > 0 ? totalPointsSum / totalQuestionCount : 0;
 
-  // Step 2: Add overall bonus (participant-level)
+  // Step 2: Track overall bonus for display purposes (participant-level)
   let overallBonusPoints = 0;
   if (participantBonusOverride !== undefined) {
     overallBonusPoints = Math.min(
@@ -165,14 +165,14 @@ const calculateScoreLogic = (
     );
   }
 
-  // Step 3: Final total score = average question score + overall bonus
-  const finalTotalScore = averageQuestionScore + overallBonusPoints;
+  // Step 3: Final total score = average question score only (not inflated by bonus)
+  // The bonus is tracked separately for breakdown display
+  const finalTotalScore = averageQuestionScore;
 
-  // Ensure final score is within reasonable bounds (0 to 105 max)
-  const maxPossibleScore = BASE_SCORE_PER_QUESTION + TOTAL_OVERALL_BONUS_CAP;
+  // Ensure final score is within reasonable bounds (0 to 100 max for average)
   const cappedFinalScore = Math.max(
     0,
-    Math.min(maxPossibleScore, finalTotalScore)
+    Math.min(BASE_SCORE_PER_QUESTION, finalTotalScore)
   );
 
   // --- Calculate Average Breakdown for Display ---
@@ -205,9 +205,9 @@ const calculateScoreLogic = (
 
 /**
  * Calculate the final total score for a participant based on scores from all questions.
- * Returns: (average of question scores) + overall bonus
- * Each question can have a maximum of 100 points, overall bonus can add up to 5 points.
- * Final result range: 0-105 points
+ * Returns: average of question scores (bonus tracked separately for display)
+ * Each question can have a maximum of 100 points.
+ * Final result range: 0-100 points (representing true average performance)
  */
 export const calculateFinalScore = (
   allScores: {
@@ -226,7 +226,7 @@ export const calculateFinalScore = (
 
 /**
  * Calculates the final score for a single jury's evaluation of a participant.
- * Returns: (average of question scores) + overall bonus
+ * Returns: average of question scores (bonus tracked separately for display)
  */
 export const calculateSingleJuryEvaluationScore = (
   allScores: { [questionNumber: number]: QuestionFields },
