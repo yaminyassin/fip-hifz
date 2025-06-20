@@ -14,8 +14,13 @@ export const JuryLogin = ({ onLoginSuccess }: JuryLoginProps) => {
   const [juryId, setJuryId] = useState("");
   const { t } = useTranslation();
 
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoggingIn(true);
+    setError(null);
 
     try {
       const isAuthenticated = await authenticateJury(juryId);
@@ -23,10 +28,13 @@ export const JuryLogin = ({ onLoginSuccess }: JuryLoginProps) => {
         setAuthenticatedJury(juryId);
         onLoginSuccess();
       } else {
-        console.error("Invalid jury ID");
+        setError(t("jury.login.invalidId", "Invalid jury ID"));
       }
     } catch (error) {
       console.error("Authentication failed:", error);
+      setError(t("jury.login.error", "Login failed. Please try again."));
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -45,10 +53,21 @@ export const JuryLogin = ({ onLoginSuccess }: JuryLoginProps) => {
               placeholder={t("jury.login.placeholder")}
               value={juryId}
               onChange={(e) => setJuryId(e.target.value)}
+              disabled={isLoggingIn}
             />
+            {error && (
+              <p className="text-red-500 text-sm text-center">{error}</p>
+            )}
           </div>
-          <Button type="submit" className="w-full" disabled={!juryId.trim()}>
-            {t("jury.login.button")}
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={!juryId.trim() || isLoggingIn}
+          >
+            {isLoggingIn
+              ? t("jury.login.loggingIn", "Logging in...")
+              : t("jury.login.button")
+            }
           </Button>
         </form>
       </Card>

@@ -66,7 +66,7 @@ export const JuryHeader = ({
                       ({participant.assignedQuestions[0]} -{" "}
                       {
                         participant.assignedQuestions[
-                          participant.assignedQuestions.length - 1
+                        participant.assignedQuestions.length - 1
                         ]
                       }
                       )
@@ -80,21 +80,44 @@ export const JuryHeader = ({
         {/* Right: User Info and Logout */}
         <div className="flex items-center gap-4">
           {juryMember && (
-            <div className="flex items-center gap-2 text-gray-600">
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+            <div className="flex items-center gap-3 text-gray-600">
+              <div className="flex items-center gap-2">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+                <span className="font-medium">{juryMember.name}</span>
+              </div>
+
+              {/* Active Status Indicator */}
+              <div className="flex items-center gap-1">
+                <div
+                  className={`w-2 h-2 rounded-full ${juryMember.isActive
+                    ? 'bg-green-500'
+                    : 'bg-gray-400'
+                    }`}
                 />
-              </svg>
-              <span className="font-medium">{juryMember.name}</span>
+                <span
+                  className={`text-xs font-medium ${juryMember.isActive
+                    ? 'text-green-600'
+                    : 'text-gray-500'
+                    }`}
+                >
+                  {juryMember.isActive
+                    ? t("common.active", "Active")
+                    : t("common.inactive", "Inactive")
+                  }
+                </span>
+              </div>
             </div>
           )}
           <Button
