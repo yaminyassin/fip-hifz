@@ -70,7 +70,8 @@
       "husn_al_ada": "Husn al-Adā' (Performance)",
       "husn_al_ada_score": "Fluency/Performance Mistakes",
       "husn_al_ada_mistakes_count": "Inconsistency",
-      "overall_bonus": "Bonus (0-5 pts)",
+      "husn_al_ada_deduction": "Husn al-Adā' (Deduction)",
+      "overall_bonus": "Overall Bonus",
       "participant_level_bonus": "Applied at participant level",
       "overall_bonus_description": "Overall fluency, melody & tone, eloquence, delivery & confidence",
       "deduction": "Deduction",
@@ -153,7 +154,8 @@
       "category_a": "Category A (A1 & A2)",
       "category_b": "Category B (B1 & B2)",
       "category_c": "Category C (C1 & C2)",
-      "category_d": "Category D (D1 & D2)"
+      "category_d": "Category D (D1 & D2)",
+      "category_m": "Category M (M1 & M2)"
     },
     "banner": {
       "loading": "Loading participant data...",
@@ -186,7 +188,9 @@
     "visualizations": {
       "title": "Score Visualizations",
       "topPerformers": "Top Performers",
-      "topPerformersDesc": "Highest scoring participants",
+      "topPerformersDesc": "Highest scoring participants based on core points",
+      "topBonuses": "Top Bonus Scores",
+      "topBonusesDesc": "Participants with the highest bonus points",
       "categoryPerformance": "Category Performance",
       "categoryPerformanceDesc": "Average scores by category",
       "scoreDistribution": "Score Distribution",
@@ -209,7 +213,9 @@
       "topThreeComparisonDesc": "Category breakdown of top performers",
       "noParticipantsFound": "No Participants Found",
       "noParticipantsWithScores": "There are no participants with scores to display",
-      "noParticipantsInCategory": "There are no participants in Category {{category}} with scores to display"
+      "noParticipantsInCategory": "There are no participants in Category {{category}} with scores to display",
+      "avgDeduction": "Avg. point deduction",
+      "avgBonus": "Avg. point bonus"
     }
   },
   "admin": {
@@ -387,7 +393,7 @@
     "settingActive": "Setting as active..."
   },
   "validation": {
-    "required": "This field is required"
+    "required": "This field is required."
   },
   "error": {
     "general": "An error occurred. Please try again."
@@ -411,6 +417,7 @@
     "category_b": "Category B (B1 & B2)",
     "category_c": "Category C (C1 & C2)",
     "category_d": "Category D (D1 & D2)",
+    "category_m": "Category M (M1 & M2)",
     "byJury": "Filter by Jury",
     "selectJury": "Select Jury/Average"
   },

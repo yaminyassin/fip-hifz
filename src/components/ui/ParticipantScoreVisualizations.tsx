@@ -20,6 +20,7 @@ import {
   BookOpenCheck,
   Filter,
   AlertCircle,
+  Sparkles,
 } from "lucide-react";
 import {
   Select,
@@ -140,7 +141,7 @@ const fillMissingQuestionsAndCalculateAverage = (
       Object.keys(avgScores).forEach((key) => {
         avgScores[key as keyof QuestionFields] = Math.round(
           avgScores[key as keyof QuestionFields] /
-            questionScoresFromAllJuries.length
+          questionScoresFromAllJuries.length
         );
       });
 
@@ -163,8 +164,12 @@ export const ParticipantScoreVisualizations = ({
   // Filter participants by category if filter is active
   const filteredParticipants = useMemo(() => {
     if (categoryFilter === "all") {
-      return participants;
+      // Exclude category 'M' from the "all" view
+      return participants.filter(
+        (participant) => !participant.category.toUpperCase().startsWith("M")
+      );
     }
+    // Filter for a specific category (A, B, C, D, or M)
     return participants.filter((participant) => {
       const mainCategory = participant.category.charAt(0).toUpperCase();
       return mainCategory === categoryFilter;
@@ -176,9 +181,9 @@ export const ParticipantScoreVisualizations = ({
     return filteredParticipants
       .filter(
         (p) =>
-          p.questionScores &&
-          (p.questionScores.average ||
-            (p.questionScores.byJury && p.questionScores.juryIds.length > 0))
+          p.isDone &&
+          p.questionScores?.juryIds &&
+          p.questionScores.juryIds.length > 0
       )
       .map((participant) => {
         // Fill missing questions with perfect scores and calculate proper average
@@ -210,8 +215,8 @@ export const ParticipantScoreVisualizations = ({
 
         return {
           ...participant,
-          finalScore: scoreResult.percentage,
-          breakdown: scoreResult.breakdownBySection,
+          finalScore: scoreResult.percentage, // Use base percentage for ranking
+          breakdown: scoreResult.breakdownBySection, // Keep breakdown for bonus info
           juryCount: participant.questionScores?.juryIds?.length || 0,
         };
       })
@@ -223,23 +228,25 @@ export const ParticipantScoreVisualizations = ({
     if (participantsWithScores.length === 0)
       return { category: "hifdh", percentage: 0 };
 
-    // Calculate the average percentage for each category
-    let totalHifdh = 0;
-    let totalTajweed = 0;
-    let totalWaqf = 0;
+    // Calculate the average retention percentage for each category
+    let totalHifdhRetention = 0;
+    let totalTajweedRetention = 0;
+    let totalWaqfRetention = 0;
 
     participantsWithScores.forEach((p) => {
-      // These are the retention percentages (100 - deductions)
-      totalHifdh += 100 - p.breakdown.hifdh;
-      totalTajweed += 100 - p.breakdown.tajweed;
-      totalWaqf += 100 - p.breakdown.waqf;
+      // p.breakdown contains points ACHIEVED, not deductions.
+      // Convert achieved points to a retention percentage for that category.
+      totalHifdhRetention += (p.breakdown.hifdh / 50) * 100; // Hifdh is out of 50
+      totalTajweedRetention += (p.breakdown.tajweed / 30) * 100; // Tajweed is out of 30
+      totalWaqfRetention += (p.breakdown.waqf / 10) * 100; // Waqf is out of 10
     });
 
-    const avgHifdh = totalHifdh / participantsWithScores.length;
-    const avgTajweed = totalTajweed / participantsWithScores.length;
-    const avgWaqf = totalWaqf / participantsWithScores.length;
+    const count = participantsWithScores.length;
+    const avgHifdh = totalHifdhRetention / count;
+    const avgTajweed = totalTajweedRetention / count;
+    const avgWaqf = totalWaqfRetention / count;
 
-    // Find the maximum
+    // Find the maximum retention percentage
     if (avgHifdh >= avgTajweed && avgHifdh >= avgWaqf) {
       return { category: "hifdh", percentage: avgHifdh };
     } else if (avgTajweed >= avgHifdh && avgTajweed >= avgWaqf) {
@@ -252,27 +259,45 @@ export const ParticipantScoreVisualizations = ({
   // Calculate category averages for visualization
   const categoryAverages = useMemo(() => {
     if (participantsWithScores.length === 0) {
-      return { hifdh: 0, tajweed: 0, waqf: 0, husn_al_ada: 0, total: 0 };
+      return {
+        hifdh: 0,
+        tajweed: 0,
+        waqf: 0,
+        husn_al_ada: 0,
+        overall_bonus: 0,
+        total: 0,
+      };
     }
 
-    const total = participantsWithScores.reduce(
+    const totals = participantsWithScores.reduce(
       (acc, p) => {
-        acc.hifdh += p.breakdown.hifdh;
-        acc.tajweed += p.breakdown.tajweed;
-        acc.waqf += p.breakdown.waqf;
-        acc.husn_al_ada += p.breakdown.husn_al_ada;
+        // Convert points achieved into retention percentages
+        acc.hifdh += (p.breakdown.hifdh / 50) * 100;
+        acc.tajweed += (p.breakdown.tajweed / 30) * 100;
+        acc.waqf += (p.breakdown.waqf / 10) * 100;
+        acc.husn_al_ada += p.breakdown.husn_al_ada; // This is a deduction (0-10 pts)
+        acc.overall_bonus += p.breakdown.overall_bonus; // This is a bonus (0-5 pts)
         acc.total += p.finalScore;
         return acc;
       },
-      { hifdh: 0, tajweed: 0, waqf: 0, husn_al_ada: 0, total: 0 }
+      {
+        hifdh: 0,
+        tajweed: 0,
+        waqf: 0,
+        husn_al_ada: 0,
+        overall_bonus: 0,
+        total: 0,
+      }
     );
 
+    const count = participantsWithScores.length;
     return {
-      hifdh: total.hifdh / participantsWithScores.length,
-      tajweed: total.tajweed / participantsWithScores.length,
-      waqf: total.waqf / participantsWithScores.length,
-      husn_al_ada: total.husn_al_ada / participantsWithScores.length,
-      total: total.total / participantsWithScores.length,
+      hifdh: totals.hifdh / count,
+      tajweed: totals.tajweed / count,
+      waqf: totals.waqf / count,
+      husn_al_ada: totals.husn_al_ada / count, // Average deduction points
+      overall_bonus: totals.overall_bonus / count, // Average bonus points
+      total: totals.total / count,
     };
   }, [participantsWithScores]);
 
@@ -300,6 +325,14 @@ export const ParticipantScoreVisualizations = ({
 
   // Get top 5 participants for display
   const topParticipants = participantsWithScores.slice(0, 5);
+
+  // Get top 5 participants by bonus score, filtering out those with zero bonus
+  const topBonusParticipants = useMemo(() => {
+    return [...participantsWithScores]
+      .filter((p) => p.breakdown.overall_bonus > 0)
+      .sort((a, b) => b.breakdown.overall_bonus - a.breakdown.overall_bonus)
+      .slice(0, 5);
+  }, [participantsWithScores]);
 
   // Always render the component, but conditionally render the visualizations
   return (
@@ -338,6 +371,9 @@ export const ParticipantScoreVisualizations = ({
               <SelectItem value="D">
                 {t("participants.filter.category_d")}
               </SelectItem>
+              <SelectItem value="M">
+                {t("participants.filter.category_m")}
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -345,7 +381,7 @@ export const ParticipantScoreVisualizations = ({
 
       {hasParticipantsWithScores ? (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
             {/* Top Performers Card */}
             <Card>
               <CardHeader className="pb-2">
@@ -368,12 +404,17 @@ export const ParticipantScoreVisualizations = ({
                         {i + 1}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-baseline mb-1">
-                          <p className="text-sm font-medium truncate">
-                            {participant.name}
-                          </p>
-                          <p className="text-sm font-bold">
-                            {participant.finalScore.toFixed(1)} pts
+                        <div className="flex justify-between items-baseline mb-1 gap-2">
+                          <div className="truncate">
+                            <span className="text-sm font-medium">
+                              {participant.name}
+                            </span>
+                            <span className="ml-2 text-xs font-mono text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
+                              {participant.category}
+                            </span>
+                          </div>
+                          <p className="text-sm font-bold flex-shrink-0">
+                            {participant.finalScore.toFixed(2)} pts
                           </p>
                         </div>
                         <Progress
@@ -386,6 +427,57 @@ export const ParticipantScoreVisualizations = ({
                 </div>
               </CardContent>
             </Card>
+
+            {/* Top Bonus Scorers Card */}
+            {topBonusParticipants.length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-cyan-500" />
+                    {t("participants.visualizations.topBonuses")}
+                  </CardTitle>
+                  <CardDescription>
+                    {t("participants.visualizations.topBonusesDesc")}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {topBonusParticipants.map((participant, i) => (
+                      <div
+                        key={participant.id}
+                        className="flex items-center gap-3"
+                      >
+                        <div className="flex-none w-6 h-6 rounded-full bg-cyan-500/10 text-cyan-500 flex items-center justify-center font-bold">
+                          {i + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-baseline mb-1 gap-2">
+                            <div className="truncate">
+                              <span className="text-sm font-medium">
+                                {participant.name}
+                              </span>
+                              <span className="ml-2 text-xs font-mono text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
+                                {participant.category}
+                              </span>
+                            </div>
+                            <p className="text-sm font-bold flex-shrink-0">
+                              +{participant.breakdown.overall_bonus.toFixed(1)}{" "}
+                              pts
+                            </p>
+                          </div>
+                          <Progress
+                            value={
+                              (participant.breakdown.overall_bonus / 5) * 100
+                            } // Bonus is out of 5
+                            className="h-2 [&>*]:bg-cyan-500"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Category Performance Card */}
             <Card>
@@ -436,19 +528,31 @@ export const ParticipantScoreVisualizations = ({
                     </div>
                     <Progress value={categoryAverages.waqf} className="h-2" />
                   </div>
-                  <div>
-                    <div className="flex justify-between items-baseline mb-1">
-                      <p className="text-sm font-medium">
-                        {t("jury.categories.husn_al_ada")}
+                  <div className="border-t pt-4">
+                    <div className="flex justify-between items-baseline">
+                      <p className="text-sm font-medium text-red-600">
+                        {t("jury.categories.husn_al_ada_deduction")}
                       </p>
-                      <p className="text-sm font-bold">
-                        {categoryAverages.husn_al_ada.toFixed(1)}%
+                      <p className="text-sm font-bold text-red-600">
+                        -{categoryAverages.husn_al_ada.toFixed(1)} pts
                       </p>
                     </div>
-                    <Progress
-                      value={categoryAverages.husn_al_ada * 10}
-                      className="h-2"
-                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t("participants.visualizations.avgDeduction")}
+                    </p>
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-baseline">
+                      <p className="text-sm font-medium text-green-600">
+                        {t("jury.categories.overall_bonus")}
+                      </p>
+                      <p className="text-sm font-bold text-green-600">
+                        +{categoryAverages.overall_bonus.toFixed(1)} pts
+                      </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t("participants.visualizations.avgBonus")}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -661,7 +765,7 @@ export const ParticipantScoreVisualizations = ({
                     <div>{t("jury.categories.hifdh")}</div>
                     <div>{t("jury.categories.tajweed")}</div>
                     <div>{t("jury.categories.waqf")}</div>
-                    <div>{t("jury.categories.husn_al_ada")}</div>
+                    <div>{t("jury.categories.husn_al_ada_deduction")}</div>
                   </div>
 
                   {topParticipants.slice(0, 3).map((participant, index) => (
@@ -695,12 +799,15 @@ export const ParticipantScoreVisualizations = ({
                                   : "h-full rounded-full bg-orange-800"
                             }
                             style={{
-                              width: `${(participant.breakdown.hifdh / 60) * 100}%`,
+                              width: `${(participant.breakdown.hifdh / 50) * 100}%`,
                             }}
                           ></div>
                         </div>
                         <span className="text-xs font-semibold">
-                          {participant.breakdown.hifdh.toFixed(1)}%
+                          {((participant.breakdown.hifdh / 50) * 100).toFixed(
+                            1
+                          )}
+                          %
                         </span>
                       </div>
 
@@ -720,7 +827,10 @@ export const ParticipantScoreVisualizations = ({
                           ></div>
                         </div>
                         <span className="text-xs font-semibold">
-                          {participant.breakdown.tajweed.toFixed(1)}%
+                          {((participant.breakdown.tajweed / 30) * 100).toFixed(
+                            1
+                          )}
+                          %
                         </span>
                       </div>
 
@@ -740,27 +850,14 @@ export const ParticipantScoreVisualizations = ({
                           ></div>
                         </div>
                         <span className="text-xs font-semibold">
-                          {participant.breakdown.waqf.toFixed(1)}%
+                          {((participant.breakdown.waqf / 10) * 100).toFixed(1)}
+                          %
                         </span>
                       </div>
 
-                      <div className="relative pt-1">
-                        <div className="h-2 bg-gray-200 rounded-full">
-                          <div
-                            className={
-                              index === 0
-                                ? "h-full rounded-full bg-amber-500"
-                                : index === 1
-                                  ? "h-full rounded-full bg-gray-500"
-                                  : "h-full rounded-full bg-orange-800"
-                            }
-                            style={{
-                              width: `${(participant.breakdown.husn_al_ada / 5) * 100}%`,
-                            }}
-                          ></div>
-                        </div>
-                        <span className="text-xs font-semibold">
-                          +{participant.breakdown.husn_al_ada.toFixed(1)}%
+                      <div className="relative pt-1 text-center">
+                        <span className="text-xs font-semibold text-red-600">
+                          -{participant.breakdown.husn_al_ada.toFixed(1)} pts
                         </span>
                       </div>
                     </div>
@@ -782,8 +879,8 @@ export const ParticipantScoreVisualizations = ({
                 {categoryFilter === "all"
                   ? t("participants.visualizations.noParticipantsWithScores")
                   : t("participants.visualizations.noParticipantsInCategory", {
-                      category: categoryFilter,
-                    })}
+                    category: categoryFilter,
+                  })}
               </p>
             </div>
           </CardContent>

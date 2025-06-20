@@ -59,8 +59,9 @@
       "husn_al_ada": "Husn al-Adā' (Desempenho)",
       "husn_al_ada_score": "Erros de Fluência/Desempenho",
       "husn_al_ada_mistakes_count": "Erros de Fluência/Desempenho",
+      "husn_al_ada_deduction": "Husn al-Adā' (Dedução)",
       "overall_bonus_title": "Bônus Geral",
-      "overall_bonus": "Bônus (0-3 pts)",
+      "overall_bonus": "Bônus Geral",
       "ofTotalScore": "da pontuação total",
       "maxDeduction": "Dedução Máxima",
       "perQuestion": "por questão",
@@ -145,7 +146,8 @@
       "category_a": "Categoria A (A1 & A2)",
       "category_b": "Categoria B (B1 & B2)",
       "category_c": "Categoria C (C1 & C2)",
-      "category_d": "Categoria D (D1 & D2)"
+      "category_d": "Categoria D (D1 & D2)",
+      "category_m": "Categoria M (M1 & M2)"
     },
     "banner": {
       "loading": "Carregando dados do participante...",
@@ -178,7 +180,9 @@
     "visualizations": {
       "title": "Visualizações de Pontuação",
       "topPerformers": "Melhores Desempenhos",
-      "topPerformersDesc": "Participantes com maior pontuação",
+      "topPerformersDesc": "Participantes com as maiores pontuações base",
+      "topBonuses": "Maiores Bônus",
+      "topBonusesDesc": "Participantes com os maiores pontos de bônus",
       "categoryPerformance": "Desempenho por Categoria",
       "categoryPerformanceDesc": "Pontuações médias por categoria",
       "scoreDistribution": "Distribuição de Pontuação",
@@ -201,7 +205,9 @@
       "topThreeComparisonDesc": "Detalhamento por categoria dos melhores desempenhos",
       "noParticipantsFound": "Nenhum Participante Encontrado",
       "noParticipantsWithScores": "Não há participantes com pontuações para exibir",
-      "noParticipantsInCategory": "Não há participantes na Categoria {{category}} com pontuações para exibir"
+      "noParticipantsInCategory": "Não há participantes na Categoria {{category}} com pontuações para exibir",
+      "avgDeduction": "Média de dedução de pontos",
+      "avgBonus": "Média de bônus de pontos"
     },
     "progress": "Progresso",
     "questions": "Questões",
@@ -412,6 +418,7 @@
     "category_b": "Categoria B (B1 & B2)",
     "category_c": "Categoria C (C1 & C2)",
     "category_d": "Categoria D (D1 & D2)",
+    "category_m": "Categoria M (M1 & M2)",
     "byJury": "Filtrar por Júri",
     "selectJury": "Selecionar Júri/Média"
   },
