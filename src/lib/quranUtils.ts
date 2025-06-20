@@ -85,7 +85,8 @@ export const getRandomPageFromJuzRange = (
   startJuz: number,
   endJuz: number,
   partIndex: number,
-  totalParts: number
+  totalParts: number,
+  excludedPages: number[] = []
 ): number => {
   // Calculate the total page range
   const startPage = juzToPageMap[startJuz].start;
@@ -98,11 +99,28 @@ export const getRandomPageFromJuzRange = (
   const partEndPage =
     partIndex === totalParts - 1 ? endPage : partStartPage + partSize - 1;
 
-  // Return a random page from the part range
-  return (
-    Math.floor(Math.random() * (partEndPage - partStartPage + 1)) +
-    partStartPage
-  );
+  // Create array of available pages (excluding the ones in excludedPages)
+  const availablePages: number[] = [];
+  for (let page = partStartPage; page <= partEndPage; page++) {
+    if (!excludedPages.includes(page)) {
+      availablePages.push(page);
+    }
+  }
+
+  // If no pages are available (all are excluded), fall back to original behavior
+  if (availablePages.length === 0) {
+    console.warn(
+      `All pages in range ${partStartPage}-${partEndPage} are excluded. Falling back to random selection.`
+    );
+    return (
+      Math.floor(Math.random() * (partEndPage - partStartPage + 1)) +
+      partStartPage
+    );
+  }
+
+  // Return a random page from available pages
+  const randomIndex = Math.floor(Math.random() * availablePages.length);
+  return availablePages[randomIndex];
 };
 
 // Get the category configuration for a participant
@@ -162,7 +180,8 @@ export const getQuestionConfig = (
 // Generate a random page for a specific question
 export const generateRandomPage = (
   category: string,
-  questionIndex: number
+  questionIndex: number,
+  excludedPages: number[] = []
 ): number => {
   // Get the main category configuration
   const mainCategory = category.charAt(0).toUpperCase();
@@ -193,6 +212,7 @@ export const generateRandomPage = (
     selectedRange.juzRange[0],
     selectedRange.juzRange[1],
     partIndex,
-    selectedRange.numParts
+    selectedRange.numParts,
+    excludedPages
   );
 };

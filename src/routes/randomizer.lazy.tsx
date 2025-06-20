@@ -16,6 +16,10 @@ import { useTranslation } from "react-i18next";
 import { TFunction } from "i18next";
 import { getCategoryConfig, generateRandomPage } from "@/lib/quranUtils";
 import { Participant } from "@/models/models";
+import {
+  addToPreviousQuestions,
+  getPreviousQuestions,
+} from "@/services/appConfig";
 
 // Import assets
 import backgroundImage from "@/assets/randomizer/background.png";
@@ -272,6 +276,12 @@ const RouteComponent = () => {
     setIsGeneratingAll(true);
     console.log(t("randomizer.messages.generationStartingTitle"));
 
+    // Fetch previous questions to avoid duplicates
+    const previousQuestions = await getPreviousQuestions();
+    console.log(
+      `Fetched ${previousQuestions.length} previous questions to avoid`
+    );
+
     setQuestionNumbers(Array(numQuestions).fill(0));
 
     const generatedPages: number[] = [];
@@ -279,7 +289,13 @@ const RouteComponent = () => {
     for (let i = 0; i < numQuestions; i++) {
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Time for rolling animation per card
 
-      const randomPage = generateRandomPage(participant.category, i);
+      // Pass all previously generated questions (from database + current session) to avoid duplicates
+      const allExcludedPages = [...previousQuestions, ...generatedPages];
+      const randomPage = generateRandomPage(
+        participant.category,
+        i,
+        allExcludedPages
+      );
       generatedPages.push(randomPage);
 
       setQuestionNumbers((prev) => {
@@ -320,6 +336,15 @@ const RouteComponent = () => {
         // This catch is for the Promise.reject if a mutation fails
         console.log(`Mutation for question ${i + 1} was rejected.`, error);
       }
+    }
+
+    // Store the generated questions in the app_config collection
+    try {
+      await addToPreviousQuestions(generatedPages);
+      console.log("Successfully stored generated questions in app_config");
+    } catch (error) {
+      console.error("Error storing questions in app_config:", error);
+      // Don't throw here as the main functionality (participant questions) has succeeded
     }
 
     setIsGeneratingAll(false);

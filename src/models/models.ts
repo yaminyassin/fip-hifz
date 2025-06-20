@@ -7,6 +7,16 @@ export type Quran = {
 };
 
 /**
+ * App configuration settings stored in Firestore
+ */
+export type AppConfigPreviousQuestions = {
+  id: string; // Document ID (e.g., "previous_questions")
+  previous_questions: number[]; // Array of previously generated question page numbers
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+};
+
+/**
  * the judge evaluation of the participant, per question
  */
 export type QuestionFields = {
