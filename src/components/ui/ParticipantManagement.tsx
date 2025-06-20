@@ -12,6 +12,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PlusCircle, Upload, Edit, Trash, X, RefreshCcw } from "lucide-react";
 import { Card } from "@/components/shadcn/card";
 import { Input } from "@/components/shadcn/input";
+import { getFlagForCountry } from "@/lib/countryUtils";
 
 export const ParticipantManagement = () => {
   const { t } = useTranslation();
@@ -96,7 +97,7 @@ export const ParticipantManagement = () => {
     if (isLoading) {
       return Array.from({ length: 5 }).map((_, index) => (
         <tr key={`loading-${index}`}>
-          <td colSpan={7} className="px-4 py-4">
+          <td colSpan={6} className="px-4 py-4">
             <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
           </td>
         </tr>
@@ -105,7 +106,7 @@ export const ParticipantManagement = () => {
     if (participantsError) {
       return (
         <tr>
-          <td colSpan={7} className="px-4 py-6 text-center text-red-600">
+          <td colSpan={6} className="px-4 py-6 text-center text-red-600">
             {t("error.general", "Error loading participants: ")}
             {participantsError instanceof Error
               ? participantsError.message
@@ -118,7 +119,7 @@ export const ParticipantManagement = () => {
       return (
         <tr>
           <td
-            colSpan={7}
+            colSpan={6}
             className="px-4 py-4 text-center text-sm text-muted-foreground"
           >
             {searchQuery
@@ -131,34 +132,32 @@ export const ParticipantManagement = () => {
 
     return filteredParticipants.map((participant) => (
       <tr key={participant.id} className="hover:bg-muted/50">
-        <td className="px-4 py-4 whitespace-nowrap text-sm">
-          {participant.name}
+        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+          {participant.name || "N/A"}
         </td>
         <td className="px-4 py-4 whitespace-nowrap text-sm">
-          {participant.age}
+          {participant.age || "N/A"}
         </td>
         <td className="px-4 py-4 whitespace-nowrap text-sm">
-          <span className="inline-flex items-center">
-            <span className="mr-2">{participant.flag}</span>
-            {participant.country}
+          <span className="inline-flex items-center gap-2">
+            <span className="text-lg">{getFlagForCountry(participant.country) || "🌍"}</span>
+            <span>{participant.country || "N/A"}</span>
           </span>
         </td>
         <td className="px-4 py-4 whitespace-nowrap text-sm">
-          {participant.category}
-        </td>
-        <td className="px-4 py-4 whitespace-nowrap text-sm">
-          {participant.school}
+          <span className="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+            {participant.category || "N/A"}
+          </span>
         </td>
         <td className="px-4 py-4 whitespace-nowrap text-sm">
           <div className="flex items-center space-x-2">
             <span
-              className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                participant.isActive
-                  ? "bg-green-100 text-green-800"
-                  : participant.isDone
-                    ? "bg-red-100 text-red-800"
-                    : "bg-gray-100 text-gray-800"
-              }`}
+              className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${participant.isActive
+                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                : participant.isDone
+                  ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                  : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                }`}
             >
               {participant.isActive
                 ? t("common.active")
@@ -183,7 +182,7 @@ export const ParticipantManagement = () => {
               variant="outline"
               size="sm"
               onClick={() => handleDeleteClick(participant.id)}
-              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 border-2 border-red-200 hover:border-red-500"
+              className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 border-2 border-red-200 hover:border-red-500 dark:hover:bg-red-900/50"
               aria-label={t("common.delete")}
             >
               <Trash className="h-4 w-4" />
@@ -245,10 +244,10 @@ export const ParticipantManagement = () => {
         />
       </div>
 
-      {/* Participants Table */}
+      {/* Participants Table - Only showing essential, non-sensitive columns */}
       <div className="border-2 rounded-md overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full divide-y divide-gray-200">
+          <table className="w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-muted">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -264,9 +263,6 @@ export const ParticipantManagement = () => {
                   {t("admin.participants.table.category")}
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  {t("admin.participants.table.school")}
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   {t("admin.participants.table.status")}
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -274,14 +270,14 @@ export const ParticipantManagement = () => {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-card divide-y divide-gray-200">
+            <tbody className="bg-card divide-y divide-gray-200 dark:divide-gray-700">
               {renderTableContent()}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Add/Edit Form Modal */}
+      {/* Add/Edit Form Modal - Photo and other details only visible here */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <Card className="max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 relative border-2 shadow-lg">

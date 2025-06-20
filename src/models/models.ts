@@ -70,7 +70,7 @@ export type Participant = {
   scheduled: string; // order of the participant in the competition
   isDone: boolean;
   isActive: boolean;
-  flag: string; // flag symbol of the country
+  flag: string; // flag emoji of the country (auto-derived from country name)
   parentsName: string;
   phoneNum: string;
   email?: string; // Email address of the participant
