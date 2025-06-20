@@ -17,7 +17,7 @@ import { TFunction } from "i18next";
 import { getCategoryConfig, generateRandomPage } from "@/lib/quranUtils";
 import { Participant } from "@/models/models";
 import {
-  addToPreviousQuestions,
+  setPreviousQuestions,
   getPreviousQuestions,
 } from "@/services/appConfig";
 
@@ -338,10 +338,12 @@ const RouteComponent = () => {
       }
     }
 
-    // Store the generated questions in the app_config collection
+    // Replace all previous questions with the newly generated ones in the app_config collection
     try {
-      await addToPreviousQuestions(generatedPages);
-      console.log("Successfully stored generated questions in app_config");
+      await setPreviousQuestions(generatedPages);
+      console.log(
+        "Successfully replaced previous questions with newly generated questions in app_config"
+      );
     } catch (error) {
       console.error("Error storing questions in app_config:", error);
       // Don't throw here as the main functionality (participant questions) has succeeded
