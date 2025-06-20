@@ -3,10 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { doc, onSnapshot } from "firebase/firestore";
 import { firestore } from "@/main";
-import {
-  getAuthenticatedJury,
-  logoutJury,
-} from "../services/juryAuth";
+import { getAuthenticatedJury, logoutJury } from "../services/juryAuth";
 import { Jury } from "../models/models";
 
 export const useJuryAuth = () => {
@@ -26,12 +23,6 @@ export const useJuryAuth = () => {
       const juryId = getAuthenticatedJury();
       if (juryId) {
         // Use sendBeacon for reliable request during page unload
-        const data = JSON.stringify({
-          juryId,
-          action: 'deactivate'
-        });
-
-        // Try to send a beacon request to deactivate the jury
         // Note: This would require a server endpoint, so for now we'll use the simple approach
         // and accept that some cases might not deactivate properly
         try {
@@ -45,10 +36,10 @@ export const useJuryAuth = () => {
     };
 
     // Handle browser close/refresh
-    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, []);
 
