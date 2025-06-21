@@ -17,8 +17,9 @@ import { TFunction } from "i18next";
 import { getCategoryConfig, generateRandomPage } from "@/lib/quranUtils";
 import { Participant } from "@/models/models";
 import {
-  setPreviousQuestions,
+  // setPreviousQuestions,
   getPreviousQuestions,
+  addToPreviousQuestions,
 } from "@/services/appConfig";
 
 // Import assets
@@ -340,7 +341,8 @@ const RouteComponent = () => {
 
     // Replace all previous questions with the newly generated ones in the app_config collection
     try {
-      await setPreviousQuestions(generatedPages);
+      //await setPreviousQuestions(generatedPages);
+      await addToPreviousQuestions(generatedPages);
       console.log(
         "Successfully replaced previous questions with newly generated questions in app_config"
       );
