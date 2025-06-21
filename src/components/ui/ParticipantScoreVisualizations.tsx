@@ -1,7 +1,6 @@
 import { Participant, QuestionFields } from "@/models/models";
 import { calculateFinalScore } from "@/utils/scoreUtils";
 import {
-  getCategoryConfig,
   fillMissingQuestionsAndCalculateAverage,
 } from "@/lib/quranUtils";
 import { useTranslation } from "react-i18next";
@@ -47,36 +46,7 @@ interface ParticipantScoreVisualizationsProps {
   participants: ParticipantWithScores[];
 }
 
-// Helper function to create perfect question scores (100 points)
-const createPerfectQuestionScore = (): QuestionFields => ({
-  hifdh_judge_correction: 0,
-  hifdh_self_correction: 0,
-  hifdh_stuck_count: 0,
-  tajweed_major: 0,
-  tajweed_minor: 0,
-  waqf_ibtida_incorrect: 0,
-  waqf_ibtida_meaning: 0,
-  husn_al_ada_score: 0,
-});
 
-// Helper function to fill missing questions with perfect scores
-const fillMissingQuestionsWithPerfectScores = (
-  questionScores: { [questionNumber: number]: QuestionFields },
-  category: string
-): { [questionNumber: number]: QuestionFields } => {
-  const categoryConfig = getCategoryConfig(category);
-  const expectedQuestions = categoryConfig.numQuestions;
-  const filledScores = { ...questionScores };
-
-  // Fill missing questions (1 to expectedQuestions) with perfect scores
-  for (let i = 1; i <= expectedQuestions; i++) {
-    if (!filledScores[i]) {
-      filledScores[i] = createPerfectQuestionScore();
-    }
-  }
-
-  return filledScores;
-};
 
 export const ParticipantScoreVisualizations = ({
   participants,
