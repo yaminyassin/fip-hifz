@@ -65,6 +65,7 @@ function RouteComponent() {
     "all",
   ]);
   const [sortOption, setSortOption] = useState("finalScore_desc");
+  const [selectedSchedule, setSelectedSchedule] = useState<string>("all");
   const [isExporting, setIsExporting] = useState(false);
 
   const searchFilteredParticipants = useMemo(
@@ -75,6 +76,27 @@ function RouteComponent() {
     [participants, searchQuery]
   );
 
+  // Get unique schedules for filter dropdown
+  const availableSchedules = useMemo(() => {
+    const schedules = new Set<string>();
+    participants.forEach(p => {
+      const schedule = p.scheduled || "Unscheduled";
+      schedules.add(schedule);
+    });
+    return Array.from(schedules).sort((a, b) => {
+      // Put "Unscheduled" at the end
+      if (a === "Unscheduled") return 1;
+      if (b === "Unscheduled") return -1;
+      // Try to sort numerically if possible
+      const numA = parseInt(a);
+      const numB = parseInt(b);
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return numA - numB;
+      }
+      return a.localeCompare(b);
+    });
+  }, [participants]);
+
   const processedParticipants = useMemo(() => {
     // Determine which categories to use for filtering
     const isAllSelected =
@@ -82,14 +104,22 @@ function RouteComponent() {
     const activeCategories = isAllSelected ? nonMCategories : selectedCategories;
 
     // 1. Filter by category
-    const categoryFiltered =
+    let categoryFiltered =
       activeCategories.length > 0
         ? searchFilteredParticipants.filter((participant) =>
           activeCategories.includes(participant.category)
         )
         : []; // If no categories are selected, show no participants
 
-    // 2. Calculate scores for sorting
+    // 2. Filter by schedule
+    if (selectedSchedule !== "all") {
+      categoryFiltered = categoryFiltered.filter((participant) => {
+        const schedule = participant.scheduled || "Unscheduled";
+        return schedule === selectedSchedule;
+      });
+    }
+
+    // 3. Calculate scores for sorting
     const withScores = categoryFiltered.map((p) => {
       if (
         !p.isDone ||
@@ -132,7 +162,7 @@ function RouteComponent() {
       };
     });
 
-    // 3. Sort
+    // 4. Sort
     return withScores.sort((a, b) => {
       const [sortKey, sortOrder] = sortOption.split("_");
       const direction = sortOrder === "asc" ? 1 : -1;
@@ -152,7 +182,7 @@ function RouteComponent() {
           return (a.finalScore - b.finalScore) * direction;
       }
     });
-  }, [searchFilteredParticipants, selectedCategories, sortOption]);
+  }, [searchFilteredParticipants, selectedCategories, sortOption, selectedSchedule]);
 
   // Excel export function
   const handleExportToExcel = async () => {
@@ -472,6 +502,26 @@ function RouteComponent() {
                 <SelectItem value="bonus_asc">
                   {t("participants.filter.bonus_asc")}
                 </SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Schedule Filter */}
+            <Select value={selectedSchedule} onValueChange={setSelectedSchedule}>
+              <SelectTrigger className="w-[200px]">
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4" />
+                  <SelectValue placeholder={t("participants.filter.by_schedule")} />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  {t("participants.filter.all_schedules")}
+                </SelectItem>
+                {availableSchedules.map((schedule) => (
+                  <SelectItem key={schedule} value={schedule}>
+                    {schedule}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 

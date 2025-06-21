@@ -159,6 +159,8 @@
       "name_desc": "Name: Z-A",
       "bonus_desc": "Bonus: High to Low",
       "bonus_asc": "Bonus: Low to High",
+      "by_schedule": "Filter by Schedule",
+      "all_schedules": "All Schedules",
       "category_a": "Category A (A1 & A2)",
       "category_b": "Category B (B1 & B2)",
       "category_c": "Category C (C1 & C2)",

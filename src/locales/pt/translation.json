@@ -151,6 +151,8 @@
       "name_desc": "Nome: Z-A",
       "bonus_desc": "Bónus: Maior para Menor",
       "bonus_asc": "Bónus: Menor para Maior",
+      "by_schedule": "Filtrar por Horário",
+      "all_schedules": "Todos os Horários",
       "category_a": "Categoria A (A1 & A2)",
       "category_b": "Categoria B (B1 & B2)",
       "category_c": "Categoria C (C1 & C2)",
