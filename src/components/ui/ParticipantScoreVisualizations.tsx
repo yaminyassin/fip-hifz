@@ -1,6 +1,9 @@
 import { Participant, QuestionFields } from "@/models/models";
 import { calculateFinalScore } from "@/utils/scoreUtils";
-import { getCategoryConfig } from "@/lib/quranUtils";
+import {
+  getCategoryConfig,
+  fillMissingQuestionsAndCalculateAverage,
+} from "@/lib/quranUtils";
 import { useTranslation } from "react-i18next";
 import {
   Card,
@@ -73,86 +76,6 @@ const fillMissingQuestionsWithPerfectScores = (
   }
 
   return filledScores;
-};
-
-// Helper function to fill missing questions for all juries and calculate average
-const fillMissingQuestionsAndCalculateAverage = (
-  questionScores: {
-    byJury: Record<string, { [questionNumber: number]: QuestionFields }>;
-    average: { [questionNumber: number]: QuestionFields };
-    juryIds: string[];
-  },
-  category: string
-): { [questionNumber: number]: QuestionFields } => {
-  const categoryConfig = getCategoryConfig(category);
-  const expectedQuestions = categoryConfig.numQuestions;
-
-  // If we already have average scores that include all expected questions, use them
-  const existingAverage = questionScores.average || {};
-  const existingQuestionCount = Object.keys(existingAverage).length;
-
-  if (existingQuestionCount >= expectedQuestions) {
-    return fillMissingQuestionsWithPerfectScores(existingAverage, category);
-  }
-
-  // Otherwise, calculate average from individual jury scores, filling missing questions
-  const filledByJury: Record<
-    string,
-    { [questionNumber: number]: QuestionFields }
-  > = {};
-
-  // Fill missing questions for each jury
-  questionScores.juryIds.forEach((juryId) => {
-    const juryScores = questionScores.byJury[juryId] || {};
-    filledByJury[juryId] = fillMissingQuestionsWithPerfectScores(
-      juryScores,
-      category
-    );
-  });
-
-  // Calculate average from filled jury scores
-  const averageScores: { [questionNumber: number]: QuestionFields } = {};
-
-  for (let questionNum = 1; questionNum <= expectedQuestions; questionNum++) {
-    const questionScoresFromAllJuries = questionScores.juryIds
-      .map((juryId) => filledByJury[juryId][questionNum])
-      .filter(Boolean);
-
-    if (questionScoresFromAllJuries.length > 0) {
-      // Calculate average for each field
-      const avgScores: QuestionFields = {
-        hifdh_judge_correction: 0,
-        hifdh_self_correction: 0,
-        hifdh_stuck_count: 0,
-        tajweed_major: 0,
-        tajweed_minor: 0,
-        waqf_ibtida_incorrect: 0,
-        waqf_ibtida_meaning: 0,
-        husn_al_ada_score: 0,
-      };
-
-      questionScoresFromAllJuries.forEach((scores) => {
-        Object.keys(avgScores).forEach((key) => {
-          avgScores[key as keyof QuestionFields] +=
-            scores[key as keyof QuestionFields];
-        });
-      });
-
-      Object.keys(avgScores).forEach((key) => {
-        avgScores[key as keyof QuestionFields] = Math.round(
-          avgScores[key as keyof QuestionFields] /
-          questionScoresFromAllJuries.length
-        );
-      });
-
-      averageScores[questionNum] = avgScores;
-    } else {
-      // No scores available, use perfect score
-      averageScores[questionNum] = createPerfectQuestionScore();
-    }
-  }
-
-  return averageScores;
 };
 
 export const ParticipantScoreVisualizations = ({
