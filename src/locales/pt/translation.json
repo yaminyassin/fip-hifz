@@ -153,6 +153,8 @@
       "bonus_asc": "Bónus: Menor para Maior",
       "by_schedule": "Filtrar por Horário",
       "all_schedules": "Todos os Horários",
+      "by_status": "Filtrar por Estado",
+      "all_statuses": "Todos os Estados",
       "category_a": "Categoria A (A1 & A2)",
       "category_b": "Categoria B (B1 & B2)",
       "category_c": "Categoria C (C1 & C2)",
@@ -240,7 +242,14 @@
       "category": "Filtrar por Categoria",
       "allCategories": "Todas as Categorias",
       "search": "Pesquisar",
-      "searchPlaceholder": "Pesquisar por nome..."
+      "searchPlaceholder": "Pesquisar por nome...",
+      "by_status": "Filtrar por Estado",
+      "all_statuses": "Todos os Estados",
+      "category_a": "Categoria A (A1 & A2)",
+      "category_b": "Categoria B (B1 & B2)",
+      "category_c": "Categoria C (C1 & C2)",
+      "category_d": "Categoria D (D1 & D2)",
+      "category_m": "Categoria M (M1 & M2)"
     },
     "participant": {
       "category": "Categoria",

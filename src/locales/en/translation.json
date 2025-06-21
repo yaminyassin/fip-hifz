@@ -161,6 +161,8 @@
       "bonus_asc": "Bonus: Low to High",
       "by_schedule": "Filter by Schedule",
       "all_schedules": "All Schedules",
+      "by_status": "Filter by Status",
+      "all_statuses": "All Statuses",
       "category_a": "Category A (A1 & A2)",
       "category_b": "Category B (B1 & B2)",
       "category_c": "Category C (C1 & C2)",
@@ -244,7 +246,9 @@
       "category": "Filter by Category",
       "allCategories": "All Categories",
       "search": "Search",
-      "searchPlaceholder": "Search by name..."
+      "searchPlaceholder": "Search by name...",
+      "by_status": "Filter by Status",
+      "all_statuses": "All Statuses"
     },
     "participant": {
       "category": "Category",
