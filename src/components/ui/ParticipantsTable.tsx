@@ -103,7 +103,7 @@ export const ParticipantsTable = ({
         </TableCell>
         <TableCell className="font-bold">
           {participant.finalScore > 0
-            ? `${participant.finalScore.toFixed(1)} pts`
+            ? `${participant.finalScore.toFixed(2)} pts`
             : "-"}
         </TableCell>
         <TableCell>{juryCount > 0 ? juryCount : "-"}</TableCell>

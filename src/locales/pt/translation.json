@@ -217,6 +217,10 @@
       "avgDeduction": "Média de dedução de pontos",
       "avgBonus": "Média de bônus de pontos"
     },
+    "export": {
+      "excel": "Exportar para Excel",
+      "exporting": "A exportar..."
+    },
     "progress": "Progresso",
     "questions": "Questões",
     "setActive": "Definir como Ativo",

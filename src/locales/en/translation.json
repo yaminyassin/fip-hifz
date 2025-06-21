@@ -224,6 +224,10 @@
       "noParticipantsInCategory": "There are no participants in Category {{category}} with scores to display",
       "avgDeduction": "Avg. point deduction",
       "avgBonus": "Avg. point bonus"
+    },
+    "export": {
+      "excel": "Export to Excel",
+      "exporting": "Exporting..."
     }
   },
   "admin": {
