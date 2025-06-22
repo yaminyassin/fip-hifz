@@ -231,7 +231,13 @@
     },
     "export": {
       "excel": "Export to Excel",
-      "exporting": "Exporting..."
+      "exporting": "Exporting...",
+      "options": "Export Options",
+      "enableJuryFilter": "Enable Jury Filtering (for fair comparison)",
+      "juryFilterDescription": "Select which jury members to include in the export. Only participants evaluated by ALL selected juries will show scores.",
+      "selectedJuries": "Selected: {{count}} jury member{{plural}}",
+      "cancel": "Cancel",
+      "export": "Export Excel"
     }
   },
   "admin": {

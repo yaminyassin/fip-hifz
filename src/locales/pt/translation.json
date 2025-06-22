@@ -223,7 +223,13 @@
     },
     "export": {
       "excel": "Exportar para Excel",
-      "exporting": "A exportar..."
+      "exporting": "A exportar...",
+      "options": "Opções de Exportação",
+      "enableJuryFilter": "Ativar Filtro de Júri (para comparação justa)",
+      "juryFilterDescription": "Selecione quais membros do júri incluir na exportação. Apenas participantes avaliados por TODOS os júris selecionados mostrarão pontuações.",
+      "selectedJuries": "Selecionado{{plural}}: {{count}} membro{{plural}} do júri",
+      "cancel": "Cancelar",
+      "export": "Exportar Excel"
     },
     "progress": "Progresso",
     "questions": "Questões",

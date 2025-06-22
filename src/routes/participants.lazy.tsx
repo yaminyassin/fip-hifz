@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { Input } from "@/components/shadcn/input";
 import { Search, Filter, ListFilter, Download } from "lucide-react";
 import { useState } from "react";
-import { useParticipants } from "@/hooks/useParticipants";
+import { useParticipants, ParticipantWithScores } from "@/hooks/useParticipants";
 import { useJuryMembers } from "@/hooks/useJuryMembers";
 import {
   DropdownMenu,
@@ -23,7 +23,49 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/shadcn/select";
+import { Label } from "@/components/shadcn/label";
 import { Button } from "@/components/shadcn/button";
+
+// Simple dialog component for export options
+const ExportDialog = ({
+  isOpen,
+  onClose,
+  children,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-background rounded-lg max-w-2xl w-full max-h-[90vh] overflow-auto p-6 m-4">
+        {children}
+      </div>
+    </div>
+  );
+};
+
+// Simple checkbox component
+const CheckboxItem = ({
+  checked,
+  onCheckedChange,
+  children,
+}: {
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  children: React.ReactNode;
+}) => (
+  <div className="flex items-center space-x-2">
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={(e) => onCheckedChange(e.target.checked)}
+      className="h-4 w-4 rounded border-gray-300"
+    />
+    <span className="text-sm">{children}</span>
+  </div>
+);
 import { calculateFinalScore } from "@/utils/scoreUtils";
 import {
   fillMissingQuestionsAndCalculateAverage,
@@ -67,6 +109,9 @@ function RouteComponent() {
   const [sortOption, setSortOption] = useState("finalScore_desc");
   const [selectedSchedule, setSelectedSchedule] = useState<string>("all");
   const [isExporting, setIsExporting] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [selectedJuriesForExport, setSelectedJuriesForExport] = useState<string[]>([]);
+  const [exportWithJuryFilter, setExportWithJuryFilter] = useState(false);
 
   const searchFilteredParticipants = useMemo(
     () =>
@@ -96,6 +141,80 @@ function RouteComponent() {
       return a.localeCompare(b);
     });
   }, [participants]);
+
+  // Get all available juries from participants
+  const availableJuries = useMemo(() => {
+    const allJuryIds = new Set<string>();
+    participants.forEach(p => {
+      if (p.questionScores?.juryIds) {
+        p.questionScores.juryIds.forEach(id => allJuryIds.add(id));
+      }
+    });
+    return Array.from(allJuryIds).sort();
+  }, [participants]);
+
+  // Create jury ID to name mapping
+  const juryIdToName = useMemo(() => {
+    const mapping = new Map<string, string>();
+    juryMembers.forEach(jury => {
+      mapping.set(jury.id, jury.name || `Jury ${jury.id}`);
+    });
+    return mapping;
+  }, [juryMembers]);
+
+  // Function to filter participant scores by selected juries
+  const filterParticipantScoresByJuries = (participant: ParticipantWithScores, selectedJuries: string[]) => {
+    if (!exportWithJuryFilter || selectedJuries.length === 0) {
+      return participant; // Return original if no filtering
+    }
+
+    // Check if participant has scores from ALL selected juries
+    const hasAllSelectedJuries = selectedJuries.every(juryId =>
+      participant.questionScores.byJury[juryId] &&
+      Object.keys(participant.questionScores.byJury[juryId]).length > 0
+    );
+
+    if (!hasAllSelectedJuries) {
+      // Return participant with empty scores if they don't have all required jury evaluations
+      return {
+        ...participant,
+        questionScores: {
+          byJury: {},
+          average: {},
+          juryIds: [],
+        },
+        overallBonuses: {},
+      };
+    }
+
+    // Filter the jury scores to only include selected juries
+    const filteredByJury: Record<string, { [questionNumber: number]: QuestionFields }> = {};
+    const filteredJuryIds: string[] = [];
+    const filteredOverallBonuses: Record<string, number> = {};
+
+    selectedJuries.forEach(juryId => {
+      if (participant.questionScores.byJury[juryId]) {
+        filteredByJury[juryId] = participant.questionScores.byJury[juryId];
+        filteredJuryIds.push(juryId);
+      }
+      if (participant.overallBonuses[juryId] !== undefined) {
+        filteredOverallBonuses[juryId] = participant.overallBonuses[juryId];
+      }
+    });
+
+    // Recalculate average scores with filtered juries
+    const filteredQuestionScores = {
+      byJury: filteredByJury,
+      average: {}, // Will be recalculated
+      juryIds: filteredJuryIds,
+    };
+
+    return {
+      ...participant,
+      questionScores: filteredQuestionScores,
+      overallBonuses: filteredOverallBonuses,
+    };
+  };
 
   const processedParticipants = useMemo(() => {
     // Determine which categories to use for filtering
@@ -192,6 +311,60 @@ function RouteComponent() {
       // Create a new workbook
       const workbook = XLSX.utils.book_new();
 
+      // Apply jury filtering if enabled
+      const participantsForExport = exportWithJuryFilter && selectedJuriesForExport.length > 0
+        ? processedParticipants.map(p => filterParticipantScoresByJuries(p, selectedJuriesForExport))
+        : processedParticipants;
+
+      // Recalculate scores for filtered participants
+      const recalculatedParticipants = participantsForExport.map((p) => {
+        if (
+          !p.questionScores?.juryIds ||
+          p.questionScores.juryIds.length === 0
+        ) {
+          return {
+            ...p,
+            finalScore: -1,
+            breakdown: {
+              hifdh: 0,
+              tajweed: 0,
+              waqf: 0,
+              husn_al_ada: 0,
+              overall_bonus: 0,
+            },
+          };
+        }
+
+        const filledAverageScores = fillMissingQuestionsAndCalculateAverage(
+          p.questionScores,
+          p.category
+        );
+        let averageOverallBonus = 0;
+        if (p.overallBonuses && p.questionScores?.juryIds.length) {
+          const totalBonus = p.questionScores.juryIds.reduce(
+            (sum, juryId) => sum + (p.overallBonuses?.[juryId] || 0),
+            0
+          );
+          averageOverallBonus = totalBonus / p.questionScores.juryIds.length;
+        }
+        const scoreResult = calculateFinalScore(
+          filledAverageScores,
+          averageOverallBonus
+        );
+        return {
+          ...p,
+          finalScore: scoreResult.percentage,
+          breakdown: scoreResult.breakdownBySection,
+        };
+      });
+
+      // Sort recalculated participants by final score
+      const sortedParticipants = recalculatedParticipants.sort((a, b) => {
+        if (a.finalScore === -1 && b.finalScore > -1) return 1;
+        if (b.finalScore === -1 && a.finalScore > -1) return -1;
+        return b.finalScore - a.finalScore;
+      });
+
       // Create jury ID to name mapping
       const juryIdToName = new Map<string, string>();
       juryMembers.forEach(jury => {
@@ -199,7 +372,7 @@ function RouteComponent() {
       });
 
       // 1. Summary Sheet (like participant table)
-      const summaryData = processedParticipants.map((participant, index) => ({
+      const summaryData = sortedParticipants.map((participant, index) => ({
         'Rank': index + 1,
         'Name': participant.name,
         'Age': participant.age,
@@ -216,8 +389,8 @@ function RouteComponent() {
       XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
 
       // 2. Detailed Scores Sheet
-      const detailedData = processedParticipants
-        .filter(p => p.isDone && p.finalScore > 0)
+      const detailedData = sortedParticipants
+        .filter(p => p.finalScore > 0)
         .map((participant, index) => ({
           'Rank': index + 1,
           'Name': participant.name,
@@ -238,19 +411,24 @@ function RouteComponent() {
       XLSX.utils.book_append_sheet(workbook, detailedSheet, 'Detailed Scores');
 
       // 3. Individual Jury Sheets
-      const allJuryIds = new Set<string>();
-      processedParticipants.forEach(p => {
-        if (p.questionScores?.juryIds) {
-          p.questionScores.juryIds.forEach(id => allJuryIds.add(id));
-        }
-      });
+      const allJuryIds = exportWithJuryFilter && selectedJuriesForExport.length > 0
+        ? new Set(selectedJuriesForExport)
+        : new Set<string>();
+
+      if (!exportWithJuryFilter || selectedJuriesForExport.length === 0) {
+        sortedParticipants.forEach(p => {
+          if (p.questionScores?.juryIds) {
+            p.questionScores.juryIds.forEach(id => allJuryIds.add(id));
+          }
+        });
+      }
 
       Array.from(allJuryIds).sort().forEach(juryId => {
         const juryName = juryIdToName.get(juryId) || `Jury ${juryId}`;
         const juryData: any[] = [];
 
-        processedParticipants
-          .filter(p => p.isDone && p.questionScores?.byJury[juryId])
+        sortedParticipants
+          .filter(p => p.questionScores?.byJury[juryId])
           .forEach(participant => {
             const juryScores = participant.questionScores!.byJury[juryId];
             const overallBonus = participant.overallBonuses?.[juryId] || 0;
@@ -329,7 +507,7 @@ function RouteComponent() {
       });
 
       // 4. Statistics Sheet
-      const evaluatedParticipants = processedParticipants.filter(p => p.isDone && p.finalScore > 0);
+      const evaluatedParticipants = sortedParticipants.filter(p => p.finalScore > 0);
       const statsData = [];
 
       if (evaluatedParticipants.length > 0) {
@@ -341,10 +519,14 @@ function RouteComponent() {
         const avgDeduction = evaluatedParticipants.reduce((sum, p) => sum + p.breakdown.husn_al_ada, 0) / evaluatedParticipants.length;
 
         statsData.push(
-          { 'Metric': 'Total Participants', 'Value': processedParticipants.length },
+          { 'Metric': 'Total Participants', 'Value': sortedParticipants.length },
           { 'Metric': 'Evaluated Participants', 'Value': evaluatedParticipants.length },
-          { 'Metric': 'Pending Participants', 'Value': processedParticipants.length - evaluatedParticipants.length },
+          { 'Metric': 'Pending Participants', 'Value': sortedParticipants.length - evaluatedParticipants.length },
           { 'Metric': 'Active Jury Members', 'Value': allJuryIds.size },
+          { 'Metric': 'Jury Filtering Applied', 'Value': exportWithJuryFilter ? 'Yes' : 'No' },
+          ...(exportWithJuryFilter && selectedJuriesForExport.length > 0 ? [
+            { 'Metric': 'Selected Juries', 'Value': selectedJuriesForExport.map(id => juryIdToName.get(id) || id).join(', ') }
+          ] : []),
           { 'Metric': '', 'Value': '' },
           { 'Metric': 'Average Final Score', 'Value': `${avgFinalScore.toFixed(2)} pts` },
           { 'Metric': 'Highest Score', 'Value': `${evaluatedParticipants[0]?.finalScore.toFixed(2)} pts` },
@@ -380,8 +562,11 @@ function RouteComponent() {
       const selectedCategoryNames = selectedCategories.includes('all')
         ? 'All-Categories'
         : selectedCategories.join('-');
+      const juryFilterSuffix = exportWithJuryFilter && selectedJuriesForExport.length > 0
+        ? `-Jury-Filtered-${selectedJuriesForExport.length}`
+        : '';
       const currentDate = new Date().toISOString().split('T')[0];
-      const filename = `Participants-Export-${selectedCategoryNames}-${currentDate}.xlsx`;
+      const filename = `Participants-Export-${selectedCategoryNames}${juryFilterSuffix}-${currentDate}.xlsx`;
 
       // Write and download the file
       XLSX.writeFile(workbook, filename);
@@ -527,13 +712,13 @@ function RouteComponent() {
 
             {/* Export Button */}
             <Button
-              onClick={handleExportToExcel}
-              disabled={isExporting || processedParticipants.length === 0}
+              onClick={() => setIsExportDialogOpen(true)}
+              disabled={processedParticipants.length === 0}
               variant="outline"
               className="flex items-center gap-2"
             >
               <Download className="h-4 w-4" />
-              {isExporting ? t("participants.export.exporting") : t("participants.export.excel")}
+              {t("participants.export.excel")}
             </Button>
           </div>
 
@@ -556,6 +741,95 @@ function RouteComponent() {
           participants={searchFilteredParticipants}
         />
       </div>
+
+      {/* Export Dialog */}
+      <ExportDialog
+        isOpen={isExportDialogOpen}
+        onClose={() => {
+          setIsExportDialogOpen(false);
+          setExportWithJuryFilter(false);
+          setSelectedJuriesForExport([]);
+        }}
+      >
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold">{t("participants.export.options")}</h2>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsExportDialogOpen(false)}
+            >
+              ×
+            </Button>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <CheckboxItem
+                checked={exportWithJuryFilter}
+                onCheckedChange={setExportWithJuryFilter}
+              >
+                {t("participants.export.enableJuryFilter")}
+              </CheckboxItem>
+            </div>
+
+            {exportWithJuryFilter && (
+              <div className="space-y-3 pl-6 border-l-2 border-muted">
+                <p className="text-sm text-muted-foreground">
+                  {t("participants.export.juryFilterDescription")}
+                </p>
+
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {availableJuries.map((juryId) => (
+                    <CheckboxItem
+                      key={juryId}
+                      checked={selectedJuriesForExport.includes(juryId)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedJuriesForExport(prev => [...prev, juryId]);
+                        } else {
+                          setSelectedJuriesForExport(prev => prev.filter(id => id !== juryId));
+                        }
+                      }}
+                    >
+                      {juryIdToName.get(juryId) || `Jury ${juryId}`}
+                    </CheckboxItem>
+                  ))}
+                </div>
+
+                {selectedJuriesForExport.length > 0 && (
+                  <div className="text-sm text-muted-foreground">
+                    {t("participants.export.selectedJuries", {
+                      count: selectedJuriesForExport.length,
+                      plural: selectedJuriesForExport.length !== 1 ? 's' : ''
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsExportDialogOpen(false)}
+            >
+              {t("participants.export.cancel")}
+            </Button>
+            <Button
+              onClick={() => {
+                handleExportToExcel();
+                setIsExportDialogOpen(false);
+              }}
+              disabled={isExporting || (exportWithJuryFilter && selectedJuriesForExport.length === 0)}
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              {isExporting ? t("participants.export.exporting") : t("participants.export.export")}
+            </Button>
+          </div>
+        </div>
+      </ExportDialog>
     </div>
   );
 }
