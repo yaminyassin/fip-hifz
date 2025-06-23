@@ -13,13 +13,13 @@ import "./i18n"; // Import i18n configuration
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBXU4Jv-lSCp4IfeBPINGVmYJd3fs9ya5U",
-  authDomain: "fip-hifz.firebaseapp.com",
-  projectId: "fip-hifz",
-  storageBucket: "fip-hifz.firebasestorage.app",
-  messagingSenderId: "38455279748",
-  appId: "1:38455279748:web:2b3595c3409052f17882d1",
-  measurementId: "G-84RZXSQMN8",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 // firebase setup

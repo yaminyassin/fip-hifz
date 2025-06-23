@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Built assets (contain compiled secrets)
+public/assets/
+
 # Environment variables
 .env
 .env.local
