@@ -23,7 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/shadcn/select";
-import { Label } from "@/components/shadcn/label";
 import { Button } from "@/components/shadcn/button";
 
 // Simple dialog component for export options
@@ -38,8 +37,14 @@ const ExportDialog = ({
 }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-background rounded-lg max-w-2xl w-full max-h-[90vh] overflow-auto p-6 m-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-background rounded-lg max-w-2xl w-full max-h-[90vh] overflow-auto p-6 m-4"
+        onClick={(e) => e.stopPropagation()}
+      >
         {children}
       </div>
     </div>
