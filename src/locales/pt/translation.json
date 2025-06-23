@@ -287,7 +287,8 @@
     "tabs": {
       "control": "Painel de Controle",
       "participants": "Gerenciamento de Participantes",
-      "jury": "Gerenciamento de Jurados"
+      "jury": "Gerenciamento de Jurados",
+      "performance": "Monitor de Desempenho"
     },
     "participants": {
       "title": "Gerenciamento de Participantes",
@@ -398,6 +399,29 @@
       "setInstruction": "Selecione um participante para começar",
       "noneSet": "Nenhum participante selecionado"
     }
+  },
+  "performance": {
+    "title": "Monitor de Desempenho",
+    "subtitle": "Monitorar desempenho em tempo real e uso de recursos",
+    "totalListeners": "Total de Ouvintes",
+    "memoryUsage": "Uso de Memória",
+    "updates": "Atualizações",
+    "lastUpdate": "Última atualização",
+    "activeListeners": "Ouvintes Ativos",
+    "history": "Histórico de Desempenho",
+    "recommendations": "Recomendações de Desempenho",
+    "autoRefreshOn": "Atualização Automática Ligada",
+    "autoRefreshOff": "Atualização Automática Desligada",
+    "export": "Exportar Relatório",
+    "cleanup": "Limpar Todos",
+    "noListeners": "Nenhum ouvinte ativo",
+    "noHistory": "Ainda não há dados de histórico",
+    "highListenerWarning": "Alto número de ouvintes detectado",
+    "highMemoryWarning": "Alto uso de memória detectado",
+    "rec1": "Considere limpar ouvintes não utilizados",
+    "rec2": "Alto uso de memória - considere atualizar a página",
+    "rec3": "Feche abas do navegador não utilizadas",
+    "rec4": "Atualize a página a cada 2-3 horas durante sessões longas"
   },
   "common": {
     "loading": "Carregando...",

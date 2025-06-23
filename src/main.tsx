@@ -34,7 +34,29 @@ const router = createRouter({
     auth: undefined!, // This will be overridden below
   },
 });
-const client = new QueryClient();
+
+// Optimized QueryClient for real-time applications
+const client = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Disable automatic refetching since we're using real-time listeners
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchOnMount: false,
+      // Keep data in cache longer
+      staleTime: Infinity, // Data never becomes stale
+      gcTime: 1000 * 60 * 60 * 24, // 24 hours (previously cacheTime)
+      // Retry configuration
+      retry: 1,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    },
+    mutations: {
+      // Retry failed mutations once
+      retry: 1,
+      retryDelay: 1000,
+    },
+  },
+});
 
 // Register the router instance for type safety
 declare module "@tanstack/react-router" {

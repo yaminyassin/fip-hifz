@@ -5,6 +5,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { firestore } from "@/main";
 import { getAuthenticatedJury, logoutJury } from "../services/juryAuth";
 import { Jury } from "../models/models";
+import { cleanupAllListeners } from "./useFirestoreListener";
 
 export const useJuryAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -91,16 +92,27 @@ export const useJuryAuth = () => {
     try {
       await logoutJury();
       setIsAuthenticated(false);
+
+      // Clean up all Firestore listeners to prevent memory leaks
+      cleanupAllListeners();
+
+      // Clear React Query cache
       queryClient.clear();
+
       navigate({ to: "/" });
     } catch (error) {
       console.error("Error during logout:", error);
       // Still proceed with logout even if deactivation fails
       setIsAuthenticated(false);
+
+      // Clean up resources even on error
+      cleanupAllListeners();
       queryClient.clear();
+
       navigate({ to: "/" });
     }
   };
+
   console.log("juryMember", juryMember);
   return {
     isAuthenticated,

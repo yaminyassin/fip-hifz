@@ -8,7 +8,7 @@ import {
 } from "firebase/firestore";
 import { firestore } from "@/main";
 import { Participant, QuestionFields, OverallBonus } from "@/models/models";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   calculateAverageScores,
   createEmptyQuestionFields,
@@ -36,12 +36,127 @@ export type ParticipantWithScores = Participant & {
 
 export const useParticipants = () => {
   const queryClient = useQueryClient();
+  // Use refs to store the latest participants data for score processing
+  const participantsRef = useRef<ParticipantWithScores[]>([]);
+
+  // Helper function to process scores with the latest participants data
+  const processScoresWithLatestParticipants = (
+    scoresSnapshot: QuerySnapshot<DocumentData>
+  ) => {
+    const currentParticipants = participantsRef.current;
+    if (!currentParticipants.length) return;
+
+    // Create a map for faster lookups
+    const scoresMap = new Map<string, ExtendedScores[]>();
+
+    scoresSnapshot.docs.forEach((scoreDoc) => {
+      const scoreData = scoreDoc.data() as ExtendedScores;
+      if (!scoreData.scores) return;
+
+      const participantScores = scoresMap.get(scoreData.participantId) || [];
+      participantScores.push(scoreData);
+      scoresMap.set(scoreData.participantId, participantScores);
+    });
+
+    // Update participants with their scores
+    const updatedParticipants = currentParticipants.map((participant) => {
+      const participantScores = scoresMap.get(participant.id) || [];
+
+      // Group scores by jury
+      const scoresByJury: Record<
+        string,
+        { [questionNumber: number]: QuestionFields }
+      > = {};
+      const allJuryIds: string[] = [];
+
+      // Process scores for this participant
+      participantScores.forEach((scoreData) => {
+        const { juryId, questionNumber, scores, pageNumber } = scoreData;
+
+        // Initialize jury scores object if needed
+        if (!scoresByJury[juryId]) {
+          scoresByJury[juryId] = {};
+          allJuryIds.push(juryId);
+        }
+
+        // Map page number to question number
+        const actualPage = pageNumber !== undefined ? pageNumber : questionNumber;
+        const questionIndex = participant.assignedQuestions.indexOf(actualPage);
+
+        // Only include scores for questions that are still assigned to this participant
+        if (questionIndex !== -1) {
+          const mappedQuestionNumber = questionIndex + 1;
+
+          // Initialize question fields if needed
+          if (!scoresByJury[juryId][mappedQuestionNumber]) {
+            scoresByJury[juryId][mappedQuestionNumber] = createEmptyQuestionFields();
+          }
+
+          // Merge in the scores
+          Object.keys(scores).forEach((field) => {
+            const fieldKey = field as keyof QuestionFields;
+            if (typeof scores[fieldKey] === "number") {
+              scoresByJury[juryId][mappedQuestionNumber][fieldKey] = scores[fieldKey];
+            }
+          });
+        }
+      });
+
+      // Calculate average scores across all juries
+      const averageScores = calculateAverageScores(scoresByJury);
+
+      return {
+        ...participant,
+        questionScores: {
+          byJury: scoresByJury,
+          average: averageScores,
+          juryIds: allJuryIds,
+        },
+      };
+    });
+
+    // Update React Query cache with the updated scores
+    queryClient.setQueryData(["participants"], updatedParticipants);
+    participantsRef.current = updatedParticipants;
+  };
+
+  // Helper function to process overall bonuses
+  const processOverallBonusesWithLatestParticipants = (
+    overallBonusesSnapshot: QuerySnapshot<DocumentData>
+  ) => {
+    const currentParticipants = participantsRef.current;
+    if (!currentParticipants.length) return;
+
+    // Create a map for faster lookups
+    const bonusesMap = new Map<string, Record<string, number>>();
+
+    overallBonusesSnapshot.docs.forEach((bonusDoc) => {
+      const bonusData = bonusDoc.data() as OverallBonus;
+      const participantBonuses = bonusesMap.get(bonusData.participantId) || {};
+      participantBonuses[bonusData.juryId] = bonusData.overallBonus;
+      bonusesMap.set(bonusData.participantId, participantBonuses);
+    });
+
+    // Update participants with their overall bonuses
+    const updatedParticipants = currentParticipants.map((participant) => {
+      const overallBonuses = bonusesMap.get(participant.id) || {};
+
+      return {
+        ...participant,
+        overallBonuses,
+      };
+    });
+
+    // Update React Query cache with the updated overall bonuses
+    queryClient.setQueryData(["participants"], updatedParticipants);
+    participantsRef.current = updatedParticipants;
+  };
 
   useEffect(() => {
     // Set up real-time listener for participants
-    const participantsRef = collection(firestore, "participants");
+    const participantsCollection = collection(firestore, "participants");
     const participantsUnsubscribe = onSnapshot(
-      participantsRef,
+      participantsCollection,
       (participantsSnapshot) => {
         const participants = participantsSnapshot.docs.map((doc) => {
           const participantData = doc.data() as Omit<Participant, "id">;
@@ -57,155 +172,51 @@ export const useParticipants = () => {
           } as ParticipantWithScores;
         });
 
-        // Update React Query cache with the participants data
+        // Update React Query cache and ref with the participants data
         queryClient.setQueryData(["participants"], participants);
-
-        // Set up real-time listener for scores
-        const scoresRef = collection(firestore, "scores");
-        const scoresQuery = query(scoresRef);
-
-        // Set up real-time listener for overall bonuses
-        const overallBonusesRef = collection(firestore, "overallBonuses");
-        const overallBonusesQuery = query(overallBonusesRef);
-
-        const scoresUnsubscribe = onSnapshot(scoresQuery, (scoresSnapshot) => {
-          updateParticipantsWithScores(scoresSnapshot);
-        });
-
-        const overallBonusesUnsubscribe = onSnapshot(
-          overallBonusesQuery,
-          (overallBonusesSnapshot) => {
-            updateParticipantsWithOverallBonuses(overallBonusesSnapshot);
-          }
-        );
-
-        const updateParticipantsWithScores = (
-          scoresSnapshot: QuerySnapshot<DocumentData>
-        ) => {
-          // Get current participants from cache
-          const currentParticipants =
-            queryClient.getQueryData<ParticipantWithScores[]>([
-              "participants",
-            ]) || [];
-
-          // Create a new array with updated scores
-          const updatedParticipants = currentParticipants.map((participant) => {
-            // Group scores by jury
-            const scoresByJury: Record<
-              string,
-              { [questionNumber: number]: QuestionFields }
-            > = {};
-            const allJuryIds: string[] = [];
-
-            // Process scores for this participant
-            scoresSnapshot.docs.forEach((scoreDoc) => {
-              const scoreData = scoreDoc.data() as ExtendedScores;
-
-              if (
-                scoreData.participantId === participant.id &&
-                scoreData.scores
-              ) {
-                const { juryId, questionNumber, scores } = scoreData;
-
-                // Initialize jury scores object if needed
-                if (!scoresByJury[juryId]) {
-                  scoresByJury[juryId] = {};
-                  allJuryIds.push(juryId);
-                }
-
-                // Make sure we have all question numbers initialized
-                // Some scores might use the new pageNumber field, others might use questionNumber
-                const actualPage =
-                  scoreData.pageNumber !== undefined
-                    ? scoreData.pageNumber
-                    : questionNumber;
-                const questionIndex =
-                  participant.assignedQuestions.indexOf(actualPage);
-
-                // Only include scores for questions that are still assigned to this participant
-                if (questionIndex !== -1) {
-                  const mappedQuestionNumber = questionIndex + 1;
-
-                  // Store scores for this jury and question
-                  if (!scoresByJury[juryId][mappedQuestionNumber]) {
-                    scoresByJury[juryId][mappedQuestionNumber] =
-                      createEmptyQuestionFields();
-                  }
-
-                  // Merge in the scores (excluding overall_bonus which is now in separate collection)
-                  Object.keys(scores).forEach((field) => {
-                    const fieldKey = field as keyof QuestionFields;
-                    if (typeof scores[fieldKey] === "number") {
-                      scoresByJury[juryId][mappedQuestionNumber][fieldKey] =
-                        scores[fieldKey];
-                    }
-                  });
-                }
-              }
-            });
-
-            // Calculate average scores across all juries
-            const averageScores = calculateAverageScores(scoresByJury);
-
-            return {
-              ...participant,
-              questionScores: {
-                byJury: scoresByJury,
-                average: averageScores,
-                juryIds: allJuryIds,
-              },
-            };
-          });
-
-          // Update React Query cache with the updated scores
-          queryClient.setQueryData(["participants"], updatedParticipants);
-        };
-
-        const updateParticipantsWithOverallBonuses = (
-          overallBonusesSnapshot: QuerySnapshot<DocumentData>
-        ) => {
-          // Get current participants from cache
-          const currentParticipants =
-            queryClient.getQueryData<ParticipantWithScores[]>([
-              "participants",
-            ]) || [];
-
-          // Create a new array with updated overall bonuses
-          const updatedParticipants = currentParticipants.map((participant) => {
-            const overallBonuses: Record<string, number> = {};
-
-            // Process overall bonuses for this participant
-            overallBonusesSnapshot.docs.forEach((bonusDoc) => {
-              const bonusData = bonusDoc.data() as OverallBonus;
-
-              if (bonusData.participantId === participant.id) {
-                overallBonuses[bonusData.juryId] = bonusData.overallBonus;
-              }
-            });
-
-            return {
-              ...participant,
-              overallBonuses,
-            };
-          });
-
-          // Update React Query cache with the updated overall bonuses
-          queryClient.setQueryData(["participants"], updatedParticipants);
-        };
-
-        return () => {
-          scoresUnsubscribe();
-          overallBonusesUnsubscribe();
-        };
+        participantsRef.current = participants;
+      },
+      (error) => {
+        console.error("Error in participants listener:", error);
       }
     );
 
-    return () => participantsUnsubscribe();
+    // Set up separate real-time listener for scores
+    const scoresRef = collection(firestore, "scores");
+    const scoresQuery = query(scoresRef);
+    const scoresUnsubscribe = onSnapshot(
+      scoresQuery,
+      processScoresWithLatestParticipants,
+      (error) => {
+        console.error("Error in scores listener:", error);
+      }
+    );
+
+    // Set up separate real-time listener for overall bonuses
+    const overallBonusesRef = collection(firestore, "overallBonuses");
+    const overallBonusesQuery = query(overallBonusesRef);
+    const overallBonusesUnsubscribe = onSnapshot(
+      overallBonusesQuery,
+      processOverallBonusesWithLatestParticipants,
+      (error) => {
+        console.error("Error in overall bonuses listener:", error);
+      }
+    );
+
+    // Cleanup function
+    return () => {
+      participantsUnsubscribe();
+      scoresUnsubscribe();
+      overallBonusesUnsubscribe();
+    };
   }, [queryClient]);
 
   return useQuery<ParticipantWithScores[]>({
     queryKey: ["participants"],
-    queryFn: () => [], // Initial value, will be updated by the listener
+    queryFn: () => participantsRef.current || [], // Return current value from ref
     staleTime: Infinity, // Never mark as stale since we're using real-time updates
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 };

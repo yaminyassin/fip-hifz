@@ -286,7 +286,8 @@
     "tabs": {
       "control": "Control Panel",
       "participants": "Participants Management",
-      "jury": "Jury Management"
+      "jury": "Jury Management",
+      "performance": "Performance Monitor"
     },
     "participants": {
       "title": "Participants Management",
@@ -387,6 +388,29 @@
       "setInstruction": "Select a participant to begin",
       "noneSet": "No participant selected"
     }
+  },
+  "performance": {
+    "title": "Performance Monitor",
+    "subtitle": "Monitor real-time performance and resource usage",
+    "totalListeners": "Total Listeners",
+    "memoryUsage": "Memory Usage",
+    "updates": "Updates",
+    "lastUpdate": "Last updated",
+    "activeListeners": "Active Listeners",
+    "history": "Performance History",
+    "recommendations": "Performance Recommendations",
+    "autoRefreshOn": "Auto Refresh On",
+    "autoRefreshOff": "Auto Refresh Off",
+    "export": "Export Report",
+    "cleanup": "Cleanup All",
+    "noListeners": "No active listeners",
+    "noHistory": "No history data yet",
+    "highListenerWarning": "High number of listeners detected",
+    "highMemoryWarning": "High memory usage detected",
+    "rec1": "Consider cleaning up unused listeners",
+    "rec2": "High memory usage - consider refreshing the page",
+    "rec3": "Close unused browser tabs",
+    "rec4": "Refresh page every 2-3 hours during long sessions"
   },
   "common": {
     "loading": "Loading...",

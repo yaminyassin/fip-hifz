@@ -4,6 +4,7 @@ import { ParticipantManagement } from "@/components/ui/ParticipantManagement";
 import { JuryManagement } from "@/components/ui/JuryManagement";
 import { FloatingAdminPanel } from "@/components/ui/FloatingAdminPanel";
 import { ParticipantStatusTable } from "@/components/ui/ParticipantStatusTable";
+import { PerformanceMonitor } from "@/components/ui/PerformanceMonitor";
 import { Card } from "@/components/shadcn/card";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
@@ -16,7 +17,7 @@ export const Route = createLazyFileRoute("/admin")({
 function AdminPanel() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<
-    "control" | "participants" | "jury"
+    "control" | "participants" | "jury" | "performance"
   >("control");
 
   return (
@@ -47,6 +48,13 @@ function AdminPanel() {
           >
             {t("admin.tabs.jury")}
           </Button>
+          <Button
+            variant={activeTab === "performance" ? "default" : "outline"}
+            onClick={() => setActiveTab("performance")}
+            className={`pb-2 ${activeTab === "performance" ? "border-2 border-primary shadow-sm" : "border-2"}`}
+          >
+            {t("admin.tabs.performance", "Performance")}
+          </Button>
         </div>
       </div>
 
@@ -71,9 +79,13 @@ function AdminPanel() {
         <Card className="p-6">
           <ParticipantManagement />
         </Card>
-      ) : (
+      ) : activeTab === "jury" ? (
         <Card className="p-6">
           <JuryManagement />
+        </Card>
+      ) : (
+        <Card className="p-6">
+          <PerformanceMonitor />
         </Card>
       )}
 
