@@ -13,9 +13,11 @@ interface ScoreFormProps {
   participant: Participant | null;
   juryMember: Jury | null;
   selectedQuestion: number;
+  questionChangedExternally: boolean;
   currentScores: QuestionOnlyFields;
   overallBonus: number;
   allScores: { [questionNumber: number]: QuestionOnlyFields };
+  pendingSave: boolean;
   onScoreChange: (
     field: keyof QuestionFields,
     value: number,
@@ -33,9 +35,11 @@ export const ScoreForm = ({
   participant,
   juryMember,
   selectedQuestion,
+  questionChangedExternally,
   currentScores,
   overallBonus,
   allScores,
+  pendingSave,
   onScoreChange,
   onOverallBonusChange,
   onQuestionChange,
@@ -46,8 +50,13 @@ export const ScoreForm = ({
 }: ScoreFormProps) => {
   const { t } = useTranslation();
 
-  // Load current scores for the selected question
+  // Load current scores for the selected question, but don't override optimistic updates
   useEffect(() => {
+    // Don't override optimistic updates while a save is pending
+    if (pendingSave) {
+      return;
+    }
+
     if (selectedQuestion && allScores[selectedQuestion]) {
       setCurrentScores({
         ...defaultQuestionScores,
@@ -56,7 +65,7 @@ export const ScoreForm = ({
     } else {
       setCurrentScores(defaultQuestionScores);
     }
-  }, [selectedQuestion, allScores, setCurrentScores, defaultQuestionScores]);
+  }, [selectedQuestion, allScores, setCurrentScores, defaultQuestionScores, pendingSave]);
 
   const handleScoreChange = useCallback(
     (field: keyof QuestionFields, value: number) =>
@@ -77,6 +86,7 @@ export const ScoreForm = ({
         participant={participant}
         juryMember={juryMember}
         selectedQuestion={selectedQuestion}
+        questionChangedExternally={questionChangedExternally}
         onQuestionChange={onQuestionChange}
         onDone={onDone}
         isSaving={isSaving}

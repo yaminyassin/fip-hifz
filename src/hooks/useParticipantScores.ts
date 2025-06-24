@@ -1,8 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, QuerySnapshot } from "firebase/firestore";
 import { firestore } from "@/main";
 import { Scores, QuestionFields } from "@/models/models";
-import { useEffect } from "react";
+import { useFirestoreListener } from "./useFirestoreListener";
 
 // Helper function to create an empty QuestionFields object
 export const createEmptyQuestionFields = (): QuestionFields => ({
@@ -79,64 +79,61 @@ export const useParticipantScores = (
 ) => {
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (!participantId) return;
+  const constraints = [where("participantId", "==", participantId)];
+  if (questionNumber) {
+    constraints.push(where("questionNumber", "==", questionNumber));
+  }
 
-    const scoresRef = collection(firestore, "scores");
-    const constraints = [where("participantId", "==", participantId)];
+  const scoresQuery = participantId
+    ? query(collection(firestore, "scores"), ...constraints)
+    : null;
 
-    if (questionNumber) {
-      constraints.push(where("questionNumber", "==", questionNumber));
-    }
+  const queryKey = questionNumber
+    ? ["scores", participantId, questionNumber]
+    : ["scores", participantId];
 
-    const q = query(scoresRef, ...constraints);
+  // Use centralized listener management
+  useFirestoreListener<QuerySnapshot>({
+    query: scoresQuery,
+    key: `participant-scores-${participantId}${questionNumber ? `-q${questionNumber}` : ''}`,
+    onData: (querySnapshot) => {
+      // Group scores by jury
+      const scoresByJury: Record<
+        string,
+        { [questionNumber: number]: QuestionFields }
+      > = {};
+      const allJuryIds: string[] = [];
 
-    const unsubscribe = onSnapshot(
-      q,
-      (querySnapshot) => {
-        // Group scores by jury
-        const scoresByJury: Record<
-          string,
-          { [questionNumber: number]: QuestionFields }
-        > = {};
-        const allJuryIds: string[] = [];
+      querySnapshot.forEach((doc) => {
+        const scoreData = { id: doc.id, ...doc.data() } as Scores;
+        const { juryId, questionNumber, scores } = scoreData;
 
-        querySnapshot.forEach((doc) => {
-          const scoreData = { id: doc.id, ...doc.data() } as Scores;
-          const { juryId, questionNumber, scores } = scoreData;
+        // Initialize jury scores object if needed
+        if (!scoresByJury[juryId]) {
+          scoresByJury[juryId] = {};
+          allJuryIds.push(juryId);
+        }
 
-          // Initialize jury scores object if needed
-          if (!scoresByJury[juryId]) {
-            scoresByJury[juryId] = {};
-            allJuryIds.push(juryId);
-          }
+        // Store scores for this jury and question
+        scoresByJury[juryId][questionNumber] = scores;
+      });
 
-          // Store scores for this jury and question
-          scoresByJury[juryId][questionNumber] = scores;
-        });
+      // Calculate average scores across all juries
+      const averageScores = calculateAverageScores(scoresByJury);
 
-        // Calculate average scores across all juries
-        const averageScores = calculateAverageScores(scoresByJury);
+      const result = {
+        byJury: scoresByJury,
+        average: averageScores,
+        juryIds: allJuryIds,
+      };
 
-        const result = {
-          byJury: scoresByJury,
-          average: averageScores,
-          juryIds: allJuryIds,
-        };
-
-        const queryKey = questionNumber
-          ? ["scores", participantId, questionNumber]
-          : ["scores", participantId];
-
-        queryClient.setQueryData(queryKey, result);
-      },
-      (error) => {
-        console.error("Error fetching scores:", error);
-      }
-    );
-
-    return () => unsubscribe();
-  }, [participantId, questionNumber, queryClient]);
+      queryClient.setQueryData(queryKey, result);
+    },
+    onError: (error) => {
+      console.error("Error fetching scores:", error);
+    },
+    enabled: !!participantId
+  });
 
   // Initialize with empty objects to avoid null/undefined errors
   const emptyResult = {
@@ -146,9 +143,7 @@ export const useParticipantScores = (
   };
 
   return useQuery({
-    queryKey: questionNumber
-      ? ["scores", participantId, questionNumber]
-      : ["scores", participantId],
+    queryKey,
     queryFn: () => emptyResult, // Initial value with proper typing
     staleTime: Infinity, // Never mark as stale since we're using real-time updates
     enabled: !!participantId,

@@ -12,6 +12,7 @@ interface Participant {
   age: number;
   category: string;
   assignedQuestions?: number[];
+  activeQuestion?: number;
   isActive?: boolean;
 }
 
@@ -49,6 +50,7 @@ export const useJuryNavigation = ({
   overallBonus,
 }: UseJuryNavigationProps) => {
   const [selectedQuestion, setSelectedQuestion] = useState(1);
+  const [questionChangedExternally, setQuestionChangedExternally] = useState(false);
   const queryClient = useQueryClient();
 
   // Update jury progress mutation
@@ -72,13 +74,44 @@ export const useJuryNavigation = ({
   useEffect(() => {
     if (participant?.id) {
       setSelectedQuestion(1);
+      setQuestionChangedExternally(false);
     }
   }, [participant?.id]);
+
+  // Sync selectedQuestion with participant's activeQuestion
+  useEffect(() => {
+    if (participant?.assignedQuestions && participant?.activeQuestion) {
+      // Find which question index corresponds to the active page
+      const questionIndex = participant.assignedQuestions.indexOf(participant.activeQuestion);
+      if (questionIndex !== -1) {
+        const newQuestionNumber = questionIndex + 1; // Convert to 1-based
+        if (newQuestionNumber !== selectedQuestion) {
+          console.log(`[useJuryNavigation] Admin changed question to ${newQuestionNumber} (page ${participant.activeQuestion})`);
+          setSelectedQuestion(newQuestionNumber);
+          setQuestionChangedExternally(true);
+
+          // Clear the external change indicator after a delay
+          setTimeout(() => {
+            setQuestionChangedExternally(false);
+          }, 3000);
+
+          // Update jury progress to reflect the new question
+          if (juryMember && !juryMember.hasFinishedEvaluating) {
+            updateJuryMutation.mutate({
+              currentQuestion: newQuestionNumber,
+              hasFinishedEvaluating: false,
+            });
+          }
+        }
+      }
+    }
+  }, [participant?.activeQuestion, participant?.assignedQuestions, selectedQuestion, juryMember, updateJuryMutation]);
 
   // Reset when jury changes
   useEffect(() => {
     if (juryId && participant?.id) {
       setSelectedQuestion(1);
+      setQuestionChangedExternally(false);
       queryClient.invalidateQueries({ queryKey: ["juryScores"] });
       // Removed invalidateQueries for jury data since we use real-time Firebase updates
     }
@@ -93,6 +126,7 @@ export const useJuryNavigation = ({
 
     // Update selected question state
     setSelectedQuestion(questionNumber);
+    setQuestionChangedExternally(false); // Clear external change indicator when user manually changes
 
     // Update jury progress in Firestore
     if (juryMember && !juryMember.hasFinishedEvaluating) {
@@ -132,6 +166,7 @@ export const useJuryNavigation = ({
 
   return {
     selectedQuestion,
+    questionChangedExternally,
     setSelectedQuestion,
     handleQuestionChange,
     handleDone,

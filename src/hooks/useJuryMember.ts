@@ -1,33 +1,43 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, DocumentSnapshot } from "firebase/firestore";
 import { firestore } from "@/main";
 import { Jury } from "@/models/models";
-import { useEffect } from "react";
+import { useFirestoreListener } from "./useFirestoreListener";
+import { useMemo } from "react";
 
 export const useJuryMember = (juryId: string) => {
     const queryClient = useQueryClient();
 
-    useEffect(() => {
-        if (!juryId) return;
+    // Memoize the query to prevent recreation on every render
+    const juryQuery = useMemo(() => {
+        return juryId ? doc(firestore, "jury", juryId) : null;
+    }, [juryId]);
 
-        const juryRef = doc(firestore, "jury", juryId);
-        const unsubscribe = onSnapshot(juryRef, (doc) => {
-            if (doc.exists()) {
-                const juryData = { id: doc.id, ...doc.data() } as Jury;
+    // Use centralized listener management
+    useFirestoreListener<DocumentSnapshot>({
+        query: juryQuery,
+        key: `jury-member-${juryId}`,
+        onData: (docSnapshot) => {
+            if (docSnapshot.exists()) {
+                const juryData = { id: docSnapshot.id, ...docSnapshot.data() } as Jury;
                 queryClient.setQueryData(["jury", juryId], juryData);
             } else {
                 queryClient.setQueryData(["jury", juryId], null);
             }
-        }, (error) => {
+        },
+        onError: (error) => {
             console.error("Error fetching jury member:", error);
-        });
-
-        return () => unsubscribe();
-    }, [juryId, queryClient]);
+        },
+        enabled: !!juryId
+    });
 
     return useQuery({
         queryKey: ["jury", juryId],
-        queryFn: () => null, // Initial value, will be updated by the listener
+        queryFn: () => {
+            // Return cached data if available, otherwise null
+            const cachedData = queryClient.getQueryData<Jury | null>(["jury", juryId]);
+            return cachedData || null;
+        },
         staleTime: Infinity, // Never mark as stale since we're using real-time updates
         enabled: !!juryId,
     });

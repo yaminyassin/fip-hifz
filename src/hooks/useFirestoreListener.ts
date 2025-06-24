@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import {
     Query,
+    DocumentReference,
     onSnapshot,
     Unsubscribe,
     QuerySnapshot,
@@ -12,10 +13,12 @@ import {
 const activeListeners = new Map<string, {
     unsubscribe: Unsubscribe;
     refCount: number;
+    callbacks: Set<(data: any) => void>;
+    currentData: any;
 }>();
 
 interface UseFirestoreListenerOptions<T> {
-    query: Query | null;
+    query: Query | DocumentReference | null;
     key: string;
     onData: (data: T) => void;
     onError?: (error: FirestoreError) => void;
@@ -36,6 +39,10 @@ export function useFirestoreListener<T>({
     enabled = true
 }: UseFirestoreListenerOptions<T>) {
     const unsubscribeRef = useRef<Unsubscribe | null>(null);
+    const callbackRef = useRef(onData);
+
+    // Keep callback up to date
+    callbackRef.current = onData;
 
     useEffect(() => {
         if (!query || !enabled) return;
@@ -44,10 +51,21 @@ export function useFirestoreListener<T>({
         const existingListener = activeListeners.get(key);
 
         if (existingListener) {
-            // Increment reference count
+            // Add this component's callback to the existing listener
+            existingListener.callbacks.add(callbackRef.current);
             existingListener.refCount++;
+
+            // Immediately provide current data if available
+            if (existingListener.currentData !== undefined) {
+                callbackRef.current(existingListener.currentData);
+            }
+
             console.log(`[FirestoreListener] Reusing existing listener for ${key}, refCount: ${existingListener.refCount}`);
+
             return () => {
+                // Remove this component's callback
+                existingListener.callbacks.delete(callbackRef.current);
+
                 // Decrement reference count on cleanup
                 if (existingListener.refCount > 1) {
                     existingListener.refCount--;
@@ -56,39 +74,93 @@ export function useFirestoreListener<T>({
                     // Last reference, actually unsubscribe
                     existingListener.unsubscribe();
                     activeListeners.delete(key);
-                    console.log(`[FirestoreListener] Removed listener for ${key}`);
+                    // console.log(`[FirestoreListener] Removed listener for ${key}`);
                 }
             };
         }
 
         // Create new listener
-        console.log(`[FirestoreListener] Creating new listener for ${key}`);
+        // console.log(`[FirestoreListener] Creating new listener for ${key}`);
 
-        const unsubscribe = onSnapshot(
-            query,
-            {
-                // Add metadata options for better performance
-                includeMetadataChanges: false
-            },
-            (snapshot) => {
-                try {
-                    const data = transform ? transform(snapshot) : snapshot as T;
-                    onData(data);
-                } catch (error) {
-                    console.error(`Error processing snapshot for ${key}:`, error);
-                    onError(error as FirestoreError);
+        let unsubscribe: Unsubscribe;
+        const callbacks = new Set<(data: T) => void>();
+        callbacks.add(callbackRef.current);
+
+        // Handle both Query and DocumentReference types
+        if ('type' in query && query.type === 'query') {
+            // It's a Query
+            unsubscribe = onSnapshot(
+                query as Query,
+                {
+                    includeMetadataChanges: false
+                },
+                (snapshot) => {
+                    try {
+                        const data = transform ? transform(snapshot) : snapshot as T;
+
+                        // Update current data and notify all callbacks
+                        const listener = activeListeners.get(key);
+                        if (listener) {
+                            listener.currentData = data;
+                            listener.callbacks.forEach(callback => {
+                                try {
+                                    callback(data);
+                                } catch (error) {
+                                    console.error(`Error in callback for ${key}:`, error);
+                                }
+                            });
+                        }
+                    } catch (error) {
+                        console.error(`Error processing snapshot for ${key}:`, error);
+                        onError(error as FirestoreError);
+                    }
+                },
+                (error) => {
+                    console.error(`Firestore listener error for ${key}:`, error);
+                    onError(error);
                 }
-            },
-            (error) => {
-                console.error(`Firestore listener error for ${key}:`, error);
-                onError(error);
-            }
-        );
+            );
+        } else {
+            // It's a DocumentReference
+            unsubscribe = onSnapshot(
+                query as DocumentReference,
+                {
+                    includeMetadataChanges: false
+                },
+                (snapshot) => {
+                    try {
+                        const data = transform ? transform(snapshot) : snapshot as T;
+
+                        // Update current data and notify all callbacks
+                        const listener = activeListeners.get(key);
+                        if (listener) {
+                            listener.currentData = data;
+                            listener.callbacks.forEach(callback => {
+                                try {
+                                    callback(data);
+                                } catch (error) {
+                                    console.error(`Error in callback for ${key}:`, error);
+                                }
+                            });
+                        }
+                    } catch (error) {
+                        console.error(`Error processing snapshot for ${key}:`, error);
+                        onError(error as FirestoreError);
+                    }
+                },
+                (error) => {
+                    console.error(`Firestore listener error for ${key}:`, error);
+                    onError(error);
+                }
+            );
+        }
 
         // Store in registry
         activeListeners.set(key, {
             unsubscribe,
-            refCount: 1
+            refCount: 1,
+            callbacks,
+            currentData: undefined
         });
 
         unsubscribeRef.current = unsubscribe;
@@ -97,6 +169,9 @@ export function useFirestoreListener<T>({
         return () => {
             const listener = activeListeners.get(key);
             if (listener) {
+                // Remove this component's callback
+                listener.callbacks.delete(callbackRef.current);
+
                 if (listener.refCount > 1) {
                     listener.refCount--;
                     console.log(`[FirestoreListener] Decremented refCount for ${key}, new count: ${listener.refCount}`);
@@ -104,11 +179,11 @@ export function useFirestoreListener<T>({
                     // Last reference, actually unsubscribe
                     listener.unsubscribe();
                     activeListeners.delete(key);
-                    console.log(`[FirestoreListener] Removed listener for ${key}`);
+                    // console.log(`[FirestoreListener] Removed listener for ${key}`);
                 }
             }
         };
-    }, [query, key, enabled]);
+    }, [query, key, enabled]); // Removed onData from dependencies since we use ref
 
     // Provide a way to manually refresh the listener
     const refresh = () => {

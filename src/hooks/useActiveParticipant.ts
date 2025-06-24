@@ -3,17 +3,20 @@ import { collection, query, where, QuerySnapshot, DocumentData } from "firebase/
 import { firestore } from "@/main";
 import { Participant } from "@/models/models";
 import { useFirestoreListener } from "./useFirestoreListener";
+import { useMemo } from "react";
 
 export const useActiveParticipant = () => {
   const queryClient = useQueryClient();
 
-  // Create the query
-  const participantsRef = collection(firestore, "participants");
-  const q = query(participantsRef, where("isActive", "==", true));
+  // Memoize the query to prevent recreation on every render
+  const participantQuery = useMemo(() => {
+    const participantsRef = collection(firestore, "participants");
+    return query(participantsRef, where("isActive", "==", true));
+  }, []);
 
   // Use centralized listener
   useFirestoreListener<QuerySnapshot<DocumentData>>({
-    query: q,
+    query: participantQuery,
     key: "activeParticipant",
     onData: (querySnapshot) => {
       if (!querySnapshot.empty) {
@@ -21,8 +24,10 @@ export const useActiveParticipant = () => {
           id: querySnapshot.docs[0].id,
           ...querySnapshot.docs[0].data(),
         } as Participant;
+        // console.log(`[useActiveParticipant] Setting active participant:`, activeParticipant.name);
         queryClient.setQueryData(["activeParticipant"], activeParticipant);
       } else {
+        // console.log(`[useActiveParticipant] No active participant found`);
         queryClient.setQueryData(["activeParticipant"], null);
       }
     },

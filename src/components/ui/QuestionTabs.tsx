@@ -22,6 +22,7 @@ interface QuestionTabsProps {
   participant: Participant | null;
   juryMember: Jury | null;
   selectedQuestion: number;
+  questionChangedExternally: boolean;
   onQuestionChange: (questionNumber: number) => void;
   onDone: () => void;
   isSaving: boolean;
@@ -32,6 +33,7 @@ export const QuestionTabs = ({
   participant,
   juryMember,
   selectedQuestion,
+  questionChangedExternally,
   onQuestionChange,
   onDone,
   isSaving,
@@ -137,13 +139,24 @@ export const QuestionTabs = ({
           )}
         </div>
 
+        {/* Question Change Notification */}
+        {questionChangedExternally && (
+          <div className="flex items-center bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg px-4 py-2 mx-4 shadow-sm">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+              <span className="text-blue-700 font-medium text-sm">
+                Question changed to {selectedQuestion}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Finish Button */}
         <Button
-          className={`font-bold transition-colors ${
-            isButtonDisabled
+          className={`font-bold transition-colors ${isButtonDisabled
               ? "bg-gray-400 text-white cursor-not-allowed"
               : "bg-black text-white hover:bg-gray-800"
-          }`}
+            }`}
           onClick={onDone}
           disabled={isButtonDisabled}
         >

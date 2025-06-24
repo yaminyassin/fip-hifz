@@ -1,10 +1,11 @@
 import { firestore } from "@/main";
 import { Participant } from "@/models/models";
 import {
-  addDoc,
   collection,
   deleteDoc,
   doc,
+  getDoc,
+  setDoc,
   serverTimestamp,
   updateDoc,
   query,
@@ -17,6 +18,61 @@ type ParticipantInput = Omit<Participant, "id" | "assignedQuestions"> & {
 };
 
 /**
+ * Converts a participant name to a valid Firestore document ID
+ * @param name The participant's name
+ * @returns A lowercase, underscore-separated document ID
+ */
+const generateParticipantId = (name: string): string => {
+  return name
+    .toLowerCase()
+    .trim()
+    // Replace spaces with underscores
+    .replace(/\s+/g, '_')
+    // Remove any characters that aren't letters, numbers, or underscores
+    .replace(/[^a-z0-9_]/g, '')
+    // Ensure it doesn't start or end with underscore
+    .replace(/^_+|_+$/g, '')
+    // Collapse multiple underscores into single ones
+    .replace(/_+/g, '_');
+};
+
+/**
+ * Generates a unique participant ID by checking for existing documents
+ * @param name The participant's name
+ * @returns A unique document ID
+ */
+const generateUniqueParticipantId = async (name: string): Promise<string> => {
+  let baseId = generateParticipantId(name);
+
+  if (!baseId) {
+    throw new Error("Unable to generate valid document ID from participant name");
+  }
+
+  let participantId = baseId;
+  let counter = 1;
+
+  // Check if document already exists and add suffix if needed
+  while (true) {
+    const participantRef = doc(firestore, "participants", participantId);
+    const docSnapshot = await getDoc(participantRef);
+
+    if (!docSnapshot.exists()) {
+      // Found a unique ID
+      return participantId;
+    }
+
+    // Document exists, try with a suffix
+    participantId = `${baseId}_${counter}`;
+    counter++;
+
+    // Safety check to prevent infinite loop (though very unlikely)
+    if (counter > 100) {
+      throw new Error("Unable to generate unique participant ID after 100 attempts");
+    }
+  }
+};
+
+/**
  * Creates a new participant in Firestore
  * @param participant The participant data to create
  * @returns A promise that resolves to the ID of the newly created participant
@@ -24,7 +80,10 @@ type ParticipantInput = Omit<Participant, "id" | "assignedQuestions"> & {
 export const createParticipant = async (
   participant: ParticipantInput
 ): Promise<string> => {
-  const participantsRef = collection(firestore, "participants");
+  // Generate unique document ID from participant name
+  const participantId = await generateUniqueParticipantId(participant.name);
+
+  const participantRef = doc(firestore, "participants", participantId);
 
   // Default values for a new participant
   const newParticipant = {
@@ -36,8 +95,8 @@ export const createParticipant = async (
     updatedAt: serverTimestamp(),
   };
 
-  const docRef = await addDoc(participantsRef, newParticipant);
-  return docRef.id;
+  await setDoc(participantRef, newParticipant);
+  return participantId;
 };
 
 /**

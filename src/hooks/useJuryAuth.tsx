@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, DocumentSnapshot } from "firebase/firestore";
 import { firestore } from "@/main";
 import { getAuthenticatedJury, logoutJury } from "../services/juryAuth";
 import { Jury } from "../models/models";
-import { cleanupAllListeners } from "./useFirestoreListener";
+import { cleanupAllListeners, useFirestoreListener } from "./useFirestoreListener";
 
 export const useJuryAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -46,36 +46,41 @@ export const useJuryAuth = () => {
 
   const juryId = getAuthenticatedJury();
 
-  // Set up real-time listener for jury member data
-  useEffect(() => {
-    if (!juryId) return;
+  // Memoize the query to prevent recreation on every render
+  const juryQuery = useMemo(() => {
+    return juryId ? doc(firestore, "jury", juryId) : null;
+  }, [juryId]);
 
-    const juryRef = doc(firestore, "jury", juryId);
-
-    const unsubscribe = onSnapshot(
-      juryRef,
-      (docSnapshot) => {
-        if (docSnapshot.exists()) {
-          const juryMember = {
-            id: docSnapshot.id,
-            ...docSnapshot.data(),
-          } as Jury;
-          queryClient.setQueryData(["jury", juryId], juryMember);
-        } else {
-          queryClient.setQueryData(["jury", juryId], null);
-        }
-      },
-      (error) => {
-        console.error("Error fetching jury member:", error);
+  // Use centralized listener for jury member data
+  useFirestoreListener<DocumentSnapshot>({
+    query: juryQuery,
+    key: `jury-member-${juryId}`, // Use same key as useJuryMember for consistency
+    onData: (docSnapshot) => {
+      if (docSnapshot.exists()) {
+        const juryMember = {
+          id: docSnapshot.id,
+          ...docSnapshot.data(),
+        } as Jury;
+        // console.log(`[useJuryAuth] Setting jury data:`, juryMember);
+        queryClient.setQueryData(["jury", juryId], juryMember);
+      } else {
+        // console.log(`[useJuryAuth] Setting jury data to null`);
+        queryClient.setQueryData(["jury", juryId], null);
       }
-    );
-
-    return () => unsubscribe();
-  }, [juryId, queryClient]);
+    },
+    onError: (error) => {
+      console.error("Error fetching jury member:", error);
+    },
+    enabled: !!juryId
+  });
 
   const { data: juryMember } = useQuery<Jury | null>({
     queryKey: ["jury", juryId],
-    queryFn: () => null, // Initial value, will be updated by the listener
+    queryFn: () => {
+      // Return cached data if available, otherwise null
+      const cachedData = queryClient.getQueryData<Jury | null>(["jury", juryId]);
+      return cachedData || null;
+    },
     enabled: !!juryId,
     staleTime: Infinity, // Never mark as stale since we're using real-time updates
     refetchOnMount: false, // Don't refetch on mount
@@ -113,7 +118,6 @@ export const useJuryAuth = () => {
     }
   };
 
-  console.log("juryMember", juryMember);
   return {
     isAuthenticated,
     juryId,

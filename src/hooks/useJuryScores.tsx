@@ -69,6 +69,8 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
   const [lastParticipantId, setLastParticipantId] = useState<string | null>(
     null
   );
+  const [pendingSave, setPendingSave] = useState<boolean>(false);
+  const [pendingBonusSave, setPendingBonusSave] = useState<boolean>(false);
 
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const bonusDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -147,6 +149,7 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
         ...prev,
         [variables.questionNumToSave]: variables.scoresToSave,
       }));
+      setPendingSave(false);
       queryClient.invalidateQueries({ queryKey: ["juryScores"] });
     },
     onError: (error, variables) => {
@@ -154,6 +157,7 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
         `Error saving scores for Q${variables.questionNumToSave}:`,
         error
       );
+      setPendingSave(false);
     },
   });
 
@@ -183,10 +187,12 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
       );
     },
     onSuccess: () => {
+      setPendingBonusSave(false);
       queryClient.invalidateQueries({ queryKey: ["juryScores"] });
     },
     onError: (error) => {
       console.error("Error saving overall bonus:", error);
+      setPendingBonusSave(false);
     },
   });
 
@@ -207,6 +213,9 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
       cappedValue = Math.min(10, Math.max(0, value));
     }
 
+    // Set pending save flag for optimistic update protection
+    setPendingSave(true);
+
     setCurrentScores((prev) => {
       newScores = {
         ...prev,
@@ -226,6 +235,9 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
           questionNumToSave: selectedQuestion,
           scoresToSave: newScores,
         });
+      } else {
+        // Clear pending flag if save doesn't happen
+        setPendingSave(false);
       }
     }, 500);
   };
@@ -233,6 +245,10 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
   // Handle overall bonus changes with debouncing
   const handleOverallBonusChange = (value: number) => {
     const cappedValue = Math.min(5, Math.max(0, value));
+
+    // Set pending bonus save flag for optimistic update protection
+    setPendingBonusSave(true);
+
     setOverallBonus(cappedValue);
 
     // Debounced save for overall bonus
@@ -248,6 +264,9 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
           juryId,
           overallBonus: cappedValue,
         });
+      } else {
+        // Clear pending flag if save doesn't happen
+        setPendingBonusSave(false);
       }
     }, 500);
   };
@@ -259,6 +278,8 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
       setCurrentScores(defaultQuestionScores);
       setAllScores({});
       setOverallBonus(0);
+      setPendingSave(false); // Clear pending save on participant change
+      setPendingBonusSave(false); // Clear pending bonus save on participant change
       setLastParticipantId(participant.id);
     }
   }, [participant?.id, lastParticipantId]);
@@ -317,8 +338,28 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
         });
 
         setAllScores(scoresByQuestion);
+      } catch (error) {
+        console.error("Error fetching all scores:", error);
+      }
+    };
 
-        // Fetch overall bonus separately
+    fetchAllScores();
+  }, [participant, juryId]);
+
+  // Separate effect for fetching overall bonus - only runs when participant changes
+  useEffect(() => {
+    const fetchOverallBonus = async () => {
+      if (!participant?.id || !juryId) {
+        setOverallBonus(0);
+        return;
+      }
+
+      // Don't fetch if there's a pending bonus save to avoid overriding optimistic updates
+      if (pendingBonusSave) {
+        return;
+      }
+
+      try {
         const bonusSnapshot = await getDocs(
           query(
             collection(firestore, "overallBonuses"),
@@ -334,12 +375,13 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
           setOverallBonus(0);
         }
       } catch (error) {
-        console.error("Error fetching all scores:", error);
+        console.error("Error fetching overall bonus:", error);
+        setOverallBonus(0);
       }
     };
 
-    fetchAllScores();
-  }, [participant, juryId]);
+    fetchOverallBonus();
+  }, [participant?.id, juryId, pendingBonusSave]);
 
   // Handle questions change detection
   const currentQuestionsKey = participant?.assignedQuestions?.join(",") || "";
@@ -355,6 +397,8 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
       setCurrentScores(defaultQuestionScores);
       setAllScores({});
       setOverallBonus(0);
+      setPendingSave(false); // Clear pending save on questions change
+      setPendingBonusSave(false); // Clear pending bonus save on questions change
       clearPreviousScores(participant.id, juryId);
     }
 
@@ -365,6 +409,8 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
     currentScores,
     allScores,
     overallBonus,
+    pendingSave,
+    pendingBonusSave,
     setCurrentScores,
     setAllScores,
     handleScoreChange,

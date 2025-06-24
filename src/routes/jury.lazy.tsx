@@ -26,6 +26,7 @@ function RouteComponent() {
     currentScores,
     allScores,
     overallBonus,
+    pendingSave,
     setCurrentScores,
     handleScoreChange,
     handleOverallBonusChange,
@@ -34,7 +35,7 @@ function RouteComponent() {
     defaultQuestionScores,
   } = useJuryScores({ participant: participant || null, juryId });
 
-  const { selectedQuestion, handleQuestionChange, handleDone } =
+  const { selectedQuestion, questionChangedExternally, handleQuestionChange, handleDone } =
     useJuryNavigation({
       participant: participant || null,
       juryMember: juryMember || null,
@@ -65,9 +66,11 @@ function RouteComponent() {
               participant={participant || null}
               juryMember={juryMember || null}
               selectedQuestion={selectedQuestion}
+              questionChangedExternally={questionChangedExternally}
               currentScores={currentScores}
               overallBonus={overallBonus}
               allScores={allScores}
+              pendingSave={pendingSave}
               onScoreChange={handleScoreChange}
               onOverallBonusChange={handleOverallBonusChange}
               onQuestionChange={handleQuestionChange}
