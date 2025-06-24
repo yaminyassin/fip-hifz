@@ -33,6 +33,9 @@ profiling-data.*.json
 quran_images/*
 pyenv/*
 
+# OBS streaming assets (local only)
+obs/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
