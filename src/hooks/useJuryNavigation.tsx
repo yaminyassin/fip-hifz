@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateJuryProgress } from "../services/jury";
 import { QuestionFields } from "../models/models";
@@ -52,6 +52,38 @@ export const useJuryNavigation = ({
   const [selectedQuestion, setSelectedQuestion] = useState(1);
   const [questionChangedExternally, setQuestionChangedExternally] = useState(false);
   const queryClient = useQueryClient();
+  
+  // Track the last admin active question to detect real changes
+  const lastAdminActiveQuestionRef = React.useRef<number | null>(null);
+
+  // Calculate if jury is viewing the active question
+  const isViewingActiveQuestion = React.useMemo(() => {
+    if (!participant?.assignedQuestions || !participant?.activeQuestion) {
+      return true; // Consider as "active" if no active question is set
+    }
+    
+    const activeQuestionIndex = participant.assignedQuestions.indexOf(participant.activeQuestion);
+    if (activeQuestionIndex === -1) {
+      return true; // Active question not in assigned questions
+    }
+    
+    const activeQuestionNumber = activeQuestionIndex + 1; // Convert to 1-based
+    return selectedQuestion === activeQuestionNumber;
+  }, [participant?.assignedQuestions, participant?.activeQuestion, selectedQuestion]);
+
+  // Get the active question number for navigation
+  const activeQuestionNumber = React.useMemo(() => {
+    if (!participant?.assignedQuestions || !participant?.activeQuestion) {
+      return null;
+    }
+    
+    const activeQuestionIndex = participant.assignedQuestions.indexOf(participant.activeQuestion);
+    if (activeQuestionIndex === -1) {
+      return null;
+    }
+    
+    return activeQuestionIndex + 1; // Convert to 1-based
+  }, [participant?.assignedQuestions, participant?.activeQuestion]);
 
   // Update jury progress mutation
   const updateJuryMutation = useMutation({
@@ -73,20 +105,37 @@ export const useJuryNavigation = ({
   // Reset question selection when participant changes
   useEffect(() => {
     if (participant?.id) {
-      setSelectedQuestion(1);
+      // Initialize to the admin's active question if it exists, otherwise question 1
+      if (participant?.assignedQuestions && participant?.activeQuestion) {
+        const questionIndex = participant.assignedQuestions.indexOf(participant.activeQuestion);
+        if (questionIndex !== -1) {
+          const initialQuestion = questionIndex + 1;
+          setSelectedQuestion(initialQuestion);
+          lastAdminActiveQuestionRef.current = initialQuestion;
+        } else {
+          setSelectedQuestion(1);
+          lastAdminActiveQuestionRef.current = null;
+        }
+      } else {
+        setSelectedQuestion(1);
+        lastAdminActiveQuestionRef.current = null;
+      }
       setQuestionChangedExternally(false);
     }
   }, [participant?.id]);
 
-  // Sync selectedQuestion with participant's activeQuestion
+  // Only sync when admin actually changes the active question (not when jury navigates manually)
   useEffect(() => {
     if (participant?.assignedQuestions && participant?.activeQuestion) {
       // Find which question index corresponds to the active page
       const questionIndex = participant.assignedQuestions.indexOf(participant.activeQuestion);
       if (questionIndex !== -1) {
         const newQuestionNumber = questionIndex + 1; // Convert to 1-based
-        if (newQuestionNumber !== selectedQuestion) {
-          console.log(`[useJuryNavigation] Admin changed question to ${newQuestionNumber} (page ${participant.activeQuestion})`);
+        
+        // Only sync if this is a real change from the admin (not initial load or jury navigation)
+        if (lastAdminActiveQuestionRef.current !== null && 
+            lastAdminActiveQuestionRef.current !== newQuestionNumber) {
+          console.log(`[useJuryNavigation] Admin changed question from ${lastAdminActiveQuestionRef.current} to ${newQuestionNumber} (page ${participant.activeQuestion})`);
           setSelectedQuestion(newQuestionNumber);
           setQuestionChangedExternally(true);
 
@@ -103,15 +152,19 @@ export const useJuryNavigation = ({
             });
           }
         }
+        
+        // Always update the ref to track the current admin active question
+        lastAdminActiveQuestionRef.current = newQuestionNumber;
       }
     }
-  }, [participant?.activeQuestion, participant?.assignedQuestions, selectedQuestion, juryMember, updateJuryMutation]);
+  }, [participant?.activeQuestion, participant?.assignedQuestions, juryMember, updateJuryMutation]);
 
   // Reset when jury changes
   useEffect(() => {
     if (juryId && participant?.id) {
       setSelectedQuestion(1);
       setQuestionChangedExternally(false);
+      lastAdminActiveQuestionRef.current = null; // Reset tracking when jury changes
       queryClient.invalidateQueries({ queryKey: ["juryScores"] });
       // Removed invalidateQueries for jury data since we use real-time Firebase updates
     }
@@ -164,12 +217,21 @@ export const useJuryNavigation = ({
     }
   };
 
+  const handleGoToActiveQuestion = () => {
+    if (activeQuestionNumber) {
+      handleQuestionChange(activeQuestionNumber);
+    }
+  };
+
   return {
     selectedQuestion,
     questionChangedExternally,
+    isViewingActiveQuestion,
+    activeQuestionNumber,
     setSelectedQuestion,
     handleQuestionChange,
     handleDone,
+    handleGoToActiveQuestion,
     updateJuryMutation,
   };
 };

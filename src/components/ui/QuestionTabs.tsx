@@ -23,8 +23,11 @@ interface QuestionTabsProps {
   juryMember: Jury | null;
   selectedQuestion: number;
   questionChangedExternally: boolean;
+  isViewingActiveQuestion: boolean;
+  activeQuestionNumber: number | null;
   onQuestionChange: (questionNumber: number) => void;
   onDone: () => void;
+  onGoToActiveQuestion: () => void;
   isSaving: boolean;
   disabled?: boolean;
 }
@@ -34,8 +37,11 @@ export const QuestionTabs = ({
   juryMember,
   selectedQuestion,
   questionChangedExternally,
+  isViewingActiveQuestion,
+  activeQuestionNumber,
   onQuestionChange,
   onDone,
+  onGoToActiveQuestion,
   isSaving,
   disabled = false,
 }: QuestionTabsProps) => {
@@ -139,13 +145,36 @@ export const QuestionTabs = ({
           )}
         </div>
 
-        {/* Question Change Notification */}
+        {/* Question Change Notification or Active Question Indicator */}
         {questionChangedExternally && (
           <div className="flex items-center bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg px-4 py-2 mx-4 shadow-sm">
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
               <span className="text-blue-700 font-medium text-sm">
-                Question changed to {selectedQuestion}
+                {t("jury.messages.questionChangedTo", "Question changed to {{question}}", { question: selectedQuestion })}
+              </span>
+            </div>
+          </div>
+        )}
+        
+        {/* Active Question Indicator - Show when not viewing active question and no external change notification */}
+        {!questionChangedExternally && !isViewingActiveQuestion && activeQuestionNumber && (
+          <div 
+            className="flex items-center bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg px-4 py-2 mx-4 shadow-sm cursor-pointer hover:bg-gradient-to-r hover:from-amber-100 hover:to-orange-100 transition-colors"
+            onClick={onGoToActiveQuestion}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onGoToActiveQuestion();
+              }
+            }}
+          >
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
+              <span className="text-amber-700 font-medium text-sm">
+                {t("jury.messages.goToActiveQuestion", "Go to active question {{question}}", { question: activeQuestionNumber })}
               </span>
             </div>
           </div>

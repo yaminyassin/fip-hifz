@@ -109,7 +109,9 @@
       "noData": "Nenhum dado para exibir para a seleção atual.",
       "inactiveTitle": "Acesso de Avaliação Desabilitado",
       "inactiveDesc": "Seu acesso de avaliação foi temporariamente desabilitado. Entre em contato com o administrador.",
-      "contactAdmin": "Entrar em Contato com Administrador"
+      "contactAdmin": "Entrar em Contato com Administrador",
+      "questionChangedTo": "Questão alterada para {{question}}",
+      "goToActiveQuestion": "Ir para questão ativa {{question}}"
     },
     "questionBreakdown": "Detalhamento por Questão"
   },

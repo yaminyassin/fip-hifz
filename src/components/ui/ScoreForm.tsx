@@ -14,6 +14,8 @@ interface ScoreFormProps {
   juryMember: Jury | null;
   selectedQuestion: number;
   questionChangedExternally: boolean;
+  isViewingActiveQuestion: boolean;
+  activeQuestionNumber: number | null;
   currentScores: QuestionOnlyFields;
   overallBonus: number;
   allScores: { [questionNumber: number]: QuestionOnlyFields };
@@ -26,6 +28,7 @@ interface ScoreFormProps {
   onOverallBonusChange: (value: number) => void;
   onQuestionChange: (questionNumber: number) => void;
   onDone: () => void;
+  onGoToActiveQuestion: () => void;
   isSaving: boolean;
   setCurrentScores: (scores: QuestionOnlyFields) => void;
   defaultQuestionScores: QuestionOnlyFields;
@@ -36,6 +39,8 @@ export const ScoreForm = ({
   juryMember,
   selectedQuestion,
   questionChangedExternally,
+  isViewingActiveQuestion,
+  activeQuestionNumber,
   currentScores,
   overallBonus,
   allScores,
@@ -44,6 +49,7 @@ export const ScoreForm = ({
   onOverallBonusChange,
   onQuestionChange,
   onDone,
+  onGoToActiveQuestion,
   isSaving,
   setCurrentScores,
   defaultQuestionScores,
@@ -87,8 +93,11 @@ export const ScoreForm = ({
         juryMember={juryMember}
         selectedQuestion={selectedQuestion}
         questionChangedExternally={questionChangedExternally}
+        isViewingActiveQuestion={isViewingActiveQuestion}
+        activeQuestionNumber={activeQuestionNumber}
         onQuestionChange={onQuestionChange}
         onDone={onDone}
+        onGoToActiveQuestion={onGoToActiveQuestion}
         isSaving={isSaving}
         disabled={isDisabled}
       />
