@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Jury } from "@/models/models";
 import { addJury, updateJury } from "@/services/jury";
+import { useEvent } from "@/contexts/EventContext";
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
 import { Label } from "@/components/shadcn/label";
@@ -19,6 +20,7 @@ interface JuryFormProps {
 
 export const JuryForm = ({ jury, onSuccess, onCancel }: JuryFormProps) => {
   const { t } = useTranslation();
+  const { currentEvent } = useEvent();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<{
     name: string;
@@ -58,7 +60,7 @@ export const JuryForm = ({ jury, onSuccess, onCancel }: JuryFormProps) => {
     try {
       if (jury) {
         // Update existing jury member
-        await updateJury(jury.id, {
+        await updateJury(currentEvent || 'lisbon-2025', jury.id, {
           name: formData.name,
         });
 
@@ -66,7 +68,7 @@ export const JuryForm = ({ jury, onSuccess, onCancel }: JuryFormProps) => {
         // The Firestore listener in useJuryMembers will handle it
       } else {
         // Add new jury member
-        await addJury({
+        await addJury(currentEvent || 'lisbon-2025', {
           name: formData.name,
           currentQuestion: 1,
           hasFinishedEvaluating: false,

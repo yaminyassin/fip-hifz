@@ -1,11 +1,13 @@
 import { firestore } from "@/main";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection } from "firebase/firestore";
 import { Jury } from "@/models/models";
 import { updateJuryActiveStatus } from "./jury";
+import { getEventCollectionPath } from "@/utils/firebaseUtils";
 
-export const authenticateJury = async (juryId: string): Promise<Jury | null> => {
+export const authenticateJury = async (eventId: string, juryId: string): Promise<Jury | null> => {
   try {
-    const juryRef = doc(firestore, "jury", juryId);
+    const juryCollection = collection(firestore, getEventCollectionPath(eventId, "jury"));
+    const juryRef = doc(juryCollection, juryId);
     const juryDoc = await getDoc(juryRef);
 
     if (!juryDoc.exists()) {
@@ -18,7 +20,7 @@ export const authenticateJury = async (juryId: string): Promise<Jury | null> => 
     } as Jury;
 
     // Automatically activate the jury member upon successful login
-    await updateJuryActiveStatus(juryId, true);
+    await updateJuryActiveStatus(eventId, juryId, true);
     console.log(`Jury member ${juryId} (${jury.name}) has been automatically activated`);
 
     return jury;
@@ -44,13 +46,13 @@ export const clearAuthenticatedJury = () => {
 };
 
 // Logout jury member and automatically deactivate them
-export const logoutJury = async (): Promise<void> => {
+export const logoutJury = async (eventId: string): Promise<void> => {
   try {
     const juryId = getAuthenticatedJury();
 
     if (juryId) {
       // Automatically deactivate the jury member upon logout
-      await updateJuryActiveStatus(juryId, false);
+      await updateJuryActiveStatus(eventId, juryId, false);
       console.log(`Jury member ${juryId} has been automatically deactivated`);
     }
 

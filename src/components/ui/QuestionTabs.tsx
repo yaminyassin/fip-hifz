@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/shadcn/button";
 import { createScoreIfNotExists } from "@/services/scores";
+import { useEvent } from "@/contexts/EventContext";
 
 interface Participant {
   id: string;
@@ -46,6 +47,7 @@ export const QuestionTabs = ({
   disabled = false,
 }: QuestionTabsProps) => {
   const { t } = useTranslation();
+  const { currentEvent } = useEvent();
 
   if (
     !participant?.assignedQuestions ||
@@ -81,6 +83,7 @@ export const QuestionTabs = ({
         if (pageNumber) {
           try {
             await createScoreIfNotExists(
+              currentEvent || 'lisbon-2025',
               participant.id,
               juryMember.id,
               questionNumber,

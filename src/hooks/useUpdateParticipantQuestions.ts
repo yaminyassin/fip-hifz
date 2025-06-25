@@ -1,7 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateParticipantQuestions } from "@/services/updateParticipantQuestions";
+import { useEvent } from "@/contexts/EventContext";
 
 export const useUpdateParticipantQuestions = () => {
+  const { currentEvent } = useEvent();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -12,7 +14,7 @@ export const useUpdateParticipantQuestions = () => {
       participantId: string; 
       questions: number[] 
     }) => {
-      await updateParticipantQuestions(participantId, questions);
+      await updateParticipantQuestions(currentEvent || 'lisbon-2025', participantId, questions);
     },
     onSuccess: () => {
       // Invalidate and refetch active participant data

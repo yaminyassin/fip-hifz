@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
 import { useActiveParticipant } from "@/hooks/useActiveParticipant";
 import { useMutation } from "@tanstack/react-query";
 import { updateActiveQuestion } from "@/services/participants";
+import { useEvent } from "@/contexts/EventContext";
 import { cn } from "@/lib/utils";
 import React from "react";
 import { doc, updateDoc } from "firebase/firestore";
@@ -16,6 +17,7 @@ type DisplayStatus = "Active" | "Inactive" | "Completed";
 export function FloatingAdminPanel() {
   const { t } = useTranslation();
   const { data: activeParticipant } = useActiveParticipant();
+  const { currentEvent } = useEvent();
 
   // Scene Management State
   const { currentIndex, totalQuestions, prevPage, nextPage } =
@@ -48,13 +50,13 @@ export function FloatingAdminPanel() {
     }: {
       participantId: string;
       pageNumber: number;
-    }) => updateActiveQuestion(participantId, pageNumber),
+    }) => updateActiveQuestion(currentEvent || 'lisbon-2025', participantId, pageNumber),
   });
 
   const markParticipantDoneMutation = useMutation({
     mutationFn: async (participantId: string) => {
       if (!participantId) return;
-      const participantRef = doc(firestore, "participants", participantId);
+      const participantRef = doc(firestore, "events", currentEvent || 'lisbon-2025', "participants", participantId);
       await updateDoc(participantRef, {
         isActive: false,
         isDone: true,

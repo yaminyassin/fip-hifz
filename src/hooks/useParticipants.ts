@@ -13,6 +13,8 @@ import {
   calculateAverageScores,
   createEmptyQuestionFields,
 } from "./useParticipantScores";
+import { useEvent } from "@/contexts/EventContext";
+import { getEventCollectionPath } from "@/utils/firebaseUtils";
 
 // Extended Scores type with pageNumber
 interface ExtendedScores {
@@ -36,6 +38,7 @@ export type ParticipantWithScores = Participant & {
 
 export const useParticipants = () => {
   const queryClient = useQueryClient();
+  const { currentEvent } = useEvent();
   // Use refs to store the latest participants data for score processing
   const participantsRef = useRef<ParticipantWithScores[]>([]);
 
@@ -116,7 +119,7 @@ export const useParticipants = () => {
     });
 
     // Update React Query cache with the updated scores
-    queryClient.setQueryData(["participants"], updatedParticipants);
+    queryClient.setQueryData(["participants", currentEvent], updatedParticipants);
     participantsRef.current = updatedParticipants;
   };
 
@@ -148,13 +151,15 @@ export const useParticipants = () => {
     });
 
     // Update React Query cache with the updated overall bonuses
-    queryClient.setQueryData(["participants"], updatedParticipants);
+    queryClient.setQueryData(["participants", currentEvent], updatedParticipants);
     participantsRef.current = updatedParticipants;
   };
 
   useEffect(() => {
+    if (!currentEvent) return;
+
     // Set up real-time listener for participants
-    const participantsCollection = collection(firestore, "participants");
+    const participantsCollection = collection(firestore, getEventCollectionPath(currentEvent, "participants"));
     const participantsUnsubscribe = onSnapshot(
       participantsCollection,
       (participantsSnapshot) => {
@@ -173,7 +178,7 @@ export const useParticipants = () => {
         });
 
         // Update React Query cache and ref with the participants data
-        queryClient.setQueryData(["participants"], participants);
+        queryClient.setQueryData(["participants", currentEvent], participants);
         participantsRef.current = participants;
       },
       (error) => {
@@ -182,7 +187,7 @@ export const useParticipants = () => {
     );
 
     // Set up separate real-time listener for scores
-    const scoresRef = collection(firestore, "scores");
+    const scoresRef = collection(firestore, getEventCollectionPath(currentEvent, "scores"));
     const scoresQuery = query(scoresRef);
     const scoresUnsubscribe = onSnapshot(
       scoresQuery,
@@ -193,7 +198,7 @@ export const useParticipants = () => {
     );
 
     // Set up separate real-time listener for overall bonuses
-    const overallBonusesRef = collection(firestore, "overallBonuses");
+    const overallBonusesRef = collection(firestore, getEventCollectionPath(currentEvent, "overallBonuses"));
     const overallBonusesQuery = query(overallBonusesRef);
     const overallBonusesUnsubscribe = onSnapshot(
       overallBonusesQuery,
@@ -209,14 +214,15 @@ export const useParticipants = () => {
       scoresUnsubscribe();
       overallBonusesUnsubscribe();
     };
-  }, [queryClient]);
+  }, [queryClient, currentEvent]);
 
   return useQuery<ParticipantWithScores[]>({
-    queryKey: ["participants"],
+    queryKey: ["participants", currentEvent],
     queryFn: () => participantsRef.current || [], // Return current value from ref
     staleTime: Infinity, // Never mark as stale since we're using real-time updates
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+    enabled: !!currentEvent,
   });
 };

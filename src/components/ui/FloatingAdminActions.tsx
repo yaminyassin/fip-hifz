@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useActiveParticipant } from "@/hooks/useActiveParticipant";
 import { useMutation } from "@tanstack/react-query";
 import { updateActiveQuestion } from "@/services/participants";
+import { useEvent } from "@/contexts/EventContext";
 import React from "react";
 // TODO: Import useToast if you want notifications
 // import { useToast } from "@/components/shadcn/use-toast";
@@ -11,6 +12,7 @@ import React from "react";
 export function FloatingAdminActions() {
   const { t } = useTranslation();
   const { data: activeParticipant } = useActiveParticipant();
+  const { currentEvent } = useEvent();
 
   const updateActiveQuestionMutation = useMutation({
     mutationFn: ({
@@ -19,7 +21,7 @@ export function FloatingAdminActions() {
     }: {
       participantId: string;
       pageNumber: number;
-    }) => updateActiveQuestion(participantId, pageNumber),
+    }) => updateActiveQuestion(currentEvent || 'lisbon-2025', participantId, pageNumber),
     onSuccess: (_, variables) => {
       console.log(
         `Successfully updated active question to ${variables.pageNumber} for participant ${variables.participantId}. Cache update handled by listeners.`

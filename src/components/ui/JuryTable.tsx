@@ -14,10 +14,12 @@ import {
   setAllJuryActive,
   updateJuryEvaluationStatus,
 } from "@/services/jury";
+import { useEvent } from "@/contexts/EventContext";
 import { useState } from "react";
 
 export const JuryTable = () => {
   const { t } = useTranslation();
+  const { currentEvent } = useEvent();
   const { data: juryMembers, isLoading } = useJuryMembers();
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
@@ -28,7 +30,7 @@ export const JuryTable = () => {
   const handleToggleActive = async (juryId: string, currentStatus: boolean) => {
     setIsUpdating(juryId);
     try {
-      await updateJuryActiveStatus(juryId, !currentStatus);
+      await updateJuryActiveStatus(currentEvent || 'lisbon-2025', juryId, !currentStatus);
       // TODO: Add success toast notification
     } catch (error) {
       console.error("Error updating jury active status:", error);
@@ -44,7 +46,7 @@ export const JuryTable = () => {
   ) => {
     setIsUpdatingEvaluation(juryId);
     try {
-      await updateJuryEvaluationStatus(juryId, !currentStatus);
+      await updateJuryEvaluationStatus(currentEvent || 'lisbon-2025', juryId, !currentStatus);
       // TODO: Add success toast notification
     } catch (error) {
       console.error("Error updating jury evaluation status:", error);
@@ -57,7 +59,7 @@ export const JuryTable = () => {
   const handleSetAllActive = async () => {
     setIsBulkUpdating(true);
     try {
-      await setAllJuryActive(true);
+      await setAllJuryActive(currentEvent || 'lisbon-2025', true);
       // TODO: Add success toast notification
     } catch (error) {
       console.error("Error setting all jury active:", error);

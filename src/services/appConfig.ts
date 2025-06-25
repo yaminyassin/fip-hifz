@@ -9,18 +9,20 @@ import {
   arrayUnion,
 } from "firebase/firestore";
 
-const APP_CONFIG_COLLECTION = "app_config";
 const PREVIOUS_QUESTIONS_DOC = "previous_questions";
 
 /**
  * Gets the previous questions from the app_config collection
+ * @param eventId The event ID to get previous questions for
  * @returns A promise that resolves to the array of previous question page numbers
  */
-export const getPreviousQuestions = async (): Promise<number[]> => {
+export const getPreviousQuestions = async (eventId: string): Promise<number[]> => {
   try {
     const docRef = doc(
       firestore,
-      APP_CONFIG_COLLECTION,
+      "events",
+      eventId,
+      "app_config",
       PREVIOUS_QUESTIONS_DOC
     );
     const docSnap = await getDoc(docRef);
@@ -40,15 +42,19 @@ export const getPreviousQuestions = async (): Promise<number[]> => {
 
 /**
  * Adds new question page numbers to the previous_questions array
+ * @param eventId The event ID to add previous questions for
  * @param questionPages Array of page numbers to add
  */
 export const addToPreviousQuestions = async (
+  eventId: string,
   questionPages: number[]
 ): Promise<void> => {
   try {
     const docRef = doc(
       firestore,
-      APP_CONFIG_COLLECTION,
+      "events",
+      eventId,
+      "app_config",
       PREVIOUS_QUESTIONS_DOC
     );
     const docSnap = await getDoc(docRef);
@@ -79,15 +85,19 @@ export const addToPreviousQuestions = async (
 
 /**
  * Replaces the entire previous_questions array with new values
+ * @param eventId The event ID to set previous questions for
  * @param questionPages Array of page numbers to set
  */
 export const setPreviousQuestions = async (
+  eventId: string,
   questionPages: number[]
 ): Promise<void> => {
   try {
     const docRef = doc(
       firestore,
-      APP_CONFIG_COLLECTION,
+      "events",
+      eventId,
+      "app_config",
       PREVIOUS_QUESTIONS_DOC
     );
     const docSnap = await getDoc(docRef);
@@ -118,12 +128,15 @@ export const setPreviousQuestions = async (
 
 /**
  * Clears all previous questions from the app_config
+ * @param eventId The event ID to clear previous questions for
  */
-export const clearPreviousQuestions = async (): Promise<void> => {
+export const clearPreviousQuestions = async (eventId: string): Promise<void> => {
   try {
     const docRef = doc(
       firestore,
-      APP_CONFIG_COLLECTION,
+      "events",
+      eventId,
+      "app_config",
       PREVIOUS_QUESTIONS_DOC
     );
 

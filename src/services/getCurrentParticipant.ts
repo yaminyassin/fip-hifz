@@ -2,11 +2,12 @@ import { firestore } from "@/main";
 import { Participant } from "@/models/models";
 import { collection, query, where, getDocs } from "firebase/firestore";
 
-export const getCurrentParticipantFromFirestore =
-  async (): Promise<Participant | null> => {
-    try {
-      const participantsRef = collection(firestore, "participants");
-      const q = query(participantsRef, where("isActive", "==", true));
+export const getCurrentParticipantFromFirestore = async (
+  eventId: string
+): Promise<Participant | null> => {
+  try {
+    const participantsRef = collection(firestore, "events", eventId, "participants");
+    const q = query(participantsRef, where("isActive", "==", true));
 
       const querySnapshot = await getDocs(q);
 

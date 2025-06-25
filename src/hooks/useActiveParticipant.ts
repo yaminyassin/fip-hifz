@@ -4,20 +4,24 @@ import { firestore } from "@/main";
 import { Participant } from "@/models/models";
 import { useFirestoreListener } from "./useFirestoreListener";
 import { useMemo } from "react";
+import { useEvent } from "@/contexts/EventContext";
+import { getEventCollectionPath } from "@/utils/firebaseUtils";
 
 export const useActiveParticipant = () => {
   const queryClient = useQueryClient();
+  const { currentEvent } = useEvent();
 
   // Memoize the query to prevent recreation on every render
   const participantQuery = useMemo(() => {
-    const participantsRef = collection(firestore, "participants");
+    if (!currentEvent) return null;
+    const participantsRef = collection(firestore, getEventCollectionPath(currentEvent, "participants"));
     return query(participantsRef, where("isActive", "==", true));
-  }, []);
+  }, [currentEvent]);
 
   // Use centralized listener
   useFirestoreListener<QuerySnapshot<DocumentData>>({
     query: participantQuery,
-    key: "activeParticipant",
+    key: `activeParticipant-${currentEvent}`,
     onData: (querySnapshot) => {
       if (!querySnapshot.empty) {
         const activeParticipant = {
@@ -25,26 +29,28 @@ export const useActiveParticipant = () => {
           ...querySnapshot.docs[0].data(),
         } as Participant;
         // console.log(`[useActiveParticipant] Setting active participant:`, activeParticipant.name);
-        queryClient.setQueryData(["activeParticipant"], activeParticipant);
+        queryClient.setQueryData(["activeParticipant", currentEvent], activeParticipant);
       } else {
         // console.log(`[useActiveParticipant] No active participant found`);
-        queryClient.setQueryData(["activeParticipant"], null);
+        queryClient.setQueryData(["activeParticipant", currentEvent], null);
       }
     },
     onError: (error) => {
       console.error("Error fetching active participant:", error);
     },
+    enabled: !!participantQuery,
   });
 
   return useQuery<Participant | null>({
-    queryKey: ["activeParticipant"],
+    queryKey: ["activeParticipant", currentEvent],
     queryFn: () => {
       // Return current value from cache or null
-      return queryClient.getQueryData<Participant | null>(["activeParticipant"]) || null;
+      return queryClient.getQueryData<Participant | null>(["activeParticipant", currentEvent]) || null;
     },
     staleTime: Infinity, // Never mark as stale since we're using real-time updates
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+    enabled: !!currentEvent,
   });
 };

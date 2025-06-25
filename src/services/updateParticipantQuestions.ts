@@ -1,13 +1,16 @@
 import { firestore } from "@/main";
-import { doc, updateDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { doc, updateDoc, getDoc, serverTimestamp, collection } from "firebase/firestore";
+import { getEventCollectionPath } from "@/utils/firebaseUtils";
 
 // Update all questions at once
 export const updateParticipantQuestions = async (
+  eventId: string,
   participantId: string,
   questions: number[]
 ) => {
   try {
-    const participantRef = doc(firestore, "participants", participantId);
+    const participantsCollection = collection(firestore, getEventCollectionPath(eventId, "participants"));
+    const participantRef = doc(participantsCollection, participantId);
     await updateDoc(participantRef, {
       assignedQuestions: questions,
       updatedAt: serverTimestamp(),
@@ -20,12 +23,14 @@ export const updateParticipantQuestions = async (
 
 // Update a single question at a specific index
 export const updateParticipantQuestion = async (
+  eventId: string,
   participantId: string,
   questionIndex: number,
   pageNumber: number
 ) => {
   try {
-    const participantRef = doc(firestore, "participants", participantId);
+    const participantsCollection = collection(firestore, getEventCollectionPath(eventId, "participants"));
+    const participantRef = doc(participantsCollection, participantId);
 
     // Get the current questions
     const participantDoc = await getDoc(participantRef);

@@ -2,6 +2,7 @@ import { useState, useEffect, ChangeEvent, DragEvent } from "react";
 import { Participant } from "@/models/models";
 import { useTranslation } from "react-i18next";
 import { createParticipant, updateParticipant } from "@/services/participants";
+import { useEvent } from "@/contexts/EventContext";
 import { Input } from "@/components/shadcn/input";
 import { Button } from "@/components/shadcn/button";
 import { useQueryClient } from "@tanstack/react-query";
@@ -47,6 +48,7 @@ export const ParticipantForm = ({
   onCancel,
 }: ParticipantFormProps) => {
   const { t } = useTranslation();
+  const { currentEvent } = useEvent();
   const queryClient = useQueryClient();
   const isEditing = !!participant;
 
@@ -298,9 +300,9 @@ export const ParticipantForm = ({
 
     try {
       if (isEditing && participant) {
-        await updateParticipant(participant.id, formData);
+        await updateParticipant(currentEvent || 'lisbon-2025', participant.id, formData);
       } else {
-        await createParticipant(formData);
+        await createParticipant(currentEvent || 'lisbon-2025', formData);
       }
 
       // Invalidate participants query to refresh data

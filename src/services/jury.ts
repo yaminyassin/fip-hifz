@@ -10,13 +10,16 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { Jury } from "@/models/models";
+import { getEventCollectionPath } from "@/utils/firebaseUtils";
 
 export const updateJuryProgress = async (
+  eventId: string,
   juryId: string,
   currentQuestion: number,
   hasFinishedEvaluating: boolean
 ) => {
-  const juryRef = doc(firestore, "jury", juryId);
+  const juryCollection = collection(firestore, getEventCollectionPath(eventId, "jury"));
+  const juryRef = doc(juryCollection, juryId);
 
   await updateDoc(juryRef, {
     currentQuestion,
@@ -24,8 +27,9 @@ export const updateJuryProgress = async (
   });
 };
 
-export const getJuryMember = async (juryId: string): Promise<Jury | null> => {
-  const juryRef = doc(firestore, "jury", juryId);
+export const getJuryMember = async (eventId: string, juryId: string): Promise<Jury | null> => {
+  const juryCollection = collection(firestore, getEventCollectionPath(eventId, "jury"));
+  const juryRef = doc(juryCollection, juryId);
   const juryDoc = await getDoc(juryRef);
 
   if (!juryDoc.exists()) {
@@ -35,9 +39,9 @@ export const getJuryMember = async (juryId: string): Promise<Jury | null> => {
   return { id: juryDoc.id, ...juryDoc.data() } as Jury;
 };
 
-export const addJury = async (jury: Omit<Jury, "id">): Promise<string> => {
+export const addJury = async (eventId: string, jury: Omit<Jury, "id">): Promise<string> => {
   try {
-    const juryRef = collection(firestore, "jury");
+    const juryRef = collection(firestore, getEventCollectionPath(eventId, "jury"));
     const docRef = await addDoc(juryRef, jury);
 
     // Update the document to include its ID as a field
@@ -51,11 +55,13 @@ export const addJury = async (jury: Omit<Jury, "id">): Promise<string> => {
 };
 
 export const updateJury = async (
+  eventId: string,
   id: string,
   jury: Partial<Omit<Jury, "id">>
 ): Promise<void> => {
   try {
-    const juryRef = doc(firestore, "jury", id);
+    const juryCollection = collection(firestore, getEventCollectionPath(eventId, "jury"));
+    const juryRef = doc(juryCollection, id);
     await updateDoc(juryRef, jury);
   } catch (error) {
     console.error("Error updating jury member:", error);
@@ -63,9 +69,10 @@ export const updateJury = async (
   }
 };
 
-export const deleteJury = async (id: string): Promise<void> => {
+export const deleteJury = async (eventId: string, id: string): Promise<void> => {
   try {
-    const juryRef = doc(firestore, "jury", id);
+    const juryCollection = collection(firestore, getEventCollectionPath(eventId, "jury"));
+    const juryRef = doc(juryCollection, id);
     await deleteDoc(juryRef);
   } catch (error) {
     console.error("Error deleting jury member:", error);
@@ -74,11 +81,13 @@ export const deleteJury = async (id: string): Promise<void> => {
 };
 
 export const updateJuryActiveStatus = async (
+  eventId: string,
   juryId: string,
   isActive: boolean
 ): Promise<void> => {
   try {
-    const juryRef = doc(firestore, "jury", juryId);
+    const juryCollection = collection(firestore, getEventCollectionPath(eventId, "jury"));
+    const juryRef = doc(juryCollection, juryId);
     await updateDoc(juryRef, { isActive });
   } catch (error) {
     console.error("Error updating jury active status:", error);
@@ -87,11 +96,13 @@ export const updateJuryActiveStatus = async (
 };
 
 export const updateJuryEvaluationStatus = async (
+  eventId: string,
   juryId: string,
   hasFinishedEvaluating: boolean
 ): Promise<void> => {
   try {
-    const juryRef = doc(firestore, "jury", juryId);
+    const juryCollection = collection(firestore, getEventCollectionPath(eventId, "jury"));
+    const juryRef = doc(juryCollection, juryId);
     await updateDoc(juryRef, { hasFinishedEvaluating });
   } catch (error) {
     console.error("Error updating jury evaluation status:", error);
@@ -99,9 +110,9 @@ export const updateJuryEvaluationStatus = async (
   }
 };
 
-export const setAllJuryActive = async (isActive: boolean): Promise<void> => {
+export const setAllJuryActive = async (eventId: string, isActive: boolean): Promise<void> => {
   try {
-    const juryCollection = collection(firestore, "jury");
+    const juryCollection = collection(firestore, getEventCollectionPath(eventId, "jury"));
     const jurySnapshot = await getDocs(juryCollection);
 
     const batch = writeBatch(firestore);

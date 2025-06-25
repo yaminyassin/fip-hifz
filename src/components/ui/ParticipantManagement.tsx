@@ -8,6 +8,7 @@ import {
   deleteParticipant,
   resetAllParticipantStatuses,
 } from "@/services/participants";
+import { useEvent } from "@/contexts/EventContext";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PlusCircle, Upload, Edit, Trash, X, RefreshCcw } from "lucide-react";
 import { Card } from "@/components/shadcn/card";
@@ -16,6 +17,7 @@ import { getFlagForCountry } from "@/lib/countryUtils";
 
 export const ParticipantManagement = () => {
   const { t } = useTranslation();
+  const { currentEvent } = useEvent();
   const queryClient = useQueryClient();
   const {
     data: participants = [],
@@ -31,7 +33,7 @@ export const ParticipantManagement = () => {
     useState(false);
 
   const resetStatusesMutation = useMutation({
-    mutationFn: resetAllParticipantStatuses,
+    mutationFn: () => resetAllParticipantStatuses(currentEvent || 'lisbon-2025'),
     onSuccess: () => {
       console.log("Participant statuses reset successfully.");
     },
@@ -69,7 +71,7 @@ export const ParticipantManagement = () => {
   const handleDeleteClick = async (id: string) => {
     if (window.confirm(t("admin.participants.confirmDelete"))) {
       try {
-        await deleteParticipant(id);
+        await deleteParticipant(currentEvent || 'lisbon-2025', id);
         queryClient.invalidateQueries({ queryKey: ["participants"] });
       } catch (error) {
         console.error("Error deleting participant:", error);

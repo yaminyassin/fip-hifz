@@ -5,6 +5,7 @@ import { Jury } from "@/models/models";
 import { Button } from "@/components/shadcn/button";
 import { JuryForm } from "./JuryForm";
 import { deleteJury } from "@/services/jury";
+import { useEvent } from "@/contexts/EventContext";
 import { PlusCircle, Edit, Trash, X } from "lucide-react";
 import { Card } from "@/components/shadcn/card";
 import { Input } from "@/components/shadcn/input";
@@ -16,6 +17,7 @@ const getFallbackText = (key: string, defaultText: string) => {
 
 export const JuryManagement = () => {
   const { t } = useTranslation();
+  const { currentEvent } = useEvent();
   const { data: juryMembers = [], isLoading } = useJuryMembers();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -48,7 +50,7 @@ export const JuryManagement = () => {
       try {
         // No need to manually update the cache first
         // Just perform the delete operation and let Firestore listener handle the update
-        await deleteJury(id);
+        await deleteJury(currentEvent || 'lisbon-2025', id);
       } catch (error) {
         console.error("Error deleting jury member:", error);
         // Could add error handling UI here

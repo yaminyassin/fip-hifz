@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateJuryProgress } from "../services/jury";
+import { useEvent } from "../contexts/EventContext";
 import { QuestionFields } from "../models/models";
 
 // Define a type for scores that don't include overall_bonus
@@ -51,6 +52,7 @@ export const useJuryNavigation = ({
 }: UseJuryNavigationProps) => {
   const [selectedQuestion, setSelectedQuestion] = useState(1);
   const [questionChangedExternally, setQuestionChangedExternally] = useState(false);
+  const { currentEvent } = useEvent();
   const queryClient = useQueryClient();
   
   // Track the last admin active question to detect real changes
@@ -95,7 +97,7 @@ export const useJuryNavigation = ({
       hasFinishedEvaluating: boolean;
     }) => {
       if (!juryId) return;
-      await updateJuryProgress(juryId, currentQuestion, hasFinishedEvaluating);
+      await updateJuryProgress(currentEvent || 'lisbon-2025', juryId, currentQuestion, hasFinishedEvaluating);
     },
     onSuccess: () => {
       // Removed invalidateQueries for jury data since we use real-time Firebase updates
@@ -117,7 +119,7 @@ export const useJuryNavigation = ({
           lastAdminActiveQuestionRef.current = null;
         }
       } else {
-        setSelectedQuestion(1);
+      setSelectedQuestion(1);
         lastAdminActiveQuestionRef.current = null;
       }
       setQuestionChangedExternally(false);

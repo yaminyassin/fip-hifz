@@ -5,6 +5,7 @@ import { JuryManagement } from "@/components/ui/JuryManagement";
 import { FloatingAdminPanel } from "@/components/ui/FloatingAdminPanel";
 import { ParticipantStatusTable } from "@/components/ui/ParticipantStatusTable";
 import { PerformanceMonitor } from "@/components/ui/PerformanceMonitor";
+import { EventSelector } from "@/components/ui/EventSelector";
 import { Card } from "@/components/shadcn/card";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
@@ -17,7 +18,7 @@ export const Route = createLazyFileRoute("/admin")({
 function AdminPanel() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<
-    "control" | "participants" | "jury" | "performance"
+    "control" | "participants" | "jury" | "performance" | "events"
   >("control");
 
   return (
@@ -55,6 +56,13 @@ function AdminPanel() {
           >
             {t("admin.tabs.performance", "Performance")}
           </Button>
+          <Button
+            variant={activeTab === "events" ? "default" : "outline"}
+            onClick={() => setActiveTab("events")}
+            className={`pb-2 ${activeTab === "events" ? "border-2 border-primary shadow-sm" : "border-2"}`}
+          >
+            Event Management
+          </Button>
         </div>
       </div>
 
@@ -83,10 +91,14 @@ function AdminPanel() {
         <Card className="p-6">
           <JuryManagement />
         </Card>
-      ) : (
+      ) : activeTab === "performance" ? (
         <Card className="p-6">
           <PerformanceMonitor />
         </Card>
+      ) : (
+        <div className="max-w-2xl mx-auto">
+          <EventSelector showAddEvent={true} />
+        </div>
       )}
 
       {/* Floating Admin Panel */}

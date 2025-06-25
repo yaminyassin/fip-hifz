@@ -10,7 +10,8 @@ import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./i18n"; // Import i18n configuration
-import { AuthProvider, useAuth } from "./hooks/useAuth";
+import { AuthProvider } from "./hooks/useAuth";
+import { EventProvider } from "./contexts/EventContext";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -30,9 +31,6 @@ export const firestore = getFirestore(app);
 // TanStackRouter setup
 const router = createRouter({
   routeTree,
-  context: {
-    auth: undefined!, // This will be overridden below
-  },
 });
 
 // Optimized QueryClient for real-time applications
@@ -69,18 +67,17 @@ const container = document.getElementById("root")!;
 const root = createRoot(container);
 
 function App() {
-  // This hook will grab the auth context from the provider
-  const auth = useAuth();
-  // Provide the auth context to the router
-  return <RouterProvider router={router} context={{ auth }} />;
+  return <RouterProvider router={router} />;
 }
 
 root.render(
   <StrictMode>
     <QueryClientProvider client={client}>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+      <EventProvider>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </EventProvider>
     </QueryClientProvider>
   </StrictMode>
 );

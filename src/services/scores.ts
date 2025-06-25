@@ -12,16 +12,19 @@ import {
 // src/services/scores.ts
 import { firestore } from "@/main";
 import { QuestionFields, Scores } from "../models/models";
+import { getEventCollectionPath } from "@/utils/firebaseUtils";
 
 // Query scores for a specific participant and question
 export const getScoresForParticipantQuestion = async (
+  eventId: string,
   juryId: string,
   participantId?: string,
   questionNumber?: number
 ): Promise<Scores | null> => {
   try {
     const documentId = `${participantId}_${juryId}_${questionNumber}`;
-    const scoreRef = doc(firestore, "scores", documentId);
+    const scoresCollection = collection(firestore, getEventCollectionPath(eventId, "scores"));
+    const scoreRef = doc(scoresCollection, documentId);
     const scoreDoc = await getDoc(scoreRef);
 
     if (!scoreDoc.exists()) {
@@ -49,10 +52,12 @@ export type RawScoreData = {
 /**
  * Fetches all raw score documents for a specific participant.
  * This fetches scores from ALL jury members for that participant.
+ * @param eventId The event identifier.
  * @param participantId The ID of the participant.
  * @returns A promise that resolves to an array of RawScoreData.
  */
 export const getScoresForParticipant = async (
+  eventId: string,
   participantId: string
 ): Promise<RawScoreData[]> => {
   if (!participantId) {
@@ -61,7 +66,7 @@ export const getScoresForParticipant = async (
   }
 
   try {
-    const scoresRef = collection(firestore, "scores");
+    const scoresRef = collection(firestore, getEventCollectionPath(eventId, "scores"));
     const q = query(scoresRef, where("participantId", "==", participantId));
     const snapshot = await getDocs(q);
 
@@ -88,6 +93,7 @@ export const getScoresForParticipant = async (
 
 // Create a score document with default values if it doesn't exist
 export const createScoreIfNotExists = async (
+  eventId: string,
   participantId: string,
   juryId: string,
   questionNumber: number,
@@ -95,7 +101,8 @@ export const createScoreIfNotExists = async (
 ): Promise<void> => {
   try {
     const documentId = `${participantId}_${juryId}_${questionNumber}`;
-    const scoreRef = doc(firestore, "scores", documentId);
+    const scoresCollection = collection(firestore, getEventCollectionPath(eventId, "scores"));
+    const scoreRef = doc(scoresCollection, documentId);
     const scoreDoc = await getDoc(scoreRef);
 
     if (!scoreDoc.exists()) {

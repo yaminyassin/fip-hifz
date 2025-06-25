@@ -1,5 +1,6 @@
 import { firestore } from "@/main";
 import { Participant } from "@/models/models";
+import { getEventCollectionPath } from "@/utils/firebaseUtils";
 import {
   collection,
   deleteDoc,
@@ -38,10 +39,11 @@ const generateParticipantId = (name: string): string => {
 
 /**
  * Generates a unique participant ID by checking for existing documents
+ * @param eventId The event identifier
  * @param name The participant's name
  * @returns A unique document ID
  */
-const generateUniqueParticipantId = async (name: string): Promise<string> => {
+const generateUniqueParticipantId = async (eventId: string, name: string): Promise<string> => {
   let baseId = generateParticipantId(name);
 
   if (!baseId) {
@@ -53,7 +55,8 @@ const generateUniqueParticipantId = async (name: string): Promise<string> => {
 
   // Check if document already exists and add suffix if needed
   while (true) {
-    const participantRef = doc(firestore, "participants", participantId);
+    const participantsCollection = collection(firestore, getEventCollectionPath(eventId, "participants"));
+    const participantRef = doc(participantsCollection, participantId);
     const docSnapshot = await getDoc(participantRef);
 
     if (!docSnapshot.exists()) {
@@ -74,16 +77,19 @@ const generateUniqueParticipantId = async (name: string): Promise<string> => {
 
 /**
  * Creates a new participant in Firestore
+ * @param eventId The event identifier
  * @param participant The participant data to create
  * @returns A promise that resolves to the ID of the newly created participant
  */
 export const createParticipant = async (
+  eventId: string,
   participant: ParticipantInput
 ): Promise<string> => {
   // Generate unique document ID from participant name
-  const participantId = await generateUniqueParticipantId(participant.name);
+  const participantId = await generateUniqueParticipantId(eventId, participant.name);
 
-  const participantRef = doc(firestore, "participants", participantId);
+  const participantsCollection = collection(firestore, getEventCollectionPath(eventId, "participants"));
+  const participantRef = doc(participantsCollection, participantId);
 
   // Default values for a new participant
   const newParticipant = {
@@ -101,14 +107,17 @@ export const createParticipant = async (
 
 /**
  * Updates an existing participant in Firestore
+ * @param eventId The event identifier
  * @param id The ID of the participant to update
  * @param participant The updated participant data
  */
 export const updateParticipant = async (
+  eventId: string,
   id: string,
   participant: ParticipantInput
 ): Promise<void> => {
-  const participantRef = doc(firestore, "participants", id);
+  const participantsCollection = collection(firestore, getEventCollectionPath(eventId, "participants"));
+  const participantRef = doc(participantsCollection, id);
 
   await updateDoc(participantRef, {
     ...participant,
@@ -118,18 +127,21 @@ export const updateParticipant = async (
 
 /**
  * Deletes a participant from Firestore
+ * @param eventId The event identifier
  * @param id The ID of the participant to delete
  */
-export const deleteParticipant = async (id: string): Promise<void> => {
-  const participantRef = doc(firestore, "participants", id);
+export const deleteParticipant = async (eventId: string, id: string): Promise<void> => {
+  const participantsCollection = collection(firestore, getEventCollectionPath(eventId, "participants"));
+  const participantRef = doc(participantsCollection, id);
   await deleteDoc(participantRef);
 };
 
 /**
  * Resets the isDone status for all participants in Firestore.
+ * @param eventId The event identifier
  */
-export const resetAllParticipantStatuses = async (): Promise<void> => {
-  const participantsRef = collection(firestore, "participants");
+export const resetAllParticipantStatuses = async (eventId: string): Promise<void> => {
+  const participantsRef = collection(firestore, getEventCollectionPath(eventId, "participants"));
   const q = query(participantsRef); // Query all participants
   const batch = writeBatch(firestore);
 
@@ -150,10 +162,12 @@ export const resetAllParticipantStatuses = async (): Promise<void> => {
 
 /**
  * Updates the activeQuestion field for a specific participant.
+ * @param eventId The event identifier
  * @param participantId The ID of the participant to update.
  * @param newActiveQuestionPage The new page number to set as active.
  */
 export const updateActiveQuestion = async (
+  eventId: string,
   participantId: string,
   newActiveQuestionPage: number
 ): Promise<void> => {
@@ -162,7 +176,8 @@ export const updateActiveQuestion = async (
     throw new Error("Invalid participant ID provided.");
   }
 
-  const participantRef = doc(firestore, "participants", participantId);
+  const participantsCollection = collection(firestore, getEventCollectionPath(eventId, "participants"));
+  const participantRef = doc(participantsCollection, participantId);
 
   try {
     await updateDoc(participantRef, {

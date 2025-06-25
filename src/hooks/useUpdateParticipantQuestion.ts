@@ -1,8 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateParticipantQuestion } from "@/services/updateParticipantQuestions";
+import { useEvent } from "@/contexts/EventContext";
 import { Participant } from "@/models/models";
 
 export const useUpdateParticipantQuestion = () => {
+  const { currentEvent } = useEvent();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -17,6 +19,7 @@ export const useUpdateParticipantQuestion = () => {
     }) => {
       try {
         return await updateParticipantQuestion(
+          currentEvent || 'lisbon-2025',
           participantId,
           questionIndex,
           pageNumber

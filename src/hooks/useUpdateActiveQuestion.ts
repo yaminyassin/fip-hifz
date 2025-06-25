@@ -1,8 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateActiveQuestion } from "@/services/participants";
+import { useEvent } from "@/contexts/EventContext";
 import { Participant } from "@/models/models";
 
 export const useUpdateActiveQuestion = () => {
+  const { currentEvent } = useEvent();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -14,7 +16,7 @@ export const useUpdateActiveQuestion = () => {
       activeQuestionPage: number;
     }) => {
       try {
-        return await updateActiveQuestion(participantId, activeQuestionPage);
+        return await updateActiveQuestion(currentEvent || 'lisbon-2025', participantId, activeQuestionPage);
       } catch (error) {
         console.error("Error in updateActiveQuestion mutation:", error);
         throw error;

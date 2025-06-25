@@ -1,16 +1,19 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { doc, DocumentSnapshot } from "firebase/firestore";
+import { doc, DocumentSnapshot, collection } from "firebase/firestore";
 import { firestore } from "@/main";
 import { getAuthenticatedJury, logoutJury } from "../services/juryAuth";
 import { Jury } from "../models/models";
 import { cleanupAllListeners, useFirestoreListener } from "./useFirestoreListener";
+import { useEvent } from "@/contexts/EventContext";
+import { getEventCollectionPath } from "@/utils/firebaseUtils";
 
 export const useJuryAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { currentEvent } = useEvent();
 
   // Check authentication on mount
   useEffect(() => {
@@ -29,7 +32,7 @@ export const useJuryAuth = () => {
         try {
           // For immediate deactivation, we'll trigger the logout
           // This might not always complete but it's better than nothing
-          logoutJury().catch(console.error);
+          logoutJury(currentEvent || 'lisbon-2025').catch(console.error);
         } catch (error) {
           console.error("Error deactivating jury on page unload:", error);
         }
@@ -48,13 +51,15 @@ export const useJuryAuth = () => {
 
   // Memoize the query to prevent recreation on every render
   const juryQuery = useMemo(() => {
-    return juryId ? doc(firestore, "jury", juryId) : null;
-  }, [juryId]);
+    if (!juryId || !currentEvent) return null;
+    const juryCollection = collection(firestore, getEventCollectionPath(currentEvent, "jury"));
+    return doc(juryCollection, juryId);
+  }, [juryId, currentEvent]);
 
   // Use centralized listener for jury member data
   useFirestoreListener<DocumentSnapshot>({
     query: juryQuery,
-    key: `jury-member-${juryId}`, // Use same key as useJuryMember for consistency
+    key: `jury-member-${currentEvent}-${juryId}`, // Use same key as useJuryMember for consistency
     onData: (docSnapshot) => {
       if (docSnapshot.exists()) {
         const juryMember = {
@@ -62,26 +67,26 @@ export const useJuryAuth = () => {
           ...docSnapshot.data(),
         } as Jury;
         // console.log(`[useJuryAuth] Setting jury data:`, juryMember);
-        queryClient.setQueryData(["jury", juryId], juryMember);
+        queryClient.setQueryData(["jury", currentEvent, juryId], juryMember);
       } else {
         // console.log(`[useJuryAuth] Setting jury data to null`);
-        queryClient.setQueryData(["jury", juryId], null);
+        queryClient.setQueryData(["jury", currentEvent, juryId], null);
       }
     },
     onError: (error) => {
       console.error("Error fetching jury member:", error);
     },
-    enabled: !!juryId
+    enabled: !!juryQuery
   });
 
   const { data: juryMember } = useQuery<Jury | null>({
-    queryKey: ["jury", juryId],
+    queryKey: ["jury", currentEvent, juryId],
     queryFn: () => {
       // Return cached data if available, otherwise null
-      const cachedData = queryClient.getQueryData<Jury | null>(["jury", juryId]);
+      const cachedData = queryClient.getQueryData<Jury | null>(["jury", currentEvent, juryId]);
       return cachedData || null;
     },
-    enabled: !!juryId,
+    enabled: !!juryId && !!currentEvent,
     staleTime: Infinity, // Never mark as stale since we're using real-time updates
     refetchOnMount: false, // Don't refetch on mount
     refetchOnWindowFocus: false, // Don't refetch on window focus
@@ -95,7 +100,7 @@ export const useJuryAuth = () => {
 
   const handleLogout = async () => {
     try {
-      await logoutJury();
+      await logoutJury(currentEvent || 'lisbon-2025');
       setIsAuthenticated(false);
 
       // Clean up all Firestore listeners to prevent memory leaks

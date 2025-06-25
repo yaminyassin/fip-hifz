@@ -4,6 +4,7 @@ import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
 
 import { authenticateJury, setAuthenticatedJury } from "@/services/juryAuth";
+import { useEvent } from "@/contexts/EventContext";
 import { useTranslation } from "react-i18next";
 
 interface JuryLoginProps {
@@ -13,6 +14,7 @@ interface JuryLoginProps {
 export const JuryLogin = ({ onLoginSuccess }: JuryLoginProps) => {
   const [juryId, setJuryId] = useState("");
   const { t } = useTranslation();
+  const { currentEvent } = useEvent();
 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +25,7 @@ export const JuryLogin = ({ onLoginSuccess }: JuryLoginProps) => {
     setError(null);
 
     try {
-      const isAuthenticated = await authenticateJury(juryId);
+      const isAuthenticated = await authenticateJury(currentEvent || 'lisbon-2025', juryId);
       if (isAuthenticated) {
         setAuthenticatedJury(juryId);
         onLoginSuccess();

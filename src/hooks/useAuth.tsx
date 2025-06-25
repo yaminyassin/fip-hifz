@@ -1,61 +1,103 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { firestore } from '@/main';
 
 interface AuthContextType {
     isAuthenticated: boolean;
-    login: (password: string) => Promise<void>;
+    currentEvent: string | null;
+    login: (eventId: string, password: string) => Promise<void>;
     logout: () => void;
+    isEventAuthenticated: (eventId: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-        // Check session storage on initial load for persistence
-        return sessionStorage.getItem('isAuthenticated') === 'true';
+    const [authenticatedEvents, setAuthenticatedEvents] = useState<Set<string>>(() => {
+        // Load authenticated events from session storage
+        const stored = sessionStorage.getItem('authenticatedEvents');
+        return stored ? new Set(JSON.parse(stored)) : new Set();
+    });
+    
+    const [currentEvent, setCurrentEvent] = useState<string | null>(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('event');
     });
 
     useEffect(() => {
-        // Keep session storage in sync with the state
-        sessionStorage.setItem('isAuthenticated', isAuthenticated.toString());
-    }, [isAuthenticated]);
+        // Keep session storage in sync with authenticated events
+        sessionStorage.setItem('authenticatedEvents', JSON.stringify([...authenticatedEvents]));
+    }, [authenticatedEvents]);
 
-    const login = async (password: string) => {
+    useEffect(() => {
+        // Update current event when URL changes
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventFromUrl = urlParams.get('event');
+        setCurrentEvent(eventFromUrl);
+    }, []);
+
+    const isAuthenticated = currentEvent ? authenticatedEvents.has(currentEvent) : false;
+
+    const login = async (eventId: string, password: string) => {
         try {
-            // 1. Define the path to the configuration document in Firestore.
-            const configRef = doc(firestore, 'app_config', 'auth_settings');
-
-            // 2. Fetch the document from Firestore.
-            const docSnap = await getDoc(configRef);
-
-            if (docSnap.exists()) {
-                const storedPassword = docSnap.data().eventPassword;
-
-                // 3. Compare the submitted password with the one from Firestore.
-                if (password === storedPassword) {
-                    setIsAuthenticated(true);
+            // Try to get event-specific password from Firestore
+            const configRef = doc(firestore, 'events', eventId, 'app_config', 'auth_settings');
+            let docSnap = await getDoc(configRef);
+            
+            if (!docSnap.exists()) {
+                // Create default auth settings for new events
+                const defaultPassword = `${eventId}-admin`; // e.g., "lisbon-2025-admin"
+                await setDoc(configRef, {
+                    eventPassword: defaultPassword,
+                    createdAt: new Date(),
+                });
+                
+                // If they used the default password, authenticate them
+                if (password === defaultPassword) {
+                    setAuthenticatedEvents(prev => new Set([...prev, eventId]));
+                    setCurrentEvent(eventId);
+                    return;
                 } else {
-                    throw new Error('Invalid password');
+                    throw new Error('Wrong password');
                 }
+            }
+            
+            const storedPassword = docSnap.data().eventPassword;
+            if (password === storedPassword) {
+                setAuthenticatedEvents(prev => new Set([...prev, eventId]));
+                setCurrentEvent(eventId);
             } else {
-                console.error("Authentication configuration document not found in Firestore.");
-                throw new Error('Authentication system not configured.');
+                throw new Error('Wrong password');
             }
         } catch (error) {
             console.error('Login error:', error);
-            // Re-throw the error to be caught by the Login component.
-            throw new Error('Invalid password');
+            throw error;
         }
     };
 
     const logout = () => {
-        setIsAuthenticated(false);
-        sessionStorage.removeItem('isAuthenticated');
+        if (currentEvent) {
+            setAuthenticatedEvents(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(currentEvent);
+                return newSet;
+            });
+        }
+        setCurrentEvent(null);
+    };
+
+    const isEventAuthenticated = (eventId: string) => {
+        return authenticatedEvents.has(eventId);
     };
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+        <AuthContext.Provider value={{ 
+            isAuthenticated, 
+            currentEvent, 
+            login, 
+            logout, 
+            isEventAuthenticated 
+        }}>
             {children}
         </AuthContext.Provider>
     );

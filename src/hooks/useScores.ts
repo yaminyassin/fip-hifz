@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getScoresForParticipantQuestion } from "../services/scores";
+import { useEvent } from "../contexts/EventContext";
 
 export const useScores = ({
   juryId,
@@ -10,9 +11,12 @@ export const useScores = ({
   participantId?: string;
   questionNumber: number;
 }) => {
+  const { currentEvent } = useEvent();
+  
   return useQuery({
-    queryKey: ["scores", juryId, participantId, questionNumber],
+    queryKey: ["scores", currentEvent, juryId, participantId, questionNumber],
     queryFn: () =>
-      getScoresForParticipantQuestion(juryId, participantId, questionNumber),
+      getScoresForParticipantQuestion(currentEvent || 'lisbon-2025', juryId, participantId!, questionNumber),
+    enabled: !!juryId && !!participantId && questionNumber > 0,
   });
 };

@@ -12,6 +12,7 @@ import React, {
 import { useUpdateParticipantQuestion } from "@/hooks/useUpdateParticipantQuestion";
 import { useUpdateActiveQuestion } from "@/hooks/useUpdateActiveQuestion";
 import { useActiveParticipant } from "@/hooks/useActiveParticipant";
+import { useEvent } from "@/contexts/EventContext";
 import { useTranslation } from "react-i18next";
 import { TFunction } from "i18next";
 import { getCategoryConfig, generateRandomPage } from "@/lib/quranUtils";
@@ -192,6 +193,7 @@ const RouteComponent = () => {
   const [isLoading, setIsLoading] = useState(true); // True for initial component mount loading
   const lastActiveParticipantRef = useRef<Participant | null>(null);
 
+  const { currentEvent } = useEvent();
   const updateQuestion = useUpdateParticipantQuestion();
   const updateActiveQuestion = useUpdateActiveQuestion();
   const { data: activeParticipant, isLoading: isParticipantLoading } =
@@ -278,7 +280,7 @@ const RouteComponent = () => {
     console.log(t("randomizer.messages.generationStartingTitle"));
 
     // Fetch previous questions to avoid duplicates
-    const previousQuestions = await getPreviousQuestions();
+    const previousQuestions = await getPreviousQuestions(currentEvent || 'lisbon-2025');
     console.log(
       `Fetched ${previousQuestions.length} previous questions to avoid`
     );
@@ -341,8 +343,8 @@ const RouteComponent = () => {
 
     // Replace all previous questions with the newly generated ones in the app_config collection
     try {
-      //await setPreviousQuestions(generatedPages);
-      await addToPreviousQuestions(generatedPages);
+      //await setPreviousQuestions(currentEvent || 'lisbon-2025', generatedPages);
+      await addToPreviousQuestions(currentEvent || 'lisbon-2025', generatedPages);
       console.log(
         "Successfully replaced previous questions with newly generated questions in app_config"
       );
