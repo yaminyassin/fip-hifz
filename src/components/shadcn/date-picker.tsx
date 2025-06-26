@@ -1,20 +1,20 @@
-"use client"
+"use client";
 
-import { CalendarIcon } from "lucide-react"
-import { format } from "date-fns"
+import { CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/shadcn/button"
-import { Calendar } from "@/components/ui/calendar"
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/shadcn/button";
+import { Calendar } from "@/components/shadcn/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/components/shadcn/popover";
 
 interface DatePickerProps {
-  value?: Date
-  onChange: (date: Date | undefined) => void
+  value?: Date;
+  onChange: (date: Date | undefined) => void;
 }
 
 export function DatePicker({ value, onChange }: DatePickerProps) {
@@ -29,7 +29,11 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {value && !isNaN(value.getTime()) ? format(value, "PPP") : <span>Pick a date</span>}
+          {value && !isNaN(value.getTime()) ? (
+            format(value, "PPP")
+          ) : (
+            <span>Pick a date</span>
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
@@ -41,5 +45,5 @@ export function DatePicker({ value, onChange }: DatePickerProps) {
         />
       </PopoverContent>
     </Popover>
-  )
-} 
+  );
+}

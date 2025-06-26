@@ -24,17 +24,19 @@ type ParticipantInput = Omit<Participant, "id" | "assignedQuestions"> & {
  * @returns A lowercase, underscore-separated document ID
  */
 const generateParticipantId = (name: string): string => {
-  return name
-    .toLowerCase()
-    .trim()
-    // Replace spaces with underscores
-    .replace(/\s+/g, '_')
-    // Remove any characters that aren't letters, numbers, or underscores
-    .replace(/[^a-z0-9_]/g, '')
-    // Ensure it doesn't start or end with underscore
-    .replace(/^_+|_+$/g, '')
-    // Collapse multiple underscores into single ones
-    .replace(/_+/g, '_');
+  return (
+    name
+      .toLowerCase()
+      .trim()
+      // Replace spaces with underscores
+      .replace(/\s+/g, "_")
+      // Remove any characters that aren't letters, numbers, or underscores
+      .replace(/[^a-z0-9_]/g, "")
+      // Ensure it doesn't start or end with underscore
+      .replace(/^_+|_+$/g, "")
+      // Collapse multiple underscores into single ones
+      .replace(/_+/g, "_")
+  );
 };
 
 /**
@@ -43,11 +45,16 @@ const generateParticipantId = (name: string): string => {
  * @param name The participant's name
  * @returns A unique document ID
  */
-const generateUniqueParticipantId = async (eventId: string, name: string): Promise<string> => {
-  let baseId = generateParticipantId(name);
+const generateUniqueParticipantId = async (
+  eventId: string,
+  name: string
+): Promise<string> => {
+  const baseId = generateParticipantId(name);
 
   if (!baseId) {
-    throw new Error("Unable to generate valid document ID from participant name");
+    throw new Error(
+      "Unable to generate valid document ID from participant name"
+    );
   }
 
   let participantId = baseId;
@@ -55,7 +62,10 @@ const generateUniqueParticipantId = async (eventId: string, name: string): Promi
 
   // Check if document already exists and add suffix if needed
   while (true) {
-    const participantsCollection = collection(firestore, getEventCollectionPath(eventId, "participants"));
+    const participantsCollection = collection(
+      firestore,
+      getEventCollectionPath(eventId, "participants")
+    );
     const participantRef = doc(participantsCollection, participantId);
     const docSnapshot = await getDoc(participantRef);
 
@@ -70,7 +80,9 @@ const generateUniqueParticipantId = async (eventId: string, name: string): Promi
 
     // Safety check to prevent infinite loop (though very unlikely)
     if (counter > 100) {
-      throw new Error("Unable to generate unique participant ID after 100 attempts");
+      throw new Error(
+        "Unable to generate unique participant ID after 100 attempts"
+      );
     }
   }
 };
@@ -86,9 +98,15 @@ export const createParticipant = async (
   participant: ParticipantInput
 ): Promise<string> => {
   // Generate unique document ID from participant name
-  const participantId = await generateUniqueParticipantId(eventId, participant.name);
+  const participantId = await generateUniqueParticipantId(
+    eventId,
+    participant.name
+  );
 
-  const participantsCollection = collection(firestore, getEventCollectionPath(eventId, "participants"));
+  const participantsCollection = collection(
+    firestore,
+    getEventCollectionPath(eventId, "participants")
+  );
   const participantRef = doc(participantsCollection, participantId);
 
   // Default values for a new participant
@@ -116,7 +134,10 @@ export const updateParticipant = async (
   id: string,
   participant: ParticipantInput
 ): Promise<void> => {
-  const participantsCollection = collection(firestore, getEventCollectionPath(eventId, "participants"));
+  const participantsCollection = collection(
+    firestore,
+    getEventCollectionPath(eventId, "participants")
+  );
   const participantRef = doc(participantsCollection, id);
 
   await updateDoc(participantRef, {
@@ -130,8 +151,14 @@ export const updateParticipant = async (
  * @param eventId The event identifier
  * @param id The ID of the participant to delete
  */
-export const deleteParticipant = async (eventId: string, id: string): Promise<void> => {
-  const participantsCollection = collection(firestore, getEventCollectionPath(eventId, "participants"));
+export const deleteParticipant = async (
+  eventId: string,
+  id: string
+): Promise<void> => {
+  const participantsCollection = collection(
+    firestore,
+    getEventCollectionPath(eventId, "participants")
+  );
   const participantRef = doc(participantsCollection, id);
   await deleteDoc(participantRef);
 };
@@ -140,8 +167,13 @@ export const deleteParticipant = async (eventId: string, id: string): Promise<vo
  * Resets the isDone status for all participants in Firestore.
  * @param eventId The event identifier
  */
-export const resetAllParticipantStatuses = async (eventId: string): Promise<void> => {
-  const participantsRef = collection(firestore, getEventCollectionPath(eventId, "participants"));
+export const resetAllParticipantStatuses = async (
+  eventId: string
+): Promise<void> => {
+  const participantsRef = collection(
+    firestore,
+    getEventCollectionPath(eventId, "participants")
+  );
   const q = query(participantsRef); // Query all participants
   const batch = writeBatch(firestore);
 
@@ -176,7 +208,10 @@ export const updateActiveQuestion = async (
     throw new Error("Invalid participant ID provided.");
   }
 
-  const participantsCollection = collection(firestore, getEventCollectionPath(eventId, "participants"));
+  const participantsCollection = collection(
+    firestore,
+    getEventCollectionPath(eventId, "participants")
+  );
   const participantRef = doc(participantsCollection, participantId);
 
   try {
