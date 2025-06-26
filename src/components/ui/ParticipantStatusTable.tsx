@@ -29,15 +29,18 @@ import {
 import { Button } from "@/components/shadcn/button";
 import { Input } from "@/components/shadcn/input";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { doc, writeBatch } from "firebase/firestore";
+import { doc, writeBatch, collection } from "firebase/firestore";
 import { firestore } from "@/main";
 import { Loader2, Filter, Search } from "lucide-react";
 import { categoryConfigs } from "@/lib/quranUtils";
+import { useEvent } from "@/contexts/EventContext";
+import { getEventCollectionPath } from "@/utils/firebaseUtils";
 
 type DisplayStatus = "Active" | "Inactive" | "Completed";
 
 export function ParticipantStatusTable() {
   const { t } = useTranslation();
+  const { currentEvent } = useEvent();
   const {
     data: participants = [],
     isLoading: isLoadingParticipants,
@@ -114,44 +117,49 @@ export function ParticipantStatusTable() {
   // Set Active Participant Mutation
   const setActiveMutation = useMutation({
     mutationFn: async (participantId: string) => {
+      if (!currentEvent) {
+        throw new Error("No event selected");
+      }
+      
       const batch = writeBatch(firestore);
 
       // Get current participants directly for the batch operation
       const currentParticipants =
-        queryClient.getQueryData<Participant[]>(["participants"]) || [];
+        queryClient.getQueryData<Participant[]>(["participants", currentEvent]) || [];
 
       // First, set all participants as inactive
       currentParticipants.forEach((p) => {
         if (p.id !== participantId) {
           // Ensure we don't mark the target as inactive
-          const participantRef = doc(firestore, "participants", p.id);
+          const participantsCollection = collection(firestore, getEventCollectionPath(currentEvent, "participants"));
+          const participantRef = doc(participantsCollection, p.id);
           batch.update(participantRef, { isActive: false });
         }
       });
 
       // Then set the selected participant as active and ensure isDone is false
-      const selectedParticipantRef = doc(
-        firestore,
-        "participants",
-        participantId
-      );
+      const participantsCollection = collection(firestore, getEventCollectionPath(currentEvent, "participants"));
+      const selectedParticipantRef = doc(participantsCollection, participantId);
       batch.update(selectedParticipantRef, { isActive: true, isDone: false }); // Explicitly set isActive: true
 
       await batch.commit();
       return participantId; // Return the ID for potential use in callbacks
     },
     onMutate: async (participantId) => {
+      if (!currentEvent) return;
+      
       // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
-      await queryClient.cancelQueries({ queryKey: ["participants"] });
+      await queryClient.cancelQueries({ queryKey: ["participants", currentEvent] });
 
       // Snapshot the previous value
       const previousParticipants = queryClient.getQueryData<Participant[]>([
-        "participants",
+        "participants", 
+        currentEvent
       ]);
 
       // Optimistically update to the new value
       queryClient.setQueryData<Participant[]>(
-        ["participants"],
+        ["participants", currentEvent],
         (oldData = []) =>
           oldData.map((p) => ({
             ...p,
@@ -168,9 +176,9 @@ export function ParticipantStatusTable() {
     onError: (err, _participantId, context) => {
       console.error("Error setting participant active:", err);
       // Rollback to the previous state on error
-      if (context?.previousParticipants) {
+      if (context?.previousParticipants && currentEvent) {
         queryClient.setQueryData(
-          ["participants"],
+          ["participants", currentEvent],
           context.previousParticipants
         );
       }

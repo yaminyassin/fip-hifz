@@ -12,43 +12,54 @@ import {
 } from "@/components/shadcn/select";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useEvent } from "@/contexts/EventContext";
+import { getEventCollectionPath } from "@/utils/firebaseUtils";
 
 export const ParticipantSelector = () => {
     const [selectedParticipantId, setSelectedParticipantId] = useState<string>("");
     const queryClient = useQueryClient();
     const { t } = useTranslation();
+    const { currentEvent } = useEvent();
 
     const { data: participants, isLoading } = useQuery({
-        queryKey: ["participants"],
+        queryKey: ["participants", currentEvent],
         queryFn: async () => {
-            const participantsRef = collection(firestore, "participants");
+            if (!currentEvent) {
+                throw new Error("No event selected");
+            }
+            const participantsRef = collection(firestore, getEventCollectionPath(currentEvent, "participants"));
             const snapshot = await getDocs(participantsRef);
             return snapshot.docs.map(
                 (doc) => ({ id: doc.id, ...doc.data() } as Participant)
             );
         },
+        enabled: !!currentEvent,
     });
 
     const setActiveParticipant = useMutation({
         mutationFn: async (participantId: string) => {
+            if (!currentEvent) {
+                throw new Error("No event selected");
+            }
             const batch = writeBatch(firestore);
 
             // First, set all participants as inactive
-            const participantsRef = collection(firestore, "participants");
+            const participantsRef = collection(firestore, getEventCollectionPath(currentEvent, "participants"));
             const snapshot = await getDocs(participantsRef);
             snapshot.docs.forEach((doc) => {
                 batch.update(doc.ref, { isActive: false });
             });
 
             // Then set the selected participant as active
-            const selectedParticipantRef = doc(firestore, "participants", participantId);
+            const participantsCollection = collection(firestore, getEventCollectionPath(currentEvent, "participants"));
+            const selectedParticipantRef = doc(participantsCollection, participantId);
             batch.update(selectedParticipantRef, { isActive: true });
 
             await batch.commit();
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["participants"] });
-            queryClient.invalidateQueries({ queryKey: ["activeParticipant"] });
+            queryClient.invalidateQueries({ queryKey: ["participants", currentEvent] });
+            queryClient.invalidateQueries({ queryKey: ["activeParticipant", currentEvent] });
         },
     });
 
@@ -61,6 +72,14 @@ export const ParticipantSelector = () => {
             setActiveParticipant.mutate(selectedParticipantId);
         }
     };
+
+    if (!currentEvent) {
+        return (
+            <div className="flex items-center justify-center p-8">
+                <p className="text-muted-foreground">{t("error.noEventSelected")}</p>
+            </div>
+        );
+    }
 
     if (isLoading) {
         return (

@@ -23,12 +23,15 @@ import {
 } from "firebase/firestore"; // Import firestore functions
 import { firestore } from "@/main"; // Import firestore instance
 import { CheckCircle2 } from "lucide-react"; // Import icon
+import { useEvent } from "@/contexts/EventContext";
+import { getEventCollectionPath } from "@/utils/firebaseUtils";
 
 // Define status types explicitly based on derived logic
 type DisplayStatus = "Active" | "Inactive" | "Completed";
 
 export function ActiveParticipantSetter() {
   const { t } = useTranslation();
+  const { currentEvent } = useEvent();
 
   // Fetch all participants for the table
   const {
@@ -47,10 +50,14 @@ export function ActiveParticipantSetter() {
   // Mutation to set the active participant in Firestore
   const setActiveParticipantMutation = useMutation({
     mutationFn: async (participantId: string) => {
+      if (!currentEvent) {
+        throw new Error("No event selected");
+      }
+      
       const batch = writeBatch(firestore);
 
       // First, set all participants as inactive
-      const participantsRef = collection(firestore, "participants");
+      const participantsRef = collection(firestore, getEventCollectionPath(currentEvent, "participants"));
       const snapshot = await getDocs(participantsRef);
       snapshot.docs.forEach((docRef) => {
         // Only set inactive if it's not the one we are activating
@@ -60,11 +67,8 @@ export function ActiveParticipantSetter() {
       });
 
       // Then set the selected participant as active and not done
-      const selectedParticipantRef = doc(
-        firestore,
-        "participants",
-        participantId
-      );
+      const participantsCollection = collection(firestore, getEventCollectionPath(currentEvent, "participants"));
+      const selectedParticipantRef = doc(participantsCollection, participantId);
       batch.update(selectedParticipantRef, { isActive: true, isDone: false }); // Ensure isDone is false when activating
 
       await batch.commit();
@@ -88,8 +92,12 @@ export function ActiveParticipantSetter() {
   // Mutation to mark a participant as done
   const markParticipantDoneMutation = useMutation({
     mutationFn: async (participantId: string) => {
-      if (!participantId) return; // Guard clause
-      const participantRef = doc(firestore, "participants", participantId);
+      if (!participantId || !currentEvent) {
+        throw new Error("Invalid participant ID or no event selected");
+      }
+      
+      const participantsCollection = collection(firestore, getEventCollectionPath(currentEvent, "participants"));
+      const participantRef = doc(participantsCollection, participantId);
       await updateDoc(participantRef, {
         isActive: false,
         isDone: true,
