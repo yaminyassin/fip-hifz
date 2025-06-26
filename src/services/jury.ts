@@ -127,3 +127,29 @@ export const setAllJuryActive = async (eventId: string, isActive: boolean): Prom
     throw error;
   }
 };
+
+/**
+ * Reset all jury members' evaluation status when a new participant becomes active
+ * @param eventId The event identifier
+ */
+export const resetAllJuryEvaluationStatus = async (eventId: string): Promise<void> => {
+  try {
+    const juryCollection = collection(firestore, getEventCollectionPath(eventId, "jury"));
+    const jurySnapshot = await getDocs(juryCollection);
+
+    const batch = writeBatch(firestore);
+
+    jurySnapshot.docs.forEach((doc) => {
+      batch.update(doc.ref, { 
+        hasFinishedEvaluating: false,
+        currentQuestion: 1
+      });
+    });
+
+    await batch.commit();
+    console.log("Successfully reset all jury evaluation statuses");
+  } catch (error) {
+    console.error("Error resetting all jury evaluation statuses:", error);
+    throw error;
+  }
+};

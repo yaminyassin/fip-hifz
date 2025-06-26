@@ -387,11 +387,13 @@ export const ParticipantForm = ({
           >
             <SelectTrigger className={errors.country ? "border-red-500" : ""}>
               <SelectValue placeholder="Select a country">
-                {formData.country && (
+                {formData.country ? (
                   <div className="flex items-center gap-2">
                     <span className="text-lg">{getFlagForCountry(formData.country)}</span>
                     <span>{formData.country}</span>
                   </div>
+                ) : (
+                  "Select a country"
                 )}
               </SelectValue>
             </SelectTrigger>

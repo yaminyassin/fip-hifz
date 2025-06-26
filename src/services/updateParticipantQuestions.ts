@@ -1,6 +1,7 @@
 import { firestore } from "@/main";
 import { doc, updateDoc, getDoc, serverTimestamp, collection } from "firebase/firestore";
 import { getEventCollectionPath } from "@/utils/firebaseUtils";
+import { resetAllJuryEvaluationStatus } from "@/services/jury";
 
 // Update all questions at once
 export const updateParticipantQuestions = async (
@@ -15,6 +16,9 @@ export const updateParticipantQuestions = async (
       assignedQuestions: questions,
       updatedAt: serverTimestamp(),
     });
+
+    // Reset all jury evaluation statuses when new questions are assigned
+    await resetAllJuryEvaluationStatus(eventId);
   } catch (error) {
     console.error("Error updating participant questions:", error);
     throw error;
@@ -59,6 +63,12 @@ export const updateParticipantQuestion = async (
       isActive: true, // Explicitly set isActive to true
       updatedAt: serverTimestamp(),
     });
+
+    // Reset all jury evaluation statuses when new questions are assigned
+    // Only reset when this is the first question being assigned (index 0) to avoid multiple resets
+    if (questionIndex === 0) {
+      await resetAllJuryEvaluationStatus(eventId);
+    }
 
     return questions;
   } catch (error) {

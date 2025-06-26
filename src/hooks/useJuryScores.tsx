@@ -13,6 +13,8 @@ import { firestore } from "@/main";
 import { QuestionFields } from "@/models/models";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { useEvent } from "@/contexts/EventContext";
+import { getEventCollectionPath } from "@/utils/firebaseUtils";
 
 // Define a type for scores that don't include overall_bonus
 type QuestionOnlyFields = Omit<QuestionFields, "overall_bonus">;
@@ -78,12 +80,15 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
 
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { currentEvent } = useEvent();
 
   // Clear all previous scores for this participant and jury member
   const clearPreviousScores = useCallback(
     async (participantId: string, juryIdParam: string) => {
+      if (!currentEvent) return;
+      
       try {
-        const scoresRef = collection(firestore, "scores");
+        const scoresRef = collection(firestore, getEventCollectionPath(currentEvent, "scores"));
         const q = query(
           scoresRef,
           where("participantId", "==", participantId),
@@ -95,7 +100,8 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
         await Promise.all(deletePromises);
 
         // Reset jury progress directly in the database
-        const juryRef = doc(firestore, "jury", juryIdParam);
+        const juryCollection = collection(firestore, getEventCollectionPath(currentEvent, "jury"));
+        const juryRef = doc(juryCollection, juryIdParam);
         await updateDoc(juryRef, {
           currentQuestion: 1,
           hasFinishedEvaluating: false,
@@ -111,24 +117,21 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
         console.error("Error clearing previous scores:", error);
       }
     },
-    [t, queryClient]
+    [t, queryClient, currentEvent]
   );
 
   // Save scores mutation
   const saveScoresMutation = useMutation<void, Error, SaveScoresParams>({
     mutationFn: async ({ questionNumToSave, scoresToSave }) => {
-      if (!participant?.id || !juryId) return;
+      if (!participant?.id || !juryId || !currentEvent) return;
 
       const pageNumber = participant.assignedQuestions?.[questionNumToSave - 1];
       if (!pageNumber) {
         throw new Error(`No page assigned for question ${questionNumToSave}`);
       }
 
-      const scoreDoc = doc(
-        firestore,
-        "scores",
-        `${participant.id}_${juryId}_${questionNumToSave}`
-      );
+      const scoresCollection = collection(firestore, getEventCollectionPath(currentEvent, "scores"));
+      const scoreDoc = doc(scoresCollection, `${participant.id}_${juryId}_${questionNumToSave}`);
 
       await setDoc(
         scoreDoc,
@@ -168,11 +171,10 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
     SaveOverallBonusParams
   >({
     mutationFn: async ({ participantId, juryId, overallBonus }) => {
-      const bonusDoc = doc(
-        firestore,
-        "overallBonuses",
-        `${participantId}_${juryId}`
-      );
+      if (!currentEvent) return;
+      
+      const overallBonusesCollection = collection(firestore, getEventCollectionPath(currentEvent, "overallBonuses"));
+      const bonusDoc = doc(overallBonusesCollection, `${participantId}_${juryId}`);
 
       await setDoc(
         bonusDoc,
@@ -287,12 +289,12 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
   // Fetch all scores for current participant
   useEffect(() => {
     const fetchAllScores = async () => {
-      if (!participant?.id || !participant.assignedQuestions?.length || !juryId)
+      if (!participant?.id || !participant.assignedQuestions?.length || !juryId || !currentEvent)
         return;
 
       try {
         // Fetch question scores
-        const scoresRef = collection(firestore, "scores");
+        const scoresRef = collection(firestore, getEventCollectionPath(currentEvent, "scores"));
         const q = query(
           scoresRef,
           where("participantId", "==", participant.id),
@@ -344,12 +346,12 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
     };
 
     fetchAllScores();
-  }, [participant, juryId]);
+  }, [participant, juryId, currentEvent]);
 
   // Separate effect for fetching overall bonus - only runs when participant changes
   useEffect(() => {
     const fetchOverallBonus = async () => {
-      if (!participant?.id || !juryId) {
+      if (!participant?.id || !juryId || !currentEvent) {
         setOverallBonus(0);
         return;
       }
@@ -360,9 +362,10 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
       }
 
       try {
+        const overallBonusesRef = collection(firestore, getEventCollectionPath(currentEvent, "overallBonuses"));
         const bonusSnapshot = await getDocs(
           query(
-            collection(firestore, "overallBonuses"),
+            overallBonusesRef,
             where("participantId", "==", participant.id),
             where("juryId", "==", juryId)
           )
@@ -381,7 +384,7 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
     };
 
     fetchOverallBonus();
-  }, [participant?.id, juryId, pendingBonusSave]);
+  }, [participant?.id, juryId, pendingBonusSave, currentEvent]);
 
   // Handle questions change detection
   const currentQuestionsKey = participant?.assignedQuestions?.join(",") || "";

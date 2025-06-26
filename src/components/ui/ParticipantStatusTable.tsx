@@ -143,6 +143,7 @@ export function ParticipantStatusTable() {
       batch.update(selectedParticipantRef, { isActive: true, isDone: false }); // Explicitly set isActive: true
 
       await batch.commit();
+      
       return participantId; // Return the ID for potential use in callbacks
     },
     onMutate: async (participantId) => {
