@@ -2,6 +2,7 @@
 export const juzToPageMap: Record<number, { start: number; end: number }> = {
   1: { start: 3, end: 21 },
   2: { start: 22, end: 41 },
+  2.5: { start: 42, end: 53 },
   3: { start: 42, end: 61 },
   4: { start: 62, end: 81 },
   5: { start: 82, end: 101 },
@@ -76,6 +77,21 @@ export const categoryConfigs: Record<string, CategoryConfig> = {
     questionRanges: [
       { name: "M1", juzRange: [30, 30], numParts: 2 },
       { name: "M2", juzRange: [28, 28], numParts: 2 },
+    ],
+  },
+  X: {
+    numQuestions: 2,
+    questionRanges: [{ name: "X", juzRange: [1, 2.5], numParts: 2 }],
+  },
+  Y: {
+    numQuestions: 3,
+    questionRanges: [{ name: "Y", juzRange: [1, 15], numParts: 3 }],
+  },
+  W: {
+    numQuestions: 3,
+    questionRanges: [
+      { name: "W1", juzRange: [1, 3], numParts: 3 },
+      { name: "W2", juzRange: [1, 30], numParts: 3 },
     ],
   },
 };
@@ -218,6 +234,7 @@ export const generateRandomPage = (
 };
 
 import { QuestionFields } from "@/models/models";
+import { Warehouse } from "lucide-react";
 
 // Helper function to create perfect question scores (100 points)
 export const createPerfectQuestionScore = (): QuestionFields => ({
@@ -316,7 +333,7 @@ export const fillMissingQuestionsAndCalculateAverage = (
       Object.keys(avgScores).forEach((key) => {
         avgScores[key as keyof QuestionFields] = Math.round(
           avgScores[key as keyof QuestionFields] /
-          questionScoresFromAllJuries.length
+            questionScoresFromAllJuries.length
         );
       });
 

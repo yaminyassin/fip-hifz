@@ -1,12 +1,15 @@
 """
 Participants CSV Import Script
 
-This script imports participant data from a CSV file into Firestore with integrated flag processing.
+This script imports participant data from a CSV file into event-based Firestore collections with integrated flag processing.
 It handles:
+- Event selection from available events in Firestore
 - CSV data extraction and validation
 - Country flag processing and base64 encoding
 - Photo path generation based on category
-- Participant document creation in Firestore
+- Participant document creation in event-specific subcollections
+
+Collection structure: events/{event_id}/participants/{participant_id}
 
 Author: FIP Hifz Competition System
 """
@@ -26,7 +29,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # ===== CONFIGURATION =====
 class Config:
     """Configuration constants for the import script."""
-    COLLECTION_NAME = "participants"
+    EVENT_COLLECTION_NAME = "events"  # Changed from "event" to "events" to match frontend
+    PARTICIPANTS_SUBCOLLECTION_NAME = "participants"
     FLAGS_DIR = "/Users/yaminyassin/Work/fip-hifz/obs/assets/flags"
 
 # ===== FIREBASE INITIALIZATION =====
@@ -478,6 +482,57 @@ def read_csv_file(csv_file_path: str) -> List[Dict[str, str]]:
         logging.error(f"Error reading CSV file: {e}")
         return []
 
+# ===== EVENT SELECTION =====
+def get_available_events(db_client) -> List[str]:
+    """Get list of available events from Firestore."""
+    try:
+        events_ref = db_client.collection(Config.EVENT_COLLECTION_NAME)
+        events = events_ref.stream()
+        
+        event_ids = []
+        for event in events:
+            event_ids.append(event.id)
+        
+        return sorted(event_ids)
+    except Exception as e:
+        logging.error(f"Error fetching available events: {e}")
+        return []
+
+def prompt_event_selection(db_client) -> Optional[str]:
+    """Prompt user to select an event from available events."""
+    available_events = get_available_events(db_client)
+    
+    if not available_events:
+        logging.error("No events found in the database.")
+        return None
+    
+    print("\nAvailable Events:")
+    print("=" * 40)
+    for i, event_id in enumerate(available_events, 1):
+        print(f"{i}. {event_id}")
+    print("=" * 40)
+    
+    while True:
+        try:
+            choice = input(f"\nSelect an event (1-{len(available_events)}) or 'q' to quit: ").strip()
+            
+            if choice.lower() == 'q':
+                return None
+            
+            choice_index = int(choice) - 1
+            if 0 <= choice_index < len(available_events):
+                selected_event = available_events[choice_index]
+                print(f"\nSelected event: {selected_event}")
+                return selected_event
+            else:
+                print(f"Please enter a number between 1 and {len(available_events)}")
+                
+        except ValueError:
+            print("Please enter a valid number or 'q' to quit")
+        except KeyboardInterrupt:
+            print("\nOperation cancelled by user.")
+            return None
+
 # ===== FILE OPERATIONS =====
 def get_csv_file_path() -> str:
     """Get the path to the CSV file."""
@@ -496,6 +551,12 @@ def import_participants_from_csv():
         logging.critical("Firebase initialization failed. Exiting.")
         sys.exit(1)
     
+    # Prompt user to select an event
+    selected_event = prompt_event_selection(db_client)
+    if not selected_event:
+        logging.info("No event selected. Exiting.")
+        sys.exit(0)
+    
     # Read CSV file
     csv_rows = read_csv_file(csv_file_path)
     if not csv_rows:
@@ -503,7 +564,8 @@ def import_participants_from_csv():
         sys.exit(1)
     
     try:
-        collection_ref = db_client.collection(Config.COLLECTION_NAME)
+        # Use event-based collection structure: events/{event_id}/participants
+        collection_ref = db_client.collection(Config.EVENT_COLLECTION_NAME).document(selected_event).collection(Config.PARTICIPANTS_SUBCOLLECTION_NAME)
         
         created_count = 0
         skipped_count = 0
@@ -537,7 +599,9 @@ def import_participants_from_csv():
         logging.info("="*50)
         logging.info("IMPORT SUMMARY")
         logging.info("="*50)
+        logging.info(f"Selected event: {selected_event}")
         logging.info(f"CSV file: {csv_file_path}")
+        logging.info(f"Collection path: {Config.EVENT_COLLECTION_NAME}/{selected_event}/{Config.PARTICIPANTS_SUBCOLLECTION_NAME}")
         logging.info(f"Total rows processed: {len(csv_rows)}")
         logging.info(f"Participants created: {created_count}")
         logging.info(f"Participants skipped (already exist): {skipped_count}")
@@ -560,10 +624,13 @@ if __name__ == "__main__":
     logging.info("PARTICIPANTS CSV IMPORT SCRIPT")
     logging.info("="*60)
     logging.info("This script will:")
+    logging.info("• Show available events from Firestore")
+    logging.info("• Prompt you to select an event")
     logging.info("• Read participant data from 'participants.csv'")
-    logging.info("• Create participant documents in Firestore")
+    logging.info("• Create participant documents in event-specific collection")
     logging.info("• Process and assign country flags automatically")
     logging.info("• Set up photo paths based on category")
+    logging.info(f"• Collection structure: {Config.EVENT_COLLECTION_NAME}/{{event_id}}/{Config.PARTICIPANTS_SUBCOLLECTION_NAME}")
     logging.info("="*60)
     
     # Ask for confirmation

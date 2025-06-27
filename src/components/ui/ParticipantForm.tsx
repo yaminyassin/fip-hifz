@@ -18,7 +18,22 @@ import { Upload, X } from "lucide-react";
 import { getAvailableCountries, getFlagForCountry } from "@/lib/countryUtils";
 
 // Available categories based on the files in the categories folder
-const AVAILABLE_CATEGORIES = ["A1", "A2", "B1", "B2", "C1", "C2", "D1", "D2", "M1", "M2"];
+const AVAILABLE_CATEGORIES = [
+  "A1",
+  "A2",
+  "B1",
+  "B2",
+  "C1",
+  "C2",
+  "D1",
+  "D2",
+  "M1",
+  "M2",
+  "X",
+  "Y",
+  "W1",
+  "W2",
+];
 
 // Available days and times for scheduling
 const AVAILABLE_DAYS = [
@@ -65,7 +80,11 @@ export const ParticipantForm = ({
     isDone: participant?.isDone || false,
     isActive: participant?.isActive || false,
     activeQuestion: participant?.activeQuestion || 0,
-    flag: participant?.flag || (participant?.country ? getFlagForCountry(participant.country) || "" : ""),
+    flag:
+      participant?.flag ||
+      (participant?.country
+        ? getFlagForCountry(participant.country) || ""
+        : ""),
     parentsName: participant?.parentsName || "",
     phoneNum: participant?.phoneNum || "",
     email: participant?.email || "",
@@ -81,14 +100,14 @@ export const ParticipantForm = ({
     // If participant has a photo, create a proper data URL
     if (participant?.photo && participant.photo.trim()) {
       // Check if it's already a data URL or just base64 string
-      if (participant.photo.startsWith('data:')) {
+      if (participant.photo.startsWith("data:")) {
         return participant.photo;
       } else {
         // Validate that it looks like base64 data before creating data URL
         try {
           // Basic validation for base64 string
           const base64Regex = /^[A-Za-z0-9+/]+=*$/;
-          if (base64Regex.test(participant.photo.replace(/\s/g, ''))) {
+          if (base64Regex.test(participant.photo.replace(/\s/g, ""))) {
             return `data:image/jpeg;base64,${participant.photo}`;
           }
         } catch (e) {
@@ -116,7 +135,10 @@ export const ParticipantForm = ({
           setSelectedDay(dayCode);
           setSelectedTime(timeOfDay.toLowerCase());
         } else {
-          console.warn("Could not parse scheduled format:", participant.scheduled);
+          console.warn(
+            "Could not parse scheduled format:",
+            participant.scheduled
+          );
           setSelectedDay("");
           setSelectedTime("");
         }
@@ -134,7 +156,7 @@ export const ParticipantForm = ({
   // Update scheduled field whenever day or time changes
   useEffect(() => {
     if (selectedDay && selectedTime) {
-      const dayData = AVAILABLE_DAYS.find(d => d.value === selectedDay);
+      const dayData = AVAILABLE_DAYS.find((d) => d.value === selectedDay);
       if (dayData) {
         const scheduledString = `${selectedDay}: ${dayData.label} ${selectedTime}`;
         setFormData((prev) => ({ ...prev, scheduled: scheduledString }));
@@ -181,8 +203,6 @@ export const ParticipantForm = ({
       reader.readAsDataURL(file);
     });
   };
-
-
 
   // Handle photo upload (both file input and drag & drop)
   const handlePhotoUpload = async (file: File) => {
@@ -259,7 +279,7 @@ export const ParticipantForm = ({
     setFormData((prev) => ({
       ...prev,
       country: countryName,
-      flag: flagEmoji // Store flag emoji instead of base64 data
+      flag: flagEmoji, // Store flag emoji instead of base64 data
     }));
   };
 
@@ -300,9 +320,13 @@ export const ParticipantForm = ({
 
     try {
       if (isEditing && participant) {
-        await updateParticipant(currentEvent || 'lisbon-2025', participant.id, formData);
+        await updateParticipant(
+          currentEvent || "lisbon-2025",
+          participant.id,
+          formData
+        );
       } else {
-        await createParticipant(currentEvent || 'lisbon-2025', formData);
+        await createParticipant(currentEvent || "lisbon-2025", formData);
       }
 
       // Invalidate participants query to refresh data
@@ -381,15 +405,14 @@ export const ParticipantForm = ({
         {/* Country Selection with Flag Preview */}
         <div className="space-y-2 col-span-2">
           <Label>{t("admin.participants.form.country")}</Label>
-          <Select
-            value={formData.country}
-            onValueChange={handleCountryChange}
-          >
+          <Select value={formData.country} onValueChange={handleCountryChange}>
             <SelectTrigger className={errors.country ? "border-red-500" : ""}>
               <SelectValue placeholder="Select a country">
                 {formData.country && (
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">{getFlagForCountry(formData.country)}</span>
+                    <span className="text-lg">
+                      {getFlagForCountry(formData.country)}
+                    </span>
                     <span>{formData.country}</span>
                   </div>
                 )}
@@ -475,12 +498,15 @@ export const ParticipantForm = ({
 
         {/* Participant Photo with Drag & Drop */}
         <div className="space-y-2 col-span-2">
-          <Label>{t("admin.participants.form.photo", "Participant Photo")}</Label>
+          <Label>
+            {t("admin.participants.form.photo", "Participant Photo")}
+          </Label>
           <div
-            className={`border-2 border-dashed rounded-lg p-6 transition-colors ${isPhotoDragOver
-              ? "border-primary bg-primary/5"
-              : "border-gray-300 hover:border-gray-400"
-              }`}
+            className={`border-2 border-dashed rounded-lg p-6 transition-colors ${
+              isPhotoDragOver
+                ? "border-primary bg-primary/5"
+                : "border-gray-300 hover:border-gray-400"
+            }`}
             onDrop={handlePhotoDrop}
             onDragOver={handlePhotoDragOver}
             onDragLeave={handlePhotoDragLeave}
@@ -533,11 +559,10 @@ export const ParticipantForm = ({
 
         {/* Scheduled Day */}
         <div className="space-y-2">
-          <Label>{t("admin.participants.form.scheduledDay", "Scheduled Day")}</Label>
-          <Select
-            value={selectedDay}
-            onValueChange={handleDayChange}
-          >
+          <Label>
+            {t("admin.participants.form.scheduledDay", "Scheduled Day")}
+          </Label>
+          <Select value={selectedDay} onValueChange={handleDayChange}>
             <SelectTrigger>
               <SelectValue placeholder="Select a day" />
             </SelectTrigger>
@@ -553,11 +578,10 @@ export const ParticipantForm = ({
 
         {/* Scheduled Time */}
         <div className="space-y-2">
-          <Label>{t("admin.participants.form.scheduledTime", "Scheduled Time")}</Label>
-          <Select
-            value={selectedTime}
-            onValueChange={handleTimeChange}
-          >
+          <Label>
+            {t("admin.participants.form.scheduledTime", "Scheduled Time")}
+          </Label>
+          <Select value={selectedTime} onValueChange={handleTimeChange}>
             <SelectTrigger>
               <SelectValue placeholder="Select time" />
             </SelectTrigger>
