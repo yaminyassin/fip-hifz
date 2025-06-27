@@ -1,3 +1,5 @@
+import { QuestionFields } from "@/models/models";
+
 // Mapping of juz numbers to page ranges
 export const juzToPageMap: Record<number, { start: number; end: number }> = {
   1: { start: 3, end: 21 },
@@ -232,9 +234,6 @@ export const generateRandomPage = (
     excludedPages
   );
 };
-
-import { QuestionFields } from "@/models/models";
-import { Warehouse } from "lucide-react";
 
 // Helper function to create perfect question scores (100 points)
 export const createPerfectQuestionScore = (): QuestionFields => ({
