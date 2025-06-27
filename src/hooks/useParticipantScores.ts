@@ -3,6 +3,8 @@ import { collection, query, where, QuerySnapshot } from "firebase/firestore";
 import { firestore } from "@/main";
 import { Scores, QuestionFields } from "@/models/models";
 import { useFirestoreListener } from "./useFirestoreListener";
+import { useEvent } from "@/contexts/EventContext";
+import { getEventCollectionPath } from "@/utils/firebaseUtils";
 
 // Helper function to create an empty QuestionFields object
 export const createEmptyQuestionFields = (): QuestionFields => ({
@@ -78,24 +80,25 @@ export const useParticipantScores = (
   questionNumber?: number
 ) => {
   const queryClient = useQueryClient();
+  const { currentEvent } = useEvent();
 
   const constraints = [where("participantId", "==", participantId)];
   if (questionNumber) {
     constraints.push(where("questionNumber", "==", questionNumber));
   }
 
-  const scoresQuery = participantId
-    ? query(collection(firestore, "scores"), ...constraints)
+  const scoresQuery = participantId && currentEvent
+    ? query(collection(firestore, getEventCollectionPath(currentEvent, "scores")), ...constraints)
     : null;
 
   const queryKey = questionNumber
-    ? ["scores", participantId, questionNumber]
-    : ["scores", participantId];
+    ? ["scores", currentEvent, participantId, questionNumber]
+    : ["scores", currentEvent, participantId];
 
   // Use centralized listener management
   useFirestoreListener<QuerySnapshot>({
     query: scoresQuery,
-    key: `participant-scores-${participantId}${questionNumber ? `-q${questionNumber}` : ''}`,
+    key: `participant-scores-${currentEvent}-${participantId}${questionNumber ? `-q${questionNumber}` : ''}`,
     onData: (querySnapshot) => {
       // Group scores by jury
       const scoresByJury: Record<
@@ -132,7 +135,7 @@ export const useParticipantScores = (
     onError: (error) => {
       console.error("Error fetching scores:", error);
     },
-    enabled: !!participantId
+    enabled: !!participantId && !!currentEvent
   });
 
   // Initialize with empty objects to avoid null/undefined errors
@@ -146,6 +149,6 @@ export const useParticipantScores = (
     queryKey,
     queryFn: () => emptyResult, // Initial value with proper typing
     staleTime: Infinity, // Never mark as stale since we're using real-time updates
-    enabled: !!participantId,
+    enabled: !!participantId && !!currentEvent,
   });
 };
