@@ -1,21 +1,7 @@
 {
   "firestore": {
-    "rules": "firestore.rules",
+    "rules": "firestore.test.rules",
     "indexes": "firestore.indexes.json"
-  },
-  "hosting": {
-    "public": "dist",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
   },
   "emulators": {
     "firestore": {

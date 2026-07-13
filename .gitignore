@@ -26,6 +26,11 @@ public/assets/
 .firebase/
 google-services-key.json
 
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
 # Profiling and performance data
 profiling-data.*.json
 

@@ -7,7 +7,7 @@ import { routeTree } from "./routeTree.gen";
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-import { getFirestore } from "firebase/firestore";
+import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./i18n"; // Import i18n configuration
 import { AuthProvider } from "./hooks/useAuth";
@@ -29,6 +29,13 @@ if (import.meta.env.PROD) {
   getAnalytics(app);
 }
 export const firestore = getFirestore(app);
+
+if (import.meta.env.VITE_USE_FIRESTORE_EMULATOR === "true") {
+  const host = import.meta.env.VITE_FIRESTORE_EMULATOR_HOST ?? "127.0.0.1";
+  const port = Number(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT ?? "8080");
+
+  connectFirestoreEmulator(firestore, host, port);
+}
 
 // TanStackRouter setup
 const router = createRouter({
