@@ -11,18 +11,3 @@
 export const getEventCollectionPath = (eventId: string, collectionName: string): string => {
   return `events/${eventId}/${collectionName}`;
 };
-
-/**
- * Build a Firestore document path scoped to a specific event
- * @param eventId - The event identifier
- * @param collectionName - The collection name
- * @param documentId - The document identifier
- * @returns The full document path
- */
-export const getEventDocumentPath = (
-  eventId: string, 
-  collectionName: string, 
-  documentId: string
-): string => {
-  return `${getEventCollectionPath(eventId, collectionName)}/${documentId}`;
-}; 

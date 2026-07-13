@@ -1,11 +1,5 @@
 import { Timestamp } from "firebase/firestore";
 
-export type Quran = {
-  filename: string;
-  page: string;
-  timestamp: string;
-};
-
 /**
  * App configuration settings stored in Firestore
  */
@@ -44,7 +38,7 @@ export type OverallBonus = {
   id: string; // Format: `${participantId}_${juryId}`
   participantId: string;
   juryId: string;
-  overallBonus: number; // Bonus points (0-3) added per question, total capped at 3 points to final average.
+  overallBonus: number; // Bonus points (0-5) added per question, total capped at 5 points to final average.
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };

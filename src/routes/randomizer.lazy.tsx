@@ -369,10 +369,7 @@ const RouteComponent = () => {
     // generateRandomPage is stable as it's an import
   ]);
 
-  const layoutClass = useMemo(() => {
-    // Use flexbox for horizontal flow instead of grid
-    return "flex flex-wrap justify-center";
-  }, []);
+  const layoutClass = "flex flex-wrap justify-center";
 
   const randomNumberComponents = useMemo(() => {
     return questionNumbers.map((number, index) => (

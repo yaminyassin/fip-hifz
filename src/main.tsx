@@ -25,7 +25,9 @@ const firebaseConfig = {
 
 // firebase setup
 const app = initializeApp(firebaseConfig);
-getAnalytics(app);
+if (import.meta.env.PROD) {
+  getAnalytics(app);
+}
 export const firestore = getFirestore(app);
 
 // TanStackRouter setup

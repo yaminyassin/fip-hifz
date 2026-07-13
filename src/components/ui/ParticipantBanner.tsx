@@ -73,11 +73,9 @@ export const ParticipantBanner = () => {
 
       {activeParticipant.flag && activeParticipant.country && (
         <div className="flex flex-row items-center gap-3">
-          <img
-            src={activeParticipant.flag}
-            alt={`${activeParticipant.country} flag`}
-            className="w-8 h-6 md:w-10 md:h-8 object-cover rounded-sm shadow-sm"
-          />
+          <span className="text-2xl md:text-3xl" aria-hidden="true">
+            {activeParticipant.flag}
+          </span>
           <Label className="font-cera text-lg md:text-xl font-medium text-[#2F3046]">
             {activeParticipant.country}
           </Label>

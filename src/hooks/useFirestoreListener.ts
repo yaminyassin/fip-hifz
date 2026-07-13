@@ -60,8 +60,6 @@ export function useFirestoreListener<T>({
                 callbackRef.current(existingListener.currentData);
             }
 
-            console.log(`[FirestoreListener] Reusing existing listener for ${key}, refCount: ${existingListener.refCount}`);
-
             return () => {
                 // Remove this component's callback
                 existingListener.callbacks.delete(callbackRef.current);
@@ -69,19 +67,15 @@ export function useFirestoreListener<T>({
                 // Decrement reference count on cleanup
                 if (existingListener.refCount > 1) {
                     existingListener.refCount--;
-                    console.log(`[FirestoreListener] Decremented refCount for ${key}, new count: ${existingListener.refCount}`);
                 } else {
                     // Last reference, actually unsubscribe
                     existingListener.unsubscribe();
                     activeListeners.delete(key);
-                    // console.log(`[FirestoreListener] Removed listener for ${key}`);
                 }
             };
         }
 
         // Create new listener
-        // console.log(`[FirestoreListener] Creating new listener for ${key}`);
-
         let unsubscribe: Unsubscribe;
         const callbacks = new Set<(data: T) => void>();
         callbacks.add(callbackRef.current);
@@ -174,12 +168,10 @@ export function useFirestoreListener<T>({
 
                 if (listener.refCount > 1) {
                     listener.refCount--;
-                    console.log(`[FirestoreListener] Decremented refCount for ${key}, new count: ${listener.refCount}`);
                 } else {
                     // Last reference, actually unsubscribe
                     listener.unsubscribe();
                     activeListeners.delete(key);
-                    // console.log(`[FirestoreListener] Removed listener for ${key}`);
                 }
             }
         };
@@ -188,7 +180,6 @@ export function useFirestoreListener<T>({
     // Provide a way to manually refresh the listener
     const refresh = () => {
         if (unsubscribeRef.current && query) {
-            console.log(`[FirestoreListener] Manually refreshing listener for ${key}`);
             unsubscribeRef.current();
             const listener = activeListeners.get(key);
             if (listener) {
@@ -212,10 +203,8 @@ export function getListenerStats() {
 
 // Clean up all listeners (useful for logout or major state changes)
 export function cleanupAllListeners() {
-    console.log(`[FirestoreListener] Cleaning up all ${activeListeners.size} listeners`);
-    activeListeners.forEach((listener, key) => {
+    activeListeners.forEach((listener) => {
         listener.unsubscribe();
-        console.log(`[FirestoreListener] Cleaned up listener for ${key}`);
     });
     activeListeners.clear();
 } 

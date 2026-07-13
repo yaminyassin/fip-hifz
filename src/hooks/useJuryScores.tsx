@@ -109,10 +109,6 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
 
         queryClient.invalidateQueries({ queryKey: ["juryScores"] });
         // Removed invalidateQueries and refetchQueries for jury data since we use real-time updates
-
-        console.log(
-          `Cleared ${deletePromises.length} previous scores for participant ${participantId}`
-        );
       } catch (error) {
         console.error("Error clearing previous scores:", error);
       }
@@ -260,7 +256,6 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
 
     bonusDebounceTimeoutRef.current = setTimeout(() => {
       if (juryId && participant?.id) {
-        console.log("Saving overall bonus:", cappedValue);
         saveOverallBonusMutation.mutate({
           participantId: participant.id,
           juryId,
@@ -276,7 +271,6 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
   // Reset scores when participant changes
   useEffect(() => {
     if (participant?.id && participant.id !== lastParticipantId) {
-      console.log("Participant changed, resetting scores");
       setCurrentScores(defaultQuestionScores);
       setAllScores({});
       setOverallBonus(0);
@@ -396,7 +390,6 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
       previousQuestionsRef.current !== currentQuestionsKey &&
       previousQuestionsRef.current !== ""
     ) {
-      console.log("Questions changed for participant, clearing old scores");
       setCurrentScores(defaultQuestionScores);
       setAllScores({});
       setOverallBonus(0);

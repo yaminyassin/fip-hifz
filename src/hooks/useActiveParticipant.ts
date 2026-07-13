@@ -28,10 +28,8 @@ export const useActiveParticipant = () => {
           id: querySnapshot.docs[0].id,
           ...querySnapshot.docs[0].data(),
         } as Participant;
-        // console.log(`[useActiveParticipant] Setting active participant:`, activeParticipant.name);
         queryClient.setQueryData(["activeParticipant", currentEvent], activeParticipant);
       } else {
-        // console.log(`[useActiveParticipant] No active participant found`);
         queryClient.setQueryData(["activeParticipant", currentEvent], null);
       }
     },

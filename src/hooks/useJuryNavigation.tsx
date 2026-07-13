@@ -137,7 +137,6 @@ export const useJuryNavigation = ({
         // Only sync if this is a real change from the admin (not initial load or jury navigation)
         if (lastAdminActiveQuestionRef.current !== null && 
             lastAdminActiveQuestionRef.current !== newQuestionNumber) {
-          console.log(`[useJuryNavigation] Admin changed question from ${lastAdminActiveQuestionRef.current} to ${newQuestionNumber} (page ${participant.activeQuestion})`);
           setSelectedQuestion(newQuestionNumber);
           setQuestionChangedExternally(true);
 
