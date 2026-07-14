@@ -50,7 +50,7 @@ export const JuryManagement = () => {
       try {
         // No need to manually update the cache first
         // Just perform the delete operation and let Firestore listener handle the update
-        await deleteJury(currentEvent || 'lisbon-2025', id);
+        await deleteJury(currentEvent || 'demo-2026', id);
       } catch (error) {
         console.error("Error deleting jury member:", error);
         // Could add error handling UI here

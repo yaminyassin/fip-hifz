@@ -32,7 +32,7 @@ export const useJuryAuth = () => {
         try {
           // For immediate deactivation, we'll trigger the logout
           // This might not always complete but it's better than nothing
-          logoutJury(currentEvent || 'lisbon-2025').catch(console.error);
+          logoutJury(currentEvent || 'demo-2026').catch(console.error);
         } catch (error) {
           console.error("Error deactivating jury on page unload:", error);
         }
@@ -100,7 +100,7 @@ export const useJuryAuth = () => {
 
   const handleLogout = async () => {
     try {
-      await logoutJury(currentEvent || 'lisbon-2025');
+      await logoutJury(currentEvent || 'demo-2026');
       setIsAuthenticated(false);
 
       // Clean up all Firestore listeners to prevent memory leaks

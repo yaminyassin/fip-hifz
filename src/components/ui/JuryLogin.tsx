@@ -25,7 +25,7 @@ export const JuryLogin = ({ onLoginSuccess }: JuryLoginProps) => {
     setError(null);
 
     try {
-      const isAuthenticated = await authenticateJury(currentEvent || 'lisbon-2025', juryId);
+      const isAuthenticated = await authenticateJury(currentEvent || 'demo-2026', juryId);
       if (isAuthenticated) {
         setAuthenticatedJury(juryId);
         onLoginSuccess();

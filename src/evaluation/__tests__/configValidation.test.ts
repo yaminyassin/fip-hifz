@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validateEvaluationConfig } from "../configValidation";
-import { buildLisbonEvaluationConfig } from "../lisbonConfigSeed";
+import { buildExampleEvaluationConfig } from "../exampleConfigSeed";
 import {
   buildOverrideMatrixConfig,
   buildPriorityTieConfig,
@@ -11,8 +11,8 @@ import type { EventEvaluationConfigV2 } from "../types";
 import { Timestamp } from "firebase/firestore";
 
 describe("validateEvaluationConfig: accepts valid configs", () => {
-  it("accepts the Lisbon seed config", async () => {
-    const config = await buildLisbonEvaluationConfig(Timestamp.now());
+  it("accepts the example seed config", async () => {
+    const config = await buildExampleEvaluationConfig(Timestamp.now());
     const result = validateEvaluationConfig(config);
     expect(result.errors).toEqual([]);
     expect(result.ok).toBe(true);
@@ -447,14 +447,14 @@ describe("validateEvaluationConfig: rejects invalid configs", () => {
     );
   });
 
-  it("the engine never crashes on a config that passed validation (Lisbon, trial-weighted, trial-shapes, override matrix)", async () => {
+  it("the engine never crashes on a config that passed validation (example, trial-weighted, trial-shapes, override matrix)", async () => {
     const { scoreQuestion } = await import("../scoringEngine");
-    const { buildLisbonEvaluationConfig } = await import("../lisbonConfigSeed");
+    const { buildExampleEvaluationConfig } = await import("../exampleConfigSeed");
     const { buildTrialShapesConfig, buildOverrideMatrixConfig } = await import("./fixtures");
     const { Timestamp: FirestoreTimestamp } = await import("firebase/firestore");
 
     const configs = [
-      await buildLisbonEvaluationConfig(FirestoreTimestamp.now()),
+      await buildExampleEvaluationConfig(FirestoreTimestamp.now()),
       buildTrialWeightedConfig(),
       buildTrialShapesConfig(),
       buildOverrideMatrixConfig(),

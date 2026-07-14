@@ -60,7 +60,7 @@ export const JuryForm = ({ jury, onSuccess, onCancel }: JuryFormProps) => {
     try {
       if (jury) {
         // Update existing jury member
-        await updateJury(currentEvent || 'lisbon-2025', jury.id, {
+        await updateJury(currentEvent || 'demo-2026', jury.id, {
           name: formData.name,
         });
 
@@ -68,7 +68,7 @@ export const JuryForm = ({ jury, onSuccess, onCancel }: JuryFormProps) => {
         // The Firestore listener in useJuryMembers will handle it
       } else {
         // Add new jury member
-        await addJury(currentEvent || 'lisbon-2025', {
+        await addJury(currentEvent || 'demo-2026', {
           name: formData.name,
           currentQuestion: 1,
           hasFinishedEvaluating: false,

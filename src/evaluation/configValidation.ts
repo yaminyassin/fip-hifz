@@ -202,6 +202,12 @@ export function validateEvaluationConfig(
         push(`category "${key}": questionCount must be a finite integer >= 1`);
       }
       if (
+        category.assetRef !== undefined &&
+        (typeof category.assetRef !== "string" || category.assetRef === "")
+      ) {
+        push(`category "${key}": assetRef, if present, must be a non-empty string`);
+      }
+      if (
         !Array.isArray(category.questionSlots) ||
         category.questionCount !== category.questionSlots.length
       ) {

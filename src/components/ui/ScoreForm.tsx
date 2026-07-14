@@ -3,11 +3,10 @@ import { useCallback, useEffect } from "react";
 import { ScoreCategory } from "./ScoreCategory";
 import { QuestionTabs } from "./QuestionTabs";
 import { SliderInput } from "./SliderInput";
-import { getSectionWeight } from "../../utils/scoreUtils";
-import { Jury, Participant, QuestionFields } from "../../models/models";
-
-// Define a type for scores that don't include overall_bonus
-type QuestionOnlyFields = Omit<QuestionFields, "overall_bonus">;
+import { Jury, Participant } from "../../models/models";
+import { useEvent } from "@/contexts/EventContext";
+import { orderedEntries, questionWouldVoid } from "@/evaluation/configHelpers";
+import type { AdjustmentValueMap, QuestionValueMap } from "@/evaluation/scoringEngine";
 
 interface ScoreFormProps {
   participant: Participant | null;
@@ -16,24 +15,33 @@ interface ScoreFormProps {
   questionChangedExternally: boolean;
   isViewingActiveQuestion: boolean;
   activeQuestionNumber: number | null;
-  currentScores: QuestionOnlyFields;
-  overallBonus: number;
-  allScores: { [questionNumber: number]: QuestionOnlyFields };
+  currentScores: QuestionValueMap;
+  adjustmentValues: AdjustmentValueMap;
+  allScores: Record<number, QuestionValueMap>;
   pendingSave: boolean;
   onScoreChange: (
-    field: keyof QuestionFields,
+    questionTypeId: string,
+    inputId: string,
     value: number,
     selectedQuestion: number
   ) => void;
-  onOverallBonusChange: (value: number) => void;
+  onAdjustmentChange: (adjustmentId: string, inputId: string, value: number) => void;
   onQuestionChange: (questionNumber: number) => void;
   onDone: () => void;
   onGoToActiveQuestion: () => void;
   isSaving: boolean;
-  setCurrentScores: (scores: QuestionOnlyFields) => void;
-  defaultQuestionScores: QuestionOnlyFields;
+  setCurrentScores: (scores: QuestionValueMap) => void;
+  defaultQuestionValues: QuestionValueMap;
 }
 
+/**
+ * Renders one section per `config.questionTypes` (ordered by `order`), one
+ * input per section input with its `min`/`max`/`step`/`control`/`label`/
+ * weight, plus one section per `config.participantAdjustments` (e.g. the
+ * overall bonus slider). No hardcoded hifdh/tajweed/bonus blocks — this
+ * component only renders under the `ready` config gate, so `evaluationConfig`
+ * is always present here.
+ */
 export const ScoreForm = ({
   participant,
   juryMember,
@@ -42,49 +50,54 @@ export const ScoreForm = ({
   isViewingActiveQuestion,
   activeQuestionNumber,
   currentScores,
-  overallBonus,
+  adjustmentValues,
   allScores,
   pendingSave,
   onScoreChange,
-  onOverallBonusChange,
+  onAdjustmentChange,
   onQuestionChange,
   onDone,
   onGoToActiveQuestion,
   isSaving,
   setCurrentScores,
-  defaultQuestionScores,
+  defaultQuestionValues,
 }: ScoreFormProps) => {
   const { t } = useTranslation();
+  const { evaluationConfig } = useEvent();
 
-  // Load current scores for the selected question, but don't override optimistic updates
+  // Load current scores for the selected question, but don't override
+  // optimistic updates while a save is pending.
   useEffect(() => {
-    // Don't override optimistic updates while a save is pending
-    if (pendingSave) {
-      return;
-    }
+    if (pendingSave) return;
 
     if (selectedQuestion && allScores[selectedQuestion]) {
       setCurrentScores({
-        ...defaultQuestionScores,
+        ...defaultQuestionValues,
         ...allScores[selectedQuestion],
       });
     } else {
-      setCurrentScores(defaultQuestionScores);
+      setCurrentScores(defaultQuestionValues);
     }
-  }, [selectedQuestion, allScores, setCurrentScores, defaultQuestionScores, pendingSave]);
+  }, [selectedQuestion, allScores, setCurrentScores, defaultQuestionValues, pendingSave]);
 
   const handleScoreChange = useCallback(
-    (field: keyof QuestionFields, value: number) =>
-      onScoreChange(field, value, selectedQuestion),
+    (questionTypeId: string, inputId: string, value: number) =>
+      onScoreChange(questionTypeId, inputId, value, selectedQuestion),
     [onScoreChange, selectedQuestion]
   );
+
+  if (!evaluationConfig) return null;
 
   // Determine if inputs should be disabled - only disable if jury has finished evaluation
   const isDisabled = juryMember?.hasFinishedEvaluating || !juryMember?.isActive;
 
-  // Calculate Hifdh mistakes sum and apply warning class
-  const hifdhWarningClass =
-    currentScores.hifdh_judge_correction >= 3 ? "border-2 border-red-500" : "";
+  // A generic "would this void the question" check, derived entirely from
+  // the config's own override rules — never a hardcoded threshold.
+  const willVoid = questionWouldVoid(evaluationConfig, currentScores);
+  const voidWarningClass = willVoid ? "border-2 border-red-500" : "";
+
+  const orderedQuestionTypes = orderedEntries(evaluationConfig.questionTypes);
+  const orderedAdjustments = orderedEntries(evaluationConfig.participantAdjustments);
 
   return (
     <div className="space-y-2">
@@ -102,95 +115,78 @@ export const ScoreForm = ({
         disabled={isDisabled}
       />
 
+      {willVoid && (
+        <div className="rounded-md border-2 border-red-500 bg-red-50 dark:bg-red-950/30 px-3 py-2 text-sm font-medium text-red-700 dark:text-red-300">
+          {t("jury.messages.questionWillBeVoided", "This question will be voided based on the current inputs.")}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4">
-        {/* Hifdh Section */}
-        <ScoreCategory
-          title={t("jury.categories.hifdh")}
-          subtitle={`${getSectionWeight("hifdh")} `}
-          labels={[
-            t("jury.categories.hifdh_judge_correction"),
-            t("jury.categories.hifdh_self_correction"),
-          ]}
-          fields={["hifdh_judge_correction", "hifdh_self_correction"]}
-          disabled={isDisabled}
-          scores={currentScores}
-          onScoreChange={handleScoreChange}
-          cols={2}
-          className={hifdhWarningClass}
-        />
+        {orderedQuestionTypes.map(([sectionId, section]) => {
+          const orderedInputs = section.inputs.slice().sort((a, b) => a.order - b.order);
+          const cap = section.operation === "subtract" ? section.perSectionDeductionCap : section.perSectionAdditionCap;
+          const capLabel =
+            section.operation === "subtract"
+              ? t("jury.categories.maxDeduction", "Max {{cap}} pts deduction", { cap })
+              : t("jury.categories.maxAddition", "Max +{{cap}} pts", { cap });
 
-        {/* Tajweed Section */}
-        <ScoreCategory
-          title={t("jury.categories.tajweed")}
-          subtitle={`${getSectionWeight("tajweed")} `}
-          labels={[
-            t("jury.categories.tajweed_major"),
-            t("jury.categories.tajweed_minor"),
-          ]}
-          fields={["tajweed_major", "tajweed_minor"]}
-          disabled={isDisabled}
-          scores={currentScores}
-          onScoreChange={handleScoreChange}
-          cols={2}
-        />
-
-        {/* Waqf & Ibtida Section */}
-        <ScoreCategory
-          title={t("jury.categories.waqf")}
-          subtitle={`${getSectionWeight("waqf")} `}
-          disabled={isDisabled}
-          labels={[
-            t("jury.categories.waqf_ibtida_incorrect"),
-            t("jury.categories.waqf_ibtida_meaning"),
-          ]}
-          fields={["waqf_ibtida_incorrect", "waqf_ibtida_meaning"]}
-          scores={currentScores}
-          onScoreChange={handleScoreChange}
-          cols={2}
-        />
-
-        {/* Performance Section */}
-        <ScoreCategory
-          title={t("jury.categories.performance_bonus")}
-          subtitle={getSectionWeight("husn_al_ada")}
-          labels={[t("jury.categories.husn_al_ada_mistakes_count")]}
-          fields={["husn_al_ada_score"]}
-          scores={currentScores}
-          onScoreChange={handleScoreChange}
-          disabled={isDisabled}
-          cols={1}
-        />
+          return (
+            <ScoreCategory
+              key={sectionId}
+              title={section.label.default}
+              subtitle={capLabel}
+              inputs={orderedInputs}
+              disabled={isDisabled}
+              values={currentScores[sectionId] ?? {}}
+              onValueChange={(inputId, value) => handleScoreChange(sectionId, inputId, value)}
+              className={sectionId === orderedQuestionTypes[0]?.[0] ? voidWarningClass : ""}
+            />
+          );
+        })}
       </div>
 
-      {/* Overall Bonus Section - Participant Level */}
-      <ScoreCategory
-        title={t("jury.categories.overall_bonus_title")}
-        subtitle={`${getSectionWeight("overall_bonus")} - ${t("jury.categories.participant_level_bonus")}`}
-        labels={[]}
-        fields={[]}
-        scores={{}}
-        onScoreChange={() => { }}
-        customInput={
-          <div className="flex flex-col items-center space-y-4">
-            <div className="w-full max-w-md">
-              <SliderInput
-                label="jury.categories.overall_bonus"
-                value={overallBonus}
-                onChange={onOverallBonusChange}
-                disabled={isDisabled}
-                min={0}
-                max={5}
-                step={1}
-              />
-            </div>
-            <div className="text-center">
-              <span className="text-xs text-muted-foreground">
-                {t("jury.categories.overall_bonus_description")}
-              </span>
-            </div>
-          </div>
-        }
-      />
+      {/* Participant-level adjustments (e.g. overall bonus) */}
+      {orderedAdjustments.map(([adjustmentId, adjustment]) => {
+        const cap = adjustment.operation === "subtract" ? adjustment.deductionCap : adjustment.additionCap;
+        const capLabel =
+          adjustment.operation === "subtract"
+            ? t("jury.categories.maxDeduction", "Max {{cap}} pts deduction", { cap })
+            : t("jury.categories.maxAddition", "Max +{{cap}} pts", { cap });
+        const orderedInputs = adjustment.inputs.slice().sort((a, b) => a.order - b.order);
+
+        return (
+          <ScoreCategory
+            key={adjustmentId}
+            title={adjustment.label.default}
+            subtitle={`${capLabel} - ${t("jury.categories.participant_level_bonus")}`}
+            inputs={[]}
+            values={{}}
+            onValueChange={() => {}}
+            customInput={
+              <div className="flex flex-col items-center space-y-4">
+                {orderedInputs.map((input) => (
+                  <div key={input.id} className="w-full max-w-md">
+                    <SliderInput
+                      label={input.label.default}
+                      value={adjustmentValues[adjustmentId]?.[input.id] ?? input.min}
+                      onChange={(value) => onAdjustmentChange(adjustmentId, input.id, value)}
+                      disabled={isDisabled}
+                      min={input.min}
+                      max={input.max}
+                      step={input.step}
+                    />
+                  </div>
+                ))}
+                <div className="text-center">
+                  <span className="text-xs text-muted-foreground">
+                    {t("jury.categories.overall_bonus_description")}
+                  </span>
+                </div>
+              </div>
+            }
+          />
+        );
+      })}
     </div>
   );
 };

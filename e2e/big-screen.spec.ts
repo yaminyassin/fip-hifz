@@ -3,7 +3,7 @@ import { doc, writeBatch } from "firebase/firestore";
 import { seedAuthenticatedSession } from "./auth";
 import { getEmulatorFirestore } from "./firestoreTestClient";
 
-const EVENT_ID = "lisbon-2025";
+const EVENT_ID = "demo-2026";
 
 test.describe("/big-screen", () => {
   test("reflects an emulator-side active-participant change via onSnapshot, without reload", async ({

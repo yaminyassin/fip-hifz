@@ -7,8 +7,7 @@ import { useJuryNavigation } from "../hooks/useJuryNavigation";
 import { JuryLogin } from "@/components/ui/JuryLogin";
 import { JuryHeader } from "../components/ui/JuryHeader";
 import { ScoreForm } from "../components/ui/ScoreForm";
-
-// This component has been moved to ../components/ui/ScoreCategory.tsx
+import { EvaluationConfigGate } from "@/components/EvaluationConfigGate";
 
 function RouteComponent() {
   const { data: participant } = useActiveParticipant();
@@ -25,22 +24,23 @@ function RouteComponent() {
   const {
     currentScores,
     allScores,
-    overallBonus,
+    adjustmentValues,
     pendingSave,
     setCurrentScores,
     handleScoreChange,
-    handleOverallBonusChange,
+    handleAdjustmentChange,
     saveScoresMutation,
+    saveAdjustmentMutation,
     debounceTimeoutRef,
-    defaultQuestionScores,
+    defaultQuestionValues,
   } = useJuryScores({ participant: participant || null, juryId });
 
-  const { 
-    selectedQuestion, 
-    questionChangedExternally, 
+  const {
+    selectedQuestion,
+    questionChangedExternally,
     isViewingActiveQuestion,
     activeQuestionNumber,
-    handleQuestionChange, 
+    handleQuestionChange,
     handleDone,
     handleGoToActiveQuestion,
   } = useJuryNavigation({
@@ -49,8 +49,9 @@ function RouteComponent() {
       juryId,
       debounceTimeoutRef,
       saveScoresMutation,
+      saveAdjustmentMutation,
       currentScores,
-      overallBonus,
+      adjustmentValues,
     });
 
   // Show login if not authenticated
@@ -69,26 +70,28 @@ function RouteComponent() {
       <div className="flex flex-row px-4 flex-grow">
         <div className="flex flex-col w-full">
           <div className="p-4 space-y-4 flex-grow">
-            <ScoreForm
-              participant={participant || null}
-              juryMember={juryMember || null}
-              selectedQuestion={selectedQuestion}
-              questionChangedExternally={questionChangedExternally}
-              isViewingActiveQuestion={isViewingActiveQuestion}
-              activeQuestionNumber={activeQuestionNumber}
-              currentScores={currentScores}
-              overallBonus={overallBonus}
-              allScores={allScores}
-              pendingSave={pendingSave}
-              onScoreChange={handleScoreChange}
-              onOverallBonusChange={handleOverallBonusChange}
-              onQuestionChange={handleQuestionChange}
-              onDone={handleDone}
-              onGoToActiveQuestion={handleGoToActiveQuestion}
-              isSaving={saveScoresMutation.isPending}
-              setCurrentScores={setCurrentScores}
-              defaultQuestionScores={defaultQuestionScores}
-            />
+            <EvaluationConfigGate>
+              <ScoreForm
+                participant={participant || null}
+                juryMember={juryMember || null}
+                selectedQuestion={selectedQuestion}
+                questionChangedExternally={questionChangedExternally}
+                isViewingActiveQuestion={isViewingActiveQuestion}
+                activeQuestionNumber={activeQuestionNumber}
+                currentScores={currentScores}
+                adjustmentValues={adjustmentValues}
+                allScores={allScores}
+                pendingSave={pendingSave}
+                onScoreChange={handleScoreChange}
+                onAdjustmentChange={handleAdjustmentChange}
+                onQuestionChange={handleQuestionChange}
+                onDone={handleDone}
+                onGoToActiveQuestion={handleGoToActiveQuestion}
+                isSaving={saveScoresMutation.isPending}
+                setCurrentScores={setCurrentScores}
+                defaultQuestionValues={defaultQuestionValues}
+              />
+            </EvaluationConfigGate>
           </div>
         </div>
       </div>

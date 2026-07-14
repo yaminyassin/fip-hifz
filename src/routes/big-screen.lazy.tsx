@@ -4,6 +4,7 @@ import { QuranViewer } from "@/components/ui/QuranViewer";
 import { useActiveParticipant } from "@/hooks/useActiveParticipant";
 import { User } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { EvaluationConfigGate } from "@/components/EvaluationConfigGate";
 
 const BigScreen = () => {
   const { t } = useTranslation();
@@ -221,6 +222,12 @@ const BigScreen = () => {
   );
 };
 
+const RouteComponent = () => (
+  <EvaluationConfigGate>
+    <BigScreen />
+  </EvaluationConfigGate>
+);
+
 export const Route = createLazyFileRoute("/big-screen")({
-  component: BigScreen,
+  component: RouteComponent,
 });

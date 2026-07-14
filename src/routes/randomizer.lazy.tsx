@@ -1,6 +1,7 @@
 import { Button } from "@/components/shadcn/button";
 import { Label } from "@/components/shadcn/label";
 import { ParticipantBanner } from "@/components/ui/ParticipantBanner";
+import { EvaluationConfigGate } from "@/components/EvaluationConfigGate";
 import { createLazyFileRoute } from "@tanstack/react-router";
 import React, {
   useState,
@@ -15,37 +16,16 @@ import { useActiveParticipant } from "@/hooks/useActiveParticipant";
 import { useEvent } from "@/contexts/EventContext";
 import { useTranslation } from "react-i18next";
 import { TFunction } from "i18next";
-import { getCategoryConfig, generateRandomPage } from "@/lib/quranUtils";
+import { pickRandomPageFromSlot } from "@/evaluation/configHelpers";
+import type { EventEvaluationConfigV2 } from "@/evaluation/types";
 import { Participant } from "@/models/models";
 import {
-  // setPreviousQuestions,
   getPreviousQuestions,
   addToPreviousQuestions,
 } from "@/services/appConfig";
 
 // Import assets
 import backgroundImage from "@/assets/randomizer/background.png";
-import A1 from "@/assets/categories/A1.png";
-import A2 from "@/assets/categories/A2.png";
-import B1 from "@/assets/categories/B1.png";
-import B2 from "@/assets/categories/B2.png";
-import C1 from "@/assets/categories/C1.png";
-import C2 from "@/assets/categories/C2.png";
-import D1 from "@/assets/categories/D1.png";
-import D2 from "@/assets/categories/D2.png";
-import M from "@/assets/categories/M.png";
-
-const categoryImageMap: Record<string, string> = {
-  A1,
-  A2,
-  B1,
-  B2,
-  C1,
-  C2,
-  D1,
-  D2,
-  M,
-};
 
 // Memoize the RandomNumber component to prevent unnecessary re-renders
 const RandomNumber = React.memo(
@@ -94,6 +74,7 @@ RandomNumber.displayName = "RandomNumber";
 const RandomizerContentView = React.memo(
   ({
     participant,
+    categoryAssetRef,
     questionNumbers,
     isGeneratingAll,
     isLoadingButton, // Renamed for clarity in button context
@@ -101,9 +82,9 @@ const RandomizerContentView = React.memo(
     layoutClass,
     randomNumberComponents,
     t,
-    categoryImageMap,
   }: {
     participant: Participant;
+    categoryAssetRef: string | undefined;
     questionNumbers: number[];
     isGeneratingAll: boolean;
     isLoadingButton: boolean;
@@ -111,22 +92,20 @@ const RandomizerContentView = React.memo(
     layoutClass: string;
     randomNumberComponents: JSX.Element[];
     t: TFunction;
-    categoryImageMap: Record<string, string>;
   }) => {
     return (
       <>
         <div className="flex flex-col items-center gap-6 md:gap-8 flex-grow bg-[#FFFEFA] p-8">
-          {categoryImageMap[participant.category] && (
+          {categoryAssetRef && (
             <img
-              src={
-                categoryImageMap[
-                  participant.category as keyof typeof categoryImageMap
-                ]
-              }
+              src={categoryAssetRef}
               alt={t("randomizer.categoryAltText", {
                 category: participant.category,
               })}
               className="w-[260px] object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
             />
           )}
 
@@ -187,13 +166,13 @@ const RandomizerContentView = React.memo(
 );
 RandomizerContentView.displayName = "RandomizerContentView";
 
-const RouteComponent = () => {
+function RandomizerRoute() {
   const [questionNumbers, setQuestionNumbers] = useState<number[]>([]);
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
   const [isLoading, setIsLoading] = useState(true); // True for initial component mount loading
   const lastActiveParticipantRef = useRef<Participant | null>(null);
 
-  const { currentEvent } = useEvent();
+  const { currentEvent, evaluationConfig } = useEvent();
   const updateQuestion = useUpdateParticipantQuestion();
   const updateActiveQuestion = useUpdateActiveQuestion();
   const { data: activeParticipant, isLoading: isParticipantLoading } =
@@ -213,11 +192,17 @@ const RouteComponent = () => {
     // until activeParticipant is resolved or isParticipantLoading becomes false.
   }, [activeParticipant, isParticipantLoading, setIsLoading]);
 
-  const getNumQuestions = useCallback((participant: Participant | null) => {
-    if (!participant) return 0;
-    const config = getCategoryConfig(participant.category);
-    return config.numQuestions;
-  }, []);
+  // Config-driven question count (design doc §4, randomizer row): read
+  // straight from `config.categories[participant.category].questionCount`.
+  // A category absent from the config is an explicit error, never a
+  // fallback to 0/category 'A'.
+  const getCategory = useCallback(
+    (participant: Participant | null, config: EventEvaluationConfigV2 | null) => {
+      if (!participant || !config) return null;
+      return config.categories[participant.category] ?? null;
+    },
+    []
+  );
 
   useEffect(() => {
     // If generation is in progress, handleStartAllQuestions is managing questionNumbers.
@@ -228,9 +213,10 @@ const RouteComponent = () => {
 
     const participantToUse =
       activeParticipant || lastActiveParticipantRef.current;
+    const category = getCategory(participantToUse, evaluationConfig);
 
-    if (participantToUse) {
-      const numQuestions = getNumQuestions(participantToUse);
+    if (participantToUse && category) {
+      const numQuestions = category.questionCount;
       let newQuestionsDerivedFromServer = [
         ...(participantToUse.assignedQuestions || []),
       ];
@@ -255,22 +241,27 @@ const RouteComponent = () => {
         setQuestionNumbers(newQuestionsDerivedFromServer);
       }
     } else {
-      // No participant, ensure questions are cleared if not already
+      // No participant (or no matching category config), ensure questions are cleared.
       if (questionNumbers.length !== 0) {
         setQuestionNumbers([]);
       }
     }
-  }, [activeParticipant, getNumQuestions, isGeneratingAll, questionNumbers]); // Added isGeneratingAll and questionNumbers
+  }, [activeParticipant, evaluationConfig, getCategory, isGeneratingAll, questionNumbers]);
 
   const participant = useMemo(
     () => activeParticipant || lastActiveParticipantRef.current,
     [activeParticipant]
   );
 
-  const handleStartAllQuestions = useCallback(async () => {
-    if (!participant || isGeneratingAll) return;
+  const category = getCategory(participant, evaluationConfig);
 
-    const numQuestions = getNumQuestions(participant);
+  const handleStartAllQuestions = useCallback(async () => {
+    if (!participant || isGeneratingAll || !category) return;
+
+    const orderedSlots = category.questionSlots
+      .slice()
+      .sort((a, b) => a.questionNumber - b.questionNumber);
+    const numQuestions = orderedSlots.length;
     if (numQuestions === 0) {
       console.error(t("randomizer.messages.noQuestionsToGenerate"));
       return;
@@ -280,7 +271,7 @@ const RouteComponent = () => {
     console.log(t("randomizer.messages.generationStartingTitle"));
 
     // Fetch previous questions to avoid duplicates
-    const previousQuestions = await getPreviousQuestions(currentEvent || 'lisbon-2025');
+    const previousQuestions = await getPreviousQuestions(currentEvent || 'demo-2026');
     console.log(
       `Fetched ${previousQuestions.length} previous questions to avoid`
     );
@@ -294,11 +285,7 @@ const RouteComponent = () => {
 
       // Pass all previously generated questions (from database + current session) to avoid duplicates
       const allExcludedPages = [...previousQuestions, ...generatedPages];
-      const randomPage = generateRandomPage(
-        participant.category,
-        i,
-        allExcludedPages
-      );
+      const randomPage = pickRandomPageFromSlot(orderedSlots[i], allExcludedPages);
       generatedPages.push(randomPage);
 
       setQuestionNumbers((prev) => {
@@ -343,8 +330,7 @@ const RouteComponent = () => {
 
     // Replace all previous questions with the newly generated ones in the app_config collection
     try {
-      //await setPreviousQuestions(currentEvent || 'lisbon-2025', generatedPages);
-      await addToPreviousQuestions(currentEvent || 'lisbon-2025', generatedPages);
+      await addToPreviousQuestions(currentEvent || 'demo-2026', generatedPages);
       console.log(
         "Successfully replaced previous questions with newly generated questions in app_config"
       );
@@ -359,14 +345,14 @@ const RouteComponent = () => {
     // instead of waiting for all questions to be processed
   }, [
     participant,
+    category,
     isGeneratingAll,
-    getNumQuestions,
+    currentEvent,
     updateQuestion,
     updateActiveQuestion,
     t,
     setQuestionNumbers,
     setIsGeneratingAll,
-    // generateRandomPage is stable as it's an import
   ]);
 
   const layoutClass = "flex flex-wrap justify-center";
@@ -407,17 +393,29 @@ const RouteComponent = () => {
         </div>
 
         {participant ? (
-          <RandomizerContentView
-            participant={participant}
-            questionNumbers={questionNumbers}
-            isGeneratingAll={isGeneratingAll}
-            isLoadingButton={isLoading || isParticipantLoading} // Pass combined loading state for button
-            handleStartAllQuestions={handleStartAllQuestions}
-            layoutClass={layoutClass}
-            randomNumberComponents={randomNumberComponents}
-            t={t}
-            categoryImageMap={categoryImageMap}
-          />
+          category ? (
+            <RandomizerContentView
+              participant={participant}
+              categoryAssetRef={category.assetRef}
+              questionNumbers={questionNumbers}
+              isGeneratingAll={isGeneratingAll}
+              isLoadingButton={isLoading || isParticipantLoading} // Pass combined loading state for button
+              handleStartAllQuestions={handleStartAllQuestions}
+              layoutClass={layoutClass}
+              randomNumberComponents={randomNumberComponents}
+              t={t}
+            />
+          ) : (
+            <div className="flex flex-col items-center gap-6 md:gap-8 flex-grow">
+              <div className="text-xl text-center text-red-300 py-10">
+                {t(
+                  "randomizer.messages.unknownCategory",
+                  'Participant category "{{category}}" is not defined in this event\'s config.',
+                  { category: participant.category }
+                )}
+              </div>
+            </div>
+          )
         ) : (
           <div className="flex flex-col items-center gap-6 md:gap-8 flex-grow">
             <div className="text-xl text-center text-gray-300 py-10">
@@ -428,7 +426,13 @@ const RouteComponent = () => {
       </div>
     </div>
   );
-};
+}
+
+const RouteComponent = () => (
+  <EvaluationConfigGate>
+    <RandomizerRoute />
+  </EvaluationConfigGate>
+);
 
 export const Route = createLazyFileRoute("/randomizer")({
   component: RouteComponent,

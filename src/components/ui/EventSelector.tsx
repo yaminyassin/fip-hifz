@@ -60,8 +60,8 @@ export const EventSelector: React.FC<EventSelectorProps> = ({ showAddEvent = fal
     try {
       setLoading(true);
       
-      // First, ensure the lisbon-2025 event document exists
-      await ensureEventDocumentExists('lisbon-2025');
+      // First, ensure the demo-2026 event document exists
+      await ensureEventDocumentExists('demo-2026');
       
       const eventsRef = collection(firestore, 'events');
       const eventsSnapshot = await getDocs(eventsRef);

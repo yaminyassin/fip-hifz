@@ -19,7 +19,7 @@ export const useUpdateParticipantQuestion = () => {
     }) => {
       try {
         return await updateParticipantQuestion(
-          currentEvent || 'lisbon-2025',
+          currentEvent || 'demo-2026',
           participantId,
           questionIndex,
           pageNumber

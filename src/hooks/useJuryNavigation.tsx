@@ -2,10 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateJuryProgress } from "../services/jury";
 import { useEvent } from "../contexts/EventContext";
-import { QuestionFields } from "../models/models";
-
-// Define a type for scores that don't include overall_bonus
-type QuestionOnlyFields = Omit<QuestionFields, "overall_bonus">;
+import type { AdjustmentValueMap, QuestionValueMap } from "@/evaluation/scoringEngine";
 
 interface Participant {
   id: string;
@@ -27,18 +24,23 @@ interface Jury {
 interface SaveScoresMutation {
   mutateAsync: (params: {
     questionNumToSave: number;
-    scoresToSave: QuestionFields;
+    scoresToSave: QuestionValueMap;
   }) => Promise<void>;
+}
+
+interface SaveAdjustmentMutation {
+  mutateAsync: (values: AdjustmentValueMap) => Promise<void>;
 }
 
 interface UseJuryNavigationProps {
   participant: Participant | null;
   juryMember: Jury | null;
   juryId: string | null;
-  debounceTimeoutRef: React.MutableRefObject<NodeJS.Timeout | null>;
+  debounceTimeoutRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
   saveScoresMutation: SaveScoresMutation;
-  currentScores: QuestionOnlyFields;
-  overallBonus: number;
+  saveAdjustmentMutation: SaveAdjustmentMutation;
+  currentScores: QuestionValueMap;
+  adjustmentValues: AdjustmentValueMap;
 }
 
 export const useJuryNavigation = ({
@@ -47,14 +49,15 @@ export const useJuryNavigation = ({
   juryId,
   debounceTimeoutRef,
   saveScoresMutation,
+  saveAdjustmentMutation,
   currentScores,
-  overallBonus,
+  adjustmentValues,
 }: UseJuryNavigationProps) => {
   const [selectedQuestion, setSelectedQuestion] = useState(1);
   const [questionChangedExternally, setQuestionChangedExternally] = useState(false);
   const { currentEvent } = useEvent();
   const queryClient = useQueryClient();
-  
+
   // Track the last admin active question to detect real changes
   const lastAdminActiveQuestionRef = React.useRef<number | null>(null);
 
@@ -63,12 +66,12 @@ export const useJuryNavigation = ({
     if (!participant?.assignedQuestions || !participant?.activeQuestion) {
       return true; // Consider as "active" if no active question is set
     }
-    
+
     const activeQuestionIndex = participant.assignedQuestions.indexOf(participant.activeQuestion);
     if (activeQuestionIndex === -1) {
       return true; // Active question not in assigned questions
     }
-    
+
     const activeQuestionNumber = activeQuestionIndex + 1; // Convert to 1-based
     return selectedQuestion === activeQuestionNumber;
   }, [participant?.assignedQuestions, participant?.activeQuestion, selectedQuestion]);
@@ -78,12 +81,12 @@ export const useJuryNavigation = ({
     if (!participant?.assignedQuestions || !participant?.activeQuestion) {
       return null;
     }
-    
+
     const activeQuestionIndex = participant.assignedQuestions.indexOf(participant.activeQuestion);
     if (activeQuestionIndex === -1) {
       return null;
     }
-    
+
     return activeQuestionIndex + 1; // Convert to 1-based
   }, [participant?.assignedQuestions, participant?.activeQuestion]);
 
@@ -97,7 +100,7 @@ export const useJuryNavigation = ({
       hasFinishedEvaluating: boolean;
     }) => {
       if (!juryId) return;
-      await updateJuryProgress(currentEvent || 'lisbon-2025', juryId, currentQuestion, hasFinishedEvaluating);
+      await updateJuryProgress(currentEvent || 'demo-2026', juryId, currentQuestion, hasFinishedEvaluating);
     },
     onSuccess: () => {
       // Removed invalidateQueries for jury data since we use real-time Firebase updates
@@ -133,9 +136,9 @@ export const useJuryNavigation = ({
       const questionIndex = participant.assignedQuestions.indexOf(participant.activeQuestion);
       if (questionIndex !== -1) {
         const newQuestionNumber = questionIndex + 1; // Convert to 1-based
-        
+
         // Only sync if this is a real change from the admin (not initial load or jury navigation)
-        if (lastAdminActiveQuestionRef.current !== null && 
+        if (lastAdminActiveQuestionRef.current !== null &&
             lastAdminActiveQuestionRef.current !== newQuestionNumber) {
           setSelectedQuestion(newQuestionNumber);
           setQuestionChangedExternally(true);
@@ -153,7 +156,7 @@ export const useJuryNavigation = ({
             });
           }
         }
-        
+
         // Always update the ref to track the current admin active question
         lastAdminActiveQuestionRef.current = newQuestionNumber;
       }
@@ -172,10 +175,27 @@ export const useJuryNavigation = ({
   }, [juryId, queryClient, participant?.id]);
 
   const handleQuestionChange = async (questionNumber: number) => {
-    // Clear any pending debounced save from the previous question
+    // Flush any pending debounced save from the previous question instead
+    // of dropping it: cancel the timer, then persist the edit it would have
+    // saved (currentScores already holds that edit) before switching. This
+    // is awaited so the mutation's onSuccess (which clears pendingSave and
+    // updates allScores) resolves before selectedQuestion changes, so
+    // ScoreForm's allScores reload for the newly-selected question can
+    // never race an in-flight save.
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
       debounceTimeoutRef.current = null;
+
+      if (juryId && participant?.id) {
+        try {
+          await saveScoresMutation.mutateAsync({
+            questionNumToSave: selectedQuestion,
+            scoresToSave: currentScores,
+          });
+        } catch (error) {
+          console.error("Error flushing pending score save on question change:", error);
+        }
+      }
     }
 
     // Update selected question state
@@ -197,16 +217,15 @@ export const useJuryNavigation = ({
     const totalQuestions = participant.assignedQuestions.length;
 
     try {
-      // Save the current question's scores first
-      const finalScoresToSave = {
-        ...currentScores,
-        overall_bonus: overallBonus,
-      };
-
-      await saveScoresMutation.mutateAsync({
-        questionNumToSave: selectedQuestion,
-        scoresToSave: finalScoresToSave,
-      });
+      // Save the current question's scores and the participant-level
+      // adjustments (e.g. overall bonus) before marking the evaluation done.
+      await Promise.all([
+        saveScoresMutation.mutateAsync({
+          questionNumToSave: selectedQuestion,
+          scoresToSave: currentScores,
+        }),
+        saveAdjustmentMutation.mutateAsync(adjustmentValues),
+      ]);
 
       // Update jury progress to finished
       updateJuryMutation.mutate({

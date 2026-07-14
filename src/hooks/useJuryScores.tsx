@@ -1,44 +1,38 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import {
-  collection,
-  doc,
-  setDoc,
-  deleteDoc,
-  query,
-  where,
-  getDocs,
-  updateDoc,
-} from "firebase/firestore";
+import { collection, getDocs, query, updateDoc, doc, where } from "firebase/firestore";
 import { firestore } from "@/main";
-import { QuestionFields } from "@/models/models";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
 import { useEvent } from "@/contexts/EventContext";
 import { getEventCollectionPath } from "@/utils/firebaseUtils";
+import {
+  buildDefaultAdjustmentValues,
+  buildDefaultQuestionValues,
+  mergeAdjustmentValues,
+  mergeQuestionValues,
+} from "@/evaluation/configHelpers";
+import type { AdjustmentValueMap, QuestionValueMap } from "@/evaluation/scoringEngine";
+import {
+  clearEvaluationScores,
+  EVALUATION_SCORES_COLLECTION,
+  JURY_EVALUATION_INPUTS_COLLECTION,
+  saveEvaluationScore,
+  saveJuryEvaluationInputs,
+} from "@/services/evaluationScores";
 
-// Define a type for scores that don't include overall_bonus
-type QuestionOnlyFields = Omit<QuestionFields, "overall_bonus">;
-
-// Define default scores for question-specific fields
-const defaultQuestionScores: QuestionOnlyFields = {
-  // Hifdh
-  hifdh_judge_correction: 0,
-  hifdh_self_correction: 0,
-  hifdh_stuck_count: 0,
-  // Tajweed
-  tajweed_major: 0,
-  tajweed_minor: 0,
-  // Waqf & Ibtida
-  waqf_ibtida_incorrect: 0,
-  waqf_ibtida_meaning: 0,
-  // Husn al-Ada
-  husn_al_ada_score: 0,
-};
+/**
+ * Config-driven jury scoring state (design doc §4, "Consumer wiring"):
+ * `currentScores`/`allScores` are `QuestionValueMap`s keyed by the event's
+ * `questionTypes` and their `inputs`, and `adjustmentValues` is an
+ * `AdjustmentValueMap` keyed by `participantAdjustments` — never a
+ * hardcoded hifdh/tajweed/bonus shape. Writes go to the V2
+ * `evaluationScores` / `juryEvaluationInputs` collections via
+ * src/services/evaluationScores.ts, which validates against the engine
+ * before persisting. Only meaningful once `evaluationConfig` is `ready`
+ * (the caller renders this behind `<EvaluationConfigGate>`).
+ */
 
 interface Participant {
   id: string;
-  name: string;
-  age: number;
   category: string;
   assignedQuestions?: number[];
   isActive?: boolean;
@@ -51,97 +45,74 @@ interface UseJuryScoresProps {
 
 interface SaveScoresParams {
   questionNumToSave: number;
-  scoresToSave: QuestionOnlyFields; // Remove overall_bonus from question scores
-}
-
-interface SaveOverallBonusParams {
-  participantId: string;
-  juryId: string;
-  overallBonus: number;
+  scoresToSave: QuestionValueMap;
 }
 
 export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
-  const [currentScores, setCurrentScores] = useState<QuestionOnlyFields>(
-    defaultQuestionScores
-  );
-  const [allScores, setAllScores] = useState<{
-    [questionNumber: number]: QuestionOnlyFields;
-  }>({});
-  const [overallBonus, setOverallBonus] = useState<number>(0);
-  const [lastParticipantId, setLastParticipantId] = useState<string | null>(
-    null
-  );
-  const [pendingSave, setPendingSave] = useState<boolean>(false);
-  const [pendingBonusSave, setPendingBonusSave] = useState<boolean>(false);
+  const { currentEvent, evaluationConfig } = useEvent();
 
-  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const bonusDebounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const defaultQuestionValues = evaluationConfig
+    ? buildDefaultQuestionValues(evaluationConfig)
+    : ({} as QuestionValueMap);
+  const defaultAdjustmentValues = evaluationConfig
+    ? buildDefaultAdjustmentValues(evaluationConfig)
+    : ({} as AdjustmentValueMap);
+
+  const [currentScores, setCurrentScores] = useState<QuestionValueMap>(defaultQuestionValues);
+  const [allScores, setAllScores] = useState<Record<number, QuestionValueMap>>({});
+  const [adjustmentValues, setAdjustmentValues] = useState<AdjustmentValueMap>(
+    defaultAdjustmentValues
+  );
+  const [lastParticipantId, setLastParticipantId] = useState<string | null>(null);
+  const [pendingSave, setPendingSave] = useState(false);
+  const [pendingAdjustmentSave, setPendingAdjustmentSave] = useState(false);
+
+  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const adjustmentDebounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previousQuestionsRef = useRef<string>("");
 
-  const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { currentEvent } = useEvent();
 
-  // Clear all previous scores for this participant and jury member
   const clearPreviousScores = useCallback(
     async (participantId: string, juryIdParam: string) => {
       if (!currentEvent) return;
-      
       try {
-        const scoresRef = collection(firestore, getEventCollectionPath(currentEvent, "scores"));
-        const q = query(
-          scoresRef,
-          where("participantId", "==", participantId),
-          where("juryId", "==", juryIdParam)
-        );
+        await clearEvaluationScores(currentEvent, participantId, juryIdParam);
 
-        const snapshot = await getDocs(q);
-        const deletePromises = snapshot.docs.map((doc) => deleteDoc(doc.ref));
-        await Promise.all(deletePromises);
-
-        // Reset jury progress directly in the database
         const juryCollection = collection(firestore, getEventCollectionPath(currentEvent, "jury"));
-        const juryRef = doc(juryCollection, juryIdParam);
-        await updateDoc(juryRef, {
+        await updateDoc(doc(juryCollection, juryIdParam), {
           currentQuestion: 1,
           hasFinishedEvaluating: false,
         });
 
         queryClient.invalidateQueries({ queryKey: ["juryScores"] });
-        // Removed invalidateQueries and refetchQueries for jury data since we use real-time updates
       } catch (error) {
         console.error("Error clearing previous scores:", error);
       }
     },
-    [t, queryClient, currentEvent]
+    [queryClient, currentEvent]
   );
 
-  // Save scores mutation
   const saveScoresMutation = useMutation<void, Error, SaveScoresParams>({
     mutationFn: async ({ questionNumToSave, scoresToSave }) => {
-      if (!participant?.id || !juryId || !currentEvent) return;
+      if (!participant?.id || !juryId || !currentEvent || !evaluationConfig) return;
 
       const pageNumber = participant.assignedQuestions?.[questionNumToSave - 1];
       if (!pageNumber) {
         throw new Error(`No page assigned for question ${questionNumToSave}`);
       }
 
-      const scoresCollection = collection(firestore, getEventCollectionPath(currentEvent, "scores"));
-      const scoreDoc = doc(scoresCollection, `${participant.id}_${juryId}_${questionNumToSave}`);
-
-      await setDoc(
-        scoreDoc,
-        {
-          participantId: participant.id,
-          juryId,
-          questionNumber: questionNumToSave,
-          pageNumber: pageNumber,
-          scores: scoresToSave,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        { merge: true }
-      );
+      await saveEvaluationScore({
+        eventId: currentEvent,
+        participantId: participant.id,
+        juryId,
+        questionNumber: questionNumToSave,
+        pageNumber,
+        categoryId: participant.category,
+        config: evaluationConfig,
+        values: scoresToSave,
+        assignedQuestions: participant.assignedQuestions ?? [],
+      });
     },
     onSuccess: (_, variables) => {
       setAllScores((prev) => ({
@@ -152,185 +123,136 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
       queryClient.invalidateQueries({ queryKey: ["juryScores"] });
     },
     onError: (error, variables) => {
-      console.error(
-        `Error saving scores for Q${variables.questionNumToSave}:`,
-        error
-      );
+      console.error(`Error saving scores for Q${variables.questionNumToSave}:`, error);
       setPendingSave(false);
     },
   });
 
-  // Mutation for saving overall bonus (participant-level)
-  const saveOverallBonusMutation = useMutation<
-    void,
-    Error,
-    SaveOverallBonusParams
-  >({
-    mutationFn: async ({ participantId, juryId, overallBonus }) => {
-      if (!currentEvent) return;
-      
-      const overallBonusesCollection = collection(firestore, getEventCollectionPath(currentEvent, "overallBonuses"));
-      const bonusDoc = doc(overallBonusesCollection, `${participantId}_${juryId}`);
-
-      await setDoc(
-        bonusDoc,
-        {
-          participantId,
-          juryId,
-          overallBonus,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        { merge: true }
-      );
+  const saveAdjustmentMutation = useMutation<void, Error, AdjustmentValueMap>({
+    mutationFn: async (values) => {
+      if (!currentEvent || !participant?.id || !juryId || !evaluationConfig) return;
+      await saveJuryEvaluationInputs({
+        eventId: currentEvent,
+        participantId: participant.id,
+        juryId,
+        categoryId: participant.category,
+        config: evaluationConfig,
+        values,
+        assignedQuestions: participant.assignedQuestions ?? [],
+      });
     },
     onSuccess: () => {
-      setPendingBonusSave(false);
+      setPendingAdjustmentSave(false);
       queryClient.invalidateQueries({ queryKey: ["juryScores"] });
     },
     onError: (error) => {
-      console.error("Error saving overall bonus:", error);
-      setPendingBonusSave(false);
+      console.error("Error saving jury evaluation inputs:", error);
+      setPendingAdjustmentSave(false);
     },
   });
 
-  // Handle score changes with debouncing
-  const handleScoreChange = (
-    receivedField: keyof QuestionFields,
-    value: number,
-    selectedQuestion: number
-  ) => {
-    // Since overall_bonus is no longer part of QuestionFields, we can directly cast
-    const field = receivedField as keyof QuestionOnlyFields;
+  const handleScoreChange = useCallback(
+    (questionTypeId: string, inputId: string, value: number, selectedQuestion: number) => {
+      setPendingSave(true);
 
-    let cappedValue = value;
-    let newScores: QuestionOnlyFields | null = null;
+      let newScores: QuestionValueMap | null = null;
+      setCurrentScores((prev) => {
+        newScores = {
+          ...prev,
+          [questionTypeId]: {
+            ...prev[questionTypeId],
+            [inputId]: Math.max(0, value),
+          },
+        };
+        return newScores;
+      });
 
-    // Cap husn_al_ada_score between 0 and 10
-    if (field === "husn_al_ada_score") {
-      cappedValue = Math.min(10, Math.max(0, value));
-    }
+      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+      debounceTimeoutRef.current = setTimeout(() => {
+        if (newScores && juryId && participant?.id) {
+          saveScoresMutation.mutate({
+            questionNumToSave: selectedQuestion,
+            scoresToSave: newScores,
+          });
+        } else {
+          setPendingSave(false);
+        }
+      }, 500);
+    },
+    [juryId, participant?.id, saveScoresMutation]
+  );
 
-    // Set pending save flag for optimistic update protection
-    setPendingSave(true);
+  const handleAdjustmentChange = useCallback(
+    (adjustmentId: string, inputId: string, value: number) => {
+      setPendingAdjustmentSave(true);
 
-    setCurrentScores((prev) => {
-      newScores = {
-        ...prev,
-        [field]: Math.max(0, cappedValue),
-      };
-      return newScores;
-    });
+      let newValues: AdjustmentValueMap | null = null;
+      setAdjustmentValues((prev) => {
+        newValues = {
+          ...prev,
+          [adjustmentId]: {
+            ...prev[adjustmentId],
+            [inputId]: Math.max(0, value),
+          },
+        };
+        return newValues;
+      });
 
-    // Debounced save
-    if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
-    }
+      if (adjustmentDebounceTimeoutRef.current) clearTimeout(adjustmentDebounceTimeoutRef.current);
+      adjustmentDebounceTimeoutRef.current = setTimeout(() => {
+        if (newValues && juryId && participant?.id) {
+          saveAdjustmentMutation.mutate(newValues);
+        } else {
+          setPendingAdjustmentSave(false);
+        }
+      }, 500);
+    },
+    [juryId, participant?.id, saveAdjustmentMutation]
+  );
 
-    debounceTimeoutRef.current = setTimeout(() => {
-      if (newScores && juryId && participant?.id) {
-        saveScoresMutation.mutate({
-          questionNumToSave: selectedQuestion,
-          scoresToSave: newScores,
-        });
-      } else {
-        // Clear pending flag if save doesn't happen
-        setPendingSave(false);
-      }
-    }, 500);
-  };
-
-  // Handle overall bonus changes with debouncing
-  const handleOverallBonusChange = (value: number) => {
-    const cappedValue = Math.min(5, Math.max(0, value));
-
-    // Set pending bonus save flag for optimistic update protection
-    setPendingBonusSave(true);
-
-    setOverallBonus(cappedValue);
-
-    // Debounced save for overall bonus
-    if (bonusDebounceTimeoutRef.current) {
-      clearTimeout(bonusDebounceTimeoutRef.current);
-    }
-
-    bonusDebounceTimeoutRef.current = setTimeout(() => {
-      if (juryId && participant?.id) {
-        saveOverallBonusMutation.mutate({
-          participantId: participant.id,
-          juryId,
-          overallBonus: cappedValue,
-        });
-      } else {
-        // Clear pending flag if save doesn't happen
-        setPendingBonusSave(false);
-      }
-    }, 500);
-  };
-
-  // Reset scores when participant changes
+  // Reset scores when participant changes.
   useEffect(() => {
     if (participant?.id && participant.id !== lastParticipantId) {
-      setCurrentScores(defaultQuestionScores);
+      setCurrentScores(defaultQuestionValues);
       setAllScores({});
-      setOverallBonus(0);
-      setPendingSave(false); // Clear pending save on participant change
-      setPendingBonusSave(false); // Clear pending bonus save on participant change
+      setAdjustmentValues(defaultAdjustmentValues);
+      setPendingSave(false);
+      setPendingAdjustmentSave(false);
       setLastParticipantId(participant.id);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [participant?.id, lastParticipantId]);
 
-  // Fetch all scores for current participant
+  // Fetch all stored question scores for the current participant/jury.
   useEffect(() => {
     const fetchAllScores = async () => {
-      if (!participant?.id || !participant.assignedQuestions?.length || !juryId || !currentEvent)
+      if (
+        !participant?.id ||
+        !participant.assignedQuestions?.length ||
+        !juryId ||
+        !currentEvent ||
+        !evaluationConfig
+      )
         return;
 
       try {
-        // Fetch question scores
-        const scoresRef = collection(firestore, getEventCollectionPath(currentEvent, "scores"));
-        const q = query(
-          scoresRef,
-          where("participantId", "==", participant.id),
-          where("juryId", "==", juryId)
+        const scoresRef = collection(
+          firestore,
+          getEventCollectionPath(currentEvent, EVALUATION_SCORES_COLLECTION)
+        );
+        const snapshot = await getDocs(
+          query(scoresRef, where("participantId", "==", participant.id), where("juryId", "==", juryId))
         );
 
-        const snapshot = await getDocs(q);
-        const scoresByQuestion: {
-          [questionNumber: number]: QuestionOnlyFields;
-        } = {};
-
-        const currentPages = new Set(participant.assignedQuestions);
-
-        snapshot.forEach((doc) => {
-          const data = doc.data();
-          const pageNumber = data.pageNumber;
-
-          if (pageNumber === undefined || !currentPages.has(pageNumber)) {
-            return;
-          }
-
-          const currentQuestionIndex =
-            participant.assignedQuestions!.indexOf(pageNumber);
-          if (currentQuestionIndex === -1) {
-            return;
-          }
-
-          const currentQuestionNumber = currentQuestionIndex + 1;
-
-          if (!scoresByQuestion[currentQuestionNumber]) {
-            scoresByQuestion[currentQuestionNumber] = {
-              ...defaultQuestionScores,
-            };
-          }
-
-          const questionScoresFromDoc = data.scores as QuestionOnlyFields;
-
-          Object.keys(questionScoresFromDoc).forEach((key) => {
-            const fieldKey = key as keyof QuestionOnlyFields;
-            const newValue = questionScoresFromDoc[fieldKey];
-            scoresByQuestion[currentQuestionNumber][fieldKey] = newValue ?? 0;
-          });
+        const scoresByQuestion: Record<number, QuestionValueMap> = {};
+        snapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          const questionNumber = data.questionNumber as number;
+          if (typeof questionNumber !== "number") return;
+          scoresByQuestion[questionNumber] = mergeQuestionValues(
+            evaluationConfig,
+            data.values as QuestionValueMap
+          );
         });
 
         setAllScores(scoresByQuestion);
@@ -340,47 +262,47 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
     };
 
     fetchAllScores();
-  }, [participant, juryId, currentEvent]);
+  }, [participant, juryId, currentEvent, evaluationConfig]);
 
-  // Separate effect for fetching overall bonus - only runs when participant changes
+  // Fetch the jury's participant-level adjustment values.
   useEffect(() => {
-    const fetchOverallBonus = async () => {
-      if (!participant?.id || !juryId || !currentEvent) {
-        setOverallBonus(0);
+    const fetchAdjustmentValues = async () => {
+      if (!participant?.id || !juryId || !currentEvent || !evaluationConfig) {
+        setAdjustmentValues(defaultAdjustmentValues);
         return;
       }
-
-      // Don't fetch if there's a pending bonus save to avoid overriding optimistic updates
-      if (pendingBonusSave) {
-        return;
-      }
+      if (pendingAdjustmentSave) return;
 
       try {
-        const overallBonusesRef = collection(firestore, getEventCollectionPath(currentEvent, "overallBonuses"));
-        const bonusSnapshot = await getDocs(
-          query(
-            overallBonusesRef,
-            where("participantId", "==", participant.id),
-            where("juryId", "==", juryId)
-          )
+        const inputsRef = collection(
+          firestore,
+          getEventCollectionPath(currentEvent, JURY_EVALUATION_INPUTS_COLLECTION)
+        );
+        const snapshot = await getDocs(
+          query(inputsRef, where("participantId", "==", participant.id), where("juryId", "==", juryId))
         );
 
-        if (!bonusSnapshot.empty) {
-          const bonusData = bonusSnapshot.docs[0].data();
-          setOverallBonus(bonusData.overallBonus ?? 0);
+        if (!snapshot.empty) {
+          const data = snapshot.docs[0].data();
+          setAdjustmentValues(
+            mergeAdjustmentValues(evaluationConfig, data.values as AdjustmentValueMap)
+          );
         } else {
-          setOverallBonus(0);
+          setAdjustmentValues(defaultAdjustmentValues);
         }
       } catch (error) {
-        console.error("Error fetching overall bonus:", error);
-        setOverallBonus(0);
+        console.error("Error fetching jury evaluation inputs:", error);
+        setAdjustmentValues(defaultAdjustmentValues);
       }
     };
 
-    fetchOverallBonus();
-  }, [participant?.id, juryId, pendingBonusSave, currentEvent]);
+    fetchAdjustmentValues();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [participant?.id, juryId, pendingAdjustmentSave, currentEvent, evaluationConfig]);
 
-  // Handle questions change detection
+  // Reset in-progress state when the participant's assigned questions
+  // change (a reassignment) — never keep stale scores for a new set of
+  // pages.
   const currentQuestionsKey = participant?.assignedQuestions?.join(",") || "";
   useEffect(() => {
     if (!participant?.id || !juryId) return;
@@ -390,32 +312,34 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
       previousQuestionsRef.current !== currentQuestionsKey &&
       previousQuestionsRef.current !== ""
     ) {
-      setCurrentScores(defaultQuestionScores);
+      setCurrentScores(defaultQuestionValues);
       setAllScores({});
-      setOverallBonus(0);
-      setPendingSave(false); // Clear pending save on questions change
-      setPendingBonusSave(false); // Clear pending bonus save on questions change
+      setAdjustmentValues(defaultAdjustmentValues);
+      setPendingSave(false);
+      setPendingAdjustmentSave(false);
       clearPreviousScores(participant.id, juryId);
     }
 
     previousQuestionsRef.current = currentQuestionsKey;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentQuestionsKey, participant?.id, juryId, clearPreviousScores]);
 
   return {
     currentScores,
     allScores,
-    overallBonus,
+    adjustmentValues,
     pendingSave,
-    pendingBonusSave,
+    pendingAdjustmentSave,
     setCurrentScores,
     setAllScores,
     handleScoreChange,
-    handleOverallBonusChange,
+    handleAdjustmentChange,
     saveScoresMutation,
-    saveOverallBonusMutation,
+    saveAdjustmentMutation,
     clearPreviousScores,
     debounceTimeoutRef,
-    bonusDebounceTimeoutRef,
-    defaultQuestionScores,
+    adjustmentDebounceTimeoutRef,
+    defaultQuestionValues,
+    defaultAdjustmentValues,
   };
 };

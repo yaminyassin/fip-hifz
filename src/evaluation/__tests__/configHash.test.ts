@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { Timestamp } from "firebase/firestore";
 import { computeConfigContentHash, verifyConfigContentHash } from "../configHash";
-import { buildLisbonEvaluationConfig } from "../lisbonConfigSeed";
+import { buildExampleEvaluationConfig } from "../exampleConfigSeed";
 
 describe("config content hash", () => {
-  it("verifies against a freshly built Lisbon config", async () => {
-    const config = await buildLisbonEvaluationConfig(Timestamp.now());
+  it("verifies against a freshly built example config", async () => {
+    const config = await buildExampleEvaluationConfig(Timestamp.now());
     expect(await verifyConfigContentHash(config)).toBe(true);
   });
 
   it("excludes contentHash and provisionedAt from the hash input", async () => {
-    const configA = await buildLisbonEvaluationConfig(Timestamp.fromDate(new Date("2026-01-01")));
-    const configB = await buildLisbonEvaluationConfig(Timestamp.fromDate(new Date("2030-06-15")));
+    const configA = await buildExampleEvaluationConfig(Timestamp.fromDate(new Date("2026-01-01")));
+    const configB = await buildExampleEvaluationConfig(Timestamp.fromDate(new Date("2030-06-15")));
 
     // Different provisionedAt, same everything else -> same contentHash.
     expect(configA.contentHash).toBe(configB.contentHash);
@@ -23,7 +23,7 @@ describe("config content hash", () => {
   });
 
   it("changes when a scored field changes", async () => {
-    const original = await buildLisbonEvaluationConfig(Timestamp.now());
+    const original = await buildExampleEvaluationConfig(Timestamp.now());
     const mutated = {
       ...original,
       scoring: { ...original.scoring, baseScorePerQuestion: 99 },
@@ -33,7 +33,7 @@ describe("config content hash", () => {
   });
 
   it("is independent of object key insertion order (canonicalized before hashing)", async () => {
-    const config = await buildLisbonEvaluationConfig(Timestamp.now());
+    const config = await buildExampleEvaluationConfig(Timestamp.now());
     const reordered = {
       participantAdjustments: config.participantAdjustments,
       overrideRules: config.overrideRules,

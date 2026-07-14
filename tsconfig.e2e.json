@@ -11,10 +11,6 @@
     "moduleDetection": "force",
     "noEmit": true,
 
-    /* Allow typechecking the plain-JS seed script alongside the .ts harness */
-    "allowJs": true,
-    "checkJs": true,
-
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,
@@ -23,5 +19,5 @@
 
     "types": ["node"]
   },
-  "include": ["e2e", "playwright.config.ts", "scripts/*.mjs"]
+  "include": ["e2e", "playwright.config.ts", "scripts/*.mts"]
 }

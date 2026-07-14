@@ -1,42 +1,21 @@
 import { Label } from "@/components/shadcn/label";
 import { ParticipantBanner } from "@/components/ui/ParticipantBanner";
+import { EvaluationConfigGate } from "@/components/EvaluationConfigGate";
 import { createLazyFileRoute } from "@tanstack/react-router";
 import React, {
   useState,
   useEffect,
   useRef,
-  useCallback,
   useMemo,
 } from "react";
 import { useActiveParticipant } from "@/hooks/useActiveParticipant";
+import { useEvent } from "@/contexts/EventContext";
 import { useTranslation } from "react-i18next";
 import { TFunction } from "i18next";
-import { getCategoryConfig } from "@/lib/quranUtils";
 import { Participant } from "@/models/models";
 
 // Import assets
 import backgroundImage from "@/assets/randomizer/background.png";
-import A1 from "@/assets/categories/A1.png";
-import A2 from "@/assets/categories/A2.png";
-import B1 from "@/assets/categories/B1.png";
-import B2 from "@/assets/categories/B2.png";
-import C1 from "@/assets/categories/C1.png";
-import C2 from "@/assets/categories/C2.png";
-import D1 from "@/assets/categories/D1.png";
-import D2 from "@/assets/categories/D2.png";
-import M from "@/assets/categories/M.png";
-
-const categoryImageMap: Record<string, string> = {
-  A1,
-  A2,
-  B1,
-  B2,
-  C1,
-  C2,
-  D1,
-  D2,
-  M,
-};
 
 // Memoize the RandomNumber component to prevent unnecessary re-renders
 const RandomNumber = React.memo(
@@ -85,32 +64,31 @@ RandomNumber.displayName = "RandomNumber";
 const RandomizerContentView = React.memo(
   ({
     participant,
+    categoryAssetRef,
     questionNumbers,
     layoutClass,
     randomNumberComponents,
     t,
-    categoryImageMap,
   }: {
     participant: Participant;
+    categoryAssetRef: string | undefined;
     questionNumbers: number[];
     layoutClass: string;
     randomNumberComponents: JSX.Element[];
     t: TFunction;
-    categoryImageMap: Record<string, string>;
   }) => {
     return (
       <div className="flex flex-col items-center gap-6 md:gap-8 flex-grow bg-[#FFFEFA] p-8">
-        {categoryImageMap[participant.category] && (
+        {categoryAssetRef && (
           <img
-            src={
-              categoryImageMap[
-                participant.category as keyof typeof categoryImageMap
-              ]
-            }
+            src={categoryAssetRef}
             alt={t("randomizer.categoryAltText", {
               category: participant.category,
             })}
             className="w-[260px] object-contain"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
           />
         )}
 
@@ -131,11 +109,12 @@ const RandomizerContentView = React.memo(
 );
 RandomizerContentView.displayName = "RandomizerContentView";
 
-const RouteComponent = () => {
+function RandomizerAudienceRoute() {
   const [questionNumbers, setQuestionNumbers] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true); // True for initial component mount loading
   const lastActiveParticipantRef = useRef<Participant | null>(null);
 
+  const { evaluationConfig } = useEvent();
   const { data: activeParticipant, isLoading: isParticipantLoading } =
     useActiveParticipant();
   const { t } = useTranslation();
@@ -153,18 +132,20 @@ const RouteComponent = () => {
     // until activeParticipant is resolved or isParticipantLoading becomes false.
   }, [activeParticipant, isParticipantLoading, setIsLoading]);
 
-  const getNumQuestions = useCallback((participant: Participant | null) => {
-    if (!participant) return 0;
-    const config = getCategoryConfig(participant.category);
-    return config.numQuestions;
-  }, []);
+  const participant = useMemo(
+    () => activeParticipant || lastActiveParticipantRef.current,
+    [activeParticipant]
+  );
+
+  // Config-driven question count — never a hardcoded category fallback.
+  const category = participant ? evaluationConfig?.categories[participant.category] ?? null : null;
 
   useEffect(() => {
     const participantToUse =
       activeParticipant || lastActiveParticipantRef.current;
 
-    if (participantToUse) {
-      const numQuestions = getNumQuestions(participantToUse);
+    if (participantToUse && category) {
+      const numQuestions = category.questionCount;
       let newQuestionsDerivedFromServer = [
         ...(participantToUse.assignedQuestions || []),
       ];
@@ -189,17 +170,12 @@ const RouteComponent = () => {
         setQuestionNumbers(newQuestionsDerivedFromServer);
       }
     } else {
-      // No participant, ensure questions are cleared if not already
+      // No participant (or no matching category config), ensure questions are cleared.
       if (questionNumbers.length !== 0) {
         setQuestionNumbers([]);
       }
     }
-  }, [activeParticipant, getNumQuestions, questionNumbers]); // Added isGeneratingAll and questionNumbers
-
-  const participant = useMemo(
-    () => activeParticipant || lastActiveParticipantRef.current,
-    [activeParticipant]
-  );
+  }, [activeParticipant, category, questionNumbers]);
 
   const layoutClass = useMemo(() => {
     // Use flexbox for horizontal flow instead of grid
@@ -244,11 +220,11 @@ const RouteComponent = () => {
         {participant ? (
           <RandomizerContentView
             participant={participant}
+            categoryAssetRef={category?.assetRef}
             questionNumbers={questionNumbers}
             layoutClass={layoutClass}
             randomNumberComponents={randomNumberComponents}
             t={t}
-            categoryImageMap={categoryImageMap}
           />
         ) : (
           <div className="flex flex-col items-center gap-6 md:gap-8 flex-grow">
@@ -260,7 +236,13 @@ const RouteComponent = () => {
       </div>
     </div>
   );
-};
+}
+
+const RouteComponent = () => (
+  <EvaluationConfigGate>
+    <RandomizerAudienceRoute />
+  </EvaluationConfigGate>
+);
 
 export const Route = createLazyFileRoute("/randomizer-audience")({
   component: RouteComponent,

@@ -50,13 +50,13 @@ export function FloatingAdminPanel() {
     }: {
       participantId: string;
       pageNumber: number;
-    }) => updateActiveQuestion(currentEvent || 'lisbon-2025', participantId, pageNumber),
+    }) => updateActiveQuestion(currentEvent || 'demo-2026', participantId, pageNumber),
   });
 
   const markParticipantDoneMutation = useMutation({
     mutationFn: async (participantId: string) => {
       if (!participantId) return;
-      const participantRef = doc(firestore, "events", currentEvent || 'lisbon-2025', "participants", participantId);
+      const participantRef = doc(firestore, "events", currentEvent || 'demo-2026', "participants", participantId);
       await updateDoc(participantRef, {
         isActive: false,
         isDone: true,

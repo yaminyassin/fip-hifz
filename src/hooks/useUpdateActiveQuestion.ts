@@ -16,7 +16,7 @@ export const useUpdateActiveQuestion = () => {
       activeQuestionPage: number;
     }) => {
       try {
-        return await updateActiveQuestion(currentEvent || 'lisbon-2025', participantId, activeQuestionPage);
+        return await updateActiveQuestion(currentEvent || 'demo-2026', participantId, activeQuestionPage);
       } catch (error) {
         console.error("Error in updateActiveQuestion mutation:", error);
         throw error;

@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!docSnap.exists()) {
         // Create default auth settings for new events
-        const defaultPassword = `${eventId}-admin`; // e.g., "lisbon-2025-admin"
+        const defaultPassword = `${eventId}-admin`; // e.g., "demo-2026-admin"
         await setDoc(configRef, {
           eventPassword: defaultPassword,
           createdAt: new Date(),

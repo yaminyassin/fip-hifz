@@ -1,225 +1,239 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  collection,
-  onSnapshot,
-  query,
-  QuerySnapshot,
-  DocumentData,
-} from "firebase/firestore";
+import { collection, onSnapshot, query, QuerySnapshot, DocumentData } from "firebase/firestore";
 import { firestore } from "@/main";
-import { Participant, QuestionFields, OverallBonus } from "@/models/models";
+import { Participant } from "@/models/models";
 import { useEffect, useRef } from "react";
-import {
-  calculateAverageScores,
-  createEmptyQuestionFields,
-} from "./useParticipantScores";
 import { useEvent } from "@/contexts/EventContext";
 import { getEventCollectionPath } from "@/utils/firebaseUtils";
+import {
+  scoreJury,
+  scoreParticipant,
+  type JuryScoreResult,
+  type QuestionValueMap,
+  type AdjustmentValueMap,
+} from "@/evaluation/scoringEngine";
+import { buildDefaultAdjustmentValues } from "@/evaluation/configHelpers";
+import {
+  EVALUATION_SCORES_COLLECTION,
+  JURY_EVALUATION_INPUTS_COLLECTION,
+} from "@/services/evaluationScores";
+import type { EventEvaluationConfigV2 } from "@/evaluation/types";
 
-// Extended Scores type with pageNumber
-interface ExtendedScores {
-  id: string;
+/**
+ * Config-driven participant scoring (design doc §4, "Consumer wiring"):
+ * feeds the V2 `evaluationScores`/`juryEvaluationInputs` collections
+ * through `scoreQuestion` → `scoreJury` → `scoreParticipant` from the
+ * committed engine, instead of recomputing caps/penalties in the consumer.
+ * `finalScore` is the ranking-eligibility sentinel: `-1` unless
+ * `isDone && juryResults` has at least one complete jury evaluation.
+ */
+export type ParticipantWithScores = Participant & {
+  /** -1 when the participant is not ranking-eligible (not done, or no
+   * complete jury evaluation yet) — the sentinel every consumer already
+   * checks for before rendering a score. */
+  finalScore: number;
+  /** Per-jury results, keyed by juryId, for every jury whose evaluation is
+   * complete and valid against the current config. A jury with a missing,
+   * duplicate, or invalid question is simply absent here (incomplete
+   * evaluations never contribute a value). */
+  juryResults: Record<string, JuryScoreResult>;
+  juryIds: string[];
+  /** Set when the participant's category is not present in
+   * `config.categories` — surfaced as an explicit error, never a silent
+   * drop or a fallback to category 'A'. */
+  scoringError?: string;
+};
+
+interface RawEvaluationScoreDoc {
   participantId: string;
   juryId: string;
   questionNumber: number;
-  pageNumber?: number;
-  scores: QuestionFields;
+  values: QuestionValueMap;
 }
 
-// Export the type so it can be used elsewhere
-export type ParticipantWithScores = Participant & {
-  questionScores: {
-    byJury: Record<string, { [questionNumber: number]: QuestionFields }>;
-    average: { [questionNumber: number]: QuestionFields };
-    juryIds: string[];
+interface RawJuryEvaluationInputsDoc {
+  participantId: string;
+  juryId: string;
+  values: AdjustmentValueMap;
+}
+
+function computeParticipantScoring(
+  participant: Participant,
+  scoreDocs: readonly RawEvaluationScoreDoc[],
+  adjustmentDocs: readonly RawJuryEvaluationInputsDoc[],
+  config: EventEvaluationConfigV2
+): Pick<ParticipantWithScores, "finalScore" | "juryResults" | "juryIds" | "scoringError"> {
+  const category = config.categories[participant.category];
+  if (!category) {
+    return {
+      finalScore: -1,
+      juryResults: {},
+      juryIds: [],
+      scoringError: `category "${participant.category}" is not defined in this event's config`,
+    };
+  }
+
+  const assignedQuestionNumbers = Array.from(
+    { length: category.questionCount },
+    (_, i) => i + 1
+  );
+
+  const questionValuesByJury = new Map<string, Map<number, QuestionValueMap>>();
+  for (const scoreDoc of scoreDocs) {
+    if (scoreDoc.participantId !== participant.id) continue;
+    const juryMap = questionValuesByJury.get(scoreDoc.juryId) ?? new Map();
+    juryMap.set(scoreDoc.questionNumber, scoreDoc.values);
+    questionValuesByJury.set(scoreDoc.juryId, juryMap);
+  }
+
+  const adjustmentValuesByJury = new Map<string, AdjustmentValueMap>();
+  for (const adjustmentDoc of adjustmentDocs) {
+    if (adjustmentDoc.participantId !== participant.id) continue;
+    adjustmentValuesByJury.set(adjustmentDoc.juryId, adjustmentDoc.values);
+  }
+
+  const juryIdsWithAnyData = new Set([
+    ...questionValuesByJury.keys(),
+    ...adjustmentValuesByJury.keys(),
+  ]);
+
+  const juryResults: Record<string, JuryScoreResult> = {};
+  for (const juryId of juryIdsWithAnyData) {
+    const questionValues = questionValuesByJury.get(juryId) ?? new Map();
+    // A jury with no adjustment doc yet simply has no bonus/deduction applied
+    // (defaults to the config's zero/min values) — that is not the same as
+    // an incomplete evaluation, which is specifically a missing/invalid
+    // *question* score.
+    const adjustmentValues =
+      adjustmentValuesByJury.get(juryId) ?? buildDefaultAdjustmentValues(config);
+
+    const result = scoreJury(config, assignedQuestionNumbers, questionValues, adjustmentValues);
+    if (result.ok) {
+      juryResults[juryId] = result.value;
+    }
+    // An incomplete/invalid jury evaluation simply doesn't contribute —
+    // per the `incompleteEvaluation` policy, no final score for that jury.
+  }
+
+  const juryIds = Object.keys(juryResults).sort();
+
+  if (!participant.isDone || juryIds.length === 0) {
+    return { finalScore: -1, juryResults, juryIds };
+  }
+
+  const juryResultsMap = new Map(juryIds.map((id) => [id, juryResults[id]]));
+  const aggregate = scoreParticipant(juryResultsMap);
+  return {
+    finalScore: aggregate.ok ? aggregate.value : -1,
+    juryResults,
+    juryIds,
   };
-  overallBonuses: Record<string, number>; // juryId -> overallBonus value
-};
+}
 
 export const useParticipants = () => {
   const queryClient = useQueryClient();
-  const { currentEvent } = useEvent();
-  // Use refs to store the latest participants data for score processing
-  const participantsRef = useRef<ParticipantWithScores[]>([]);
+  const { currentEvent, evaluationConfig } = useEvent();
 
-  // Helper function to process scores with the latest participants data
-  const processScoresWithLatestParticipants = (
-    scoresSnapshot: QuerySnapshot<DocumentData>
-  ) => {
-    const currentParticipants = participantsRef.current;
-    if (!currentParticipants.length) return;
+  const participantsRef = useRef<Participant[]>([]);
+  const scoreDocsRef = useRef<RawEvaluationScoreDoc[]>([]);
+  const adjustmentDocsRef = useRef<RawJuryEvaluationInputsDoc[]>([]);
+  const configRef = useRef<EventEvaluationConfigV2 | null>(evaluationConfig);
+  configRef.current = evaluationConfig;
 
-    // Create a map for faster lookups
-    const scoresMap = new Map<string, ExtendedScores[]>();
+  const recompute = () => {
+    const config = configRef.current;
+    const participants = participantsRef.current;
+    if (!config) {
+      // Config not ready yet: expose participants with the ranking-ineligible
+      // sentinel rather than any computed score.
+      const withSentinel: ParticipantWithScores[] = participants.map((p) => ({
+        ...p,
+        finalScore: -1,
+        juryResults: {},
+        juryIds: [],
+      }));
+      queryClient.setQueryData(["participants", currentEvent], withSentinel);
+      return;
+    }
 
-    scoresSnapshot.docs.forEach((scoreDoc) => {
-      const scoreData = scoreDoc.data() as ExtendedScores;
-      if (!scoreData.scores) return;
-
-      const participantScores = scoresMap.get(scoreData.participantId) || [];
-      participantScores.push(scoreData);
-      scoresMap.set(scoreData.participantId, participantScores);
-    });
-
-    // Update participants with their scores
-    const updatedParticipants = currentParticipants.map((participant) => {
-      const participantScores = scoresMap.get(participant.id) || [];
-
-      // Group scores by jury
-      const scoresByJury: Record<
-        string,
-        { [questionNumber: number]: QuestionFields }
-      > = {};
-      const allJuryIds: string[] = [];
-
-      // Process scores for this participant
-      participantScores.forEach((scoreData) => {
-        const { juryId, questionNumber, scores, pageNumber } = scoreData;
-
-        // Initialize jury scores object if needed
-        if (!scoresByJury[juryId]) {
-          scoresByJury[juryId] = {};
-          allJuryIds.push(juryId);
-        }
-
-        // Map page number to question number
-        const actualPage = pageNumber !== undefined ? pageNumber : questionNumber;
-        const questionIndex = participant.assignedQuestions.indexOf(actualPage);
-
-        // Only include scores for questions that are still assigned to this participant
-        if (questionIndex !== -1) {
-          const mappedQuestionNumber = questionIndex + 1;
-
-          // Initialize question fields if needed
-          if (!scoresByJury[juryId][mappedQuestionNumber]) {
-            scoresByJury[juryId][mappedQuestionNumber] = createEmptyQuestionFields();
-          }
-
-          // Merge in the scores
-          Object.keys(scores).forEach((field) => {
-            const fieldKey = field as keyof QuestionFields;
-            if (typeof scores[fieldKey] === "number") {
-              scoresByJury[juryId][mappedQuestionNumber][fieldKey] = scores[fieldKey];
-            }
-          });
-        }
-      });
-
-      // Calculate average scores across all juries
-      const averageScores = calculateAverageScores(scoresByJury);
-
-      return {
-        ...participant,
-        questionScores: {
-          byJury: scoresByJury,
-          average: averageScores,
-          juryIds: allJuryIds,
-        },
-      };
-    });
-
-    // Update React Query cache with the updated scores
-    queryClient.setQueryData(["participants", currentEvent], updatedParticipants);
-    participantsRef.current = updatedParticipants;
-  };
-
-  // Helper function to process overall bonuses
-  const processOverallBonusesWithLatestParticipants = (
-    overallBonusesSnapshot: QuerySnapshot<DocumentData>
-  ) => {
-    const currentParticipants = participantsRef.current;
-    if (!currentParticipants.length) return;
-
-    // Create a map for faster lookups
-    const bonusesMap = new Map<string, Record<string, number>>();
-
-    overallBonusesSnapshot.docs.forEach((bonusDoc) => {
-      const bonusData = bonusDoc.data() as OverallBonus;
-      const participantBonuses = bonusesMap.get(bonusData.participantId) || {};
-      participantBonuses[bonusData.juryId] = bonusData.overallBonus;
-      bonusesMap.set(bonusData.participantId, participantBonuses);
-    });
-
-    // Update participants with their overall bonuses
-    const updatedParticipants = currentParticipants.map((participant) => {
-      const overallBonuses = bonusesMap.get(participant.id) || {};
-
-      return {
-        ...participant,
-        overallBonuses,
-      };
-    });
-
-    // Update React Query cache with the updated overall bonuses
-    queryClient.setQueryData(["participants", currentEvent], updatedParticipants);
-    participantsRef.current = updatedParticipants;
+    const updated: ParticipantWithScores[] = participants.map((participant) => ({
+      ...participant,
+      ...computeParticipantScoring(
+        participant,
+        scoreDocsRef.current,
+        adjustmentDocsRef.current,
+        config
+      ),
+    }));
+    queryClient.setQueryData(["participants", currentEvent], updated);
   };
 
   useEffect(() => {
     if (!currentEvent) return;
 
-    // Set up real-time listener for participants
-    const participantsCollection = collection(firestore, getEventCollectionPath(currentEvent, "participants"));
+    const participantsCollection = collection(
+      firestore,
+      getEventCollectionPath(currentEvent, "participants")
+    );
     const participantsUnsubscribe = onSnapshot(
       participantsCollection,
-      (participantsSnapshot) => {
-        const participants = participantsSnapshot.docs.map((doc) => {
-          const participantData = doc.data() as Omit<Participant, "id">;
-          return {
-            id: doc.id,
-            ...participantData,
-            questionScores: {
-              byJury: {},
-              average: {},
-              juryIds: [],
-            },
-            overallBonuses: {},
-          } as ParticipantWithScores;
-        });
-
-        // Update React Query cache and ref with the participants data
-        queryClient.setQueryData(["participants", currentEvent], participants);
-        participantsRef.current = participants;
+      (snapshot) => {
+        participantsRef.current = snapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...(docSnap.data() as Omit<Participant, "id">),
+        }));
+        recompute();
       },
-      (error) => {
-        console.error("Error in participants listener:", error);
-      }
+      (error) => console.error("Error in participants listener:", error)
     );
 
-    // Set up separate real-time listener for scores
-    const scoresRef = collection(firestore, getEventCollectionPath(currentEvent, "scores"));
-    const scoresQuery = query(scoresRef);
+    const scoresRef = collection(
+      firestore,
+      getEventCollectionPath(currentEvent, EVALUATION_SCORES_COLLECTION)
+    );
     const scoresUnsubscribe = onSnapshot(
-      scoresQuery,
-      processScoresWithLatestParticipants,
-      (error) => {
-        console.error("Error in scores listener:", error);
-      }
+      query(scoresRef),
+      (snapshot: QuerySnapshot<DocumentData>) => {
+        scoreDocsRef.current = snapshot.docs.map((d) => d.data() as RawEvaluationScoreDoc);
+        recompute();
+      },
+      (error) => console.error("Error in evaluation scores listener:", error)
     );
 
-    // Set up separate real-time listener for overall bonuses
-    const overallBonusesRef = collection(firestore, getEventCollectionPath(currentEvent, "overallBonuses"));
-    const overallBonusesQuery = query(overallBonusesRef);
-    const overallBonusesUnsubscribe = onSnapshot(
-      overallBonusesQuery,
-      processOverallBonusesWithLatestParticipants,
-      (error) => {
-        console.error("Error in overall bonuses listener:", error);
-      }
+    const adjustmentsRef = collection(
+      firestore,
+      getEventCollectionPath(currentEvent, JURY_EVALUATION_INPUTS_COLLECTION)
+    );
+    const adjustmentsUnsubscribe = onSnapshot(
+      query(adjustmentsRef),
+      (snapshot: QuerySnapshot<DocumentData>) => {
+        adjustmentDocsRef.current = snapshot.docs.map(
+          (d) => d.data() as RawJuryEvaluationInputsDoc
+        );
+        recompute();
+      },
+      (error) => console.error("Error in jury evaluation inputs listener:", error)
     );
 
-    // Cleanup function
     return () => {
       participantsUnsubscribe();
       scoresUnsubscribe();
-      overallBonusesUnsubscribe();
+      adjustmentsUnsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryClient, currentEvent]);
+
+  // Recompute whenever the config itself resolves/changes (e.g. transitions
+  // from null -> ready shortly after participants/scores already loaded).
+  useEffect(() => {
+    recompute();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [evaluationConfig]);
 
   return useQuery<ParticipantWithScores[]>({
     queryKey: ["participants", currentEvent],
-    queryFn: () => participantsRef.current || [], // Return current value from ref
-    staleTime: Infinity, // Never mark as stale since we're using real-time updates
+    queryFn: () => (queryClient.getQueryData(["participants", currentEvent]) as ParticipantWithScores[]) || [],
+    staleTime: Infinity,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,

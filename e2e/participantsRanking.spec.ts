@@ -1,35 +1,40 @@
 import { test, expect } from "@playwright/test";
 import { seedAuthenticatedSession } from "./auth";
 
-const EVENT_ID = "lisbon-2025";
+const EVENT_ID = "demo-2026";
 
 /**
- * The Lisbon "completed ranking fixture" smoke gate (design section 5,
- * "Completed ranking fixture" + "Exact smoke gates" #8): the Phase 1a
- * additive-bonus delta is live in the participants ranking display, and the
- * ranking-eligibility sentinel still excludes an unfinished participant.
+ * The greenfield "completed ranking fixture" smoke gate (design doc §4,
+ * `useParticipants`/`ParticipantsTable` rows): the config-driven engine
+ * output (weights, section cap, void rule, add/subtract question types,
+ * additive `overall_bonus` adjustment) is live in the participants ranking
+ * display, computed entirely by `scoreQuestion` -> `scoreJury` ->
+ * `scoreParticipant` from the seeded V2 `evaluationScores` /
+ * `juryEvaluationInputs` documents — and the ranking-eligibility sentinel
+ * still excludes an unfinished participant.
  */
-test.describe("/participants ranking (Phase 1a additive Lisbon bonus)", () => {
+test.describe("/participants ranking (config-driven engine output)", () => {
   test.beforeEach(async ({ page }) => {
     await seedAuthenticatedSession(page, { eventId: EVENT_ID });
     await page.goto(`/participants?event=${EVENT_ID}`);
   });
 
-  test("a completed participant displays the additive final score and outranks an unfinished one", async ({
+  test("a completed participant displays the engine-computed final score and outranks an unfinished one", async ({
     page,
   }) => {
     const tables = page.locator("table");
     await expect(tables.getByText("Zainab Haddad")).toBeVisible();
     await expect(tables.getByText("Ahmad Al-Hafiz")).toBeVisible();
 
-    // participant-ranking-done: isDone true, legacy base 98.5 + additive
-    // bonus 2, clamped to [0, 105] -> displayed final 100.50.
+    // participant-ranking-done (CAT_A): Q1 = 100 - (1*3 + 1*2) + (2*1) = 97,
+    // Q2 = 100 -> juryBase = 98.5; overall_bonus adjustment = +2 (bonus=2,
+    // weight 1, add, cap 5) -> juryFinal = clamp(98.5 + 2, 0, 110) = 100.5
+    // -> single-jury finalScore = 100.50.
     const doneRow = page.locator("tr", { has: page.getByText("Zainab Haddad") });
     await expect(doneRow.getByText("100.50 pts")).toBeVisible();
 
     // participant-active: isDone false -> ranking-ineligible sentinel
-    // (finalScore = -1), no displayed score, despite an identical
-    // diagnostic base/bonus to the completed fixture above.
+    // (finalScore = -1), no displayed score.
     const activeRow = page.locator("tr", { has: page.getByText("Ahmad Al-Hafiz") });
     await expect(activeRow.getByText("pts")).toHaveCount(0);
 
@@ -54,5 +59,24 @@ test.describe("/participants ranking (Phase 1a additive Lisbon bonus)", () => {
     await expect(doneDetailsButton).toBeEnabled();
     const activeDetailsButton = activeRow.getByRole("button", { name: /details/i });
     await expect(activeDetailsButton).toBeDisabled();
+  });
+
+  test("score details dialog shows the per-section breakdown from config.questionTypes", async ({
+    page,
+  }) => {
+    const doneRow = page.locator("tr", { has: page.getByText("Zainab Haddad") });
+    await doneRow.getByRole("button", { name: /details/i }).click();
+
+    // Section labels come straight from the config (hifdh/tajweed/presentation),
+    // never a hardcoded legacy field list. Scope to the dialog itself to
+    // disambiguate from the section labels that ALSO appear in the
+    // always-visible ParticipantScoreVisualizations panel.
+    const dialog = page.getByTestId("score-details-dialog");
+    await expect(dialog.getByRole("heading", { name: "Zainab Haddad" })).toBeVisible();
+
+    await expect(dialog.getByText("Hifdh (Memorisation)").first()).toBeVisible();
+    await expect(dialog.getByText("Tajweed", { exact: true }).first()).toBeVisible();
+    await expect(dialog.getByText("Presentation").first()).toBeVisible();
+    await expect(dialog.getByText("Overall Bonus").first()).toBeVisible();
   });
 });

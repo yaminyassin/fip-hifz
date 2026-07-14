@@ -321,12 +321,12 @@ export const ParticipantForm = ({
     try {
       if (isEditing && participant) {
         await updateParticipant(
-          currentEvent || "lisbon-2025",
+          currentEvent || "demo-2026",
           participant.id,
           formData
         );
       } else {
-        await createParticipant(currentEvent || "lisbon-2025", formData);
+        await createParticipant(currentEvent || "demo-2026", formData);
       }
 
       // Invalidate participants query to refresh data

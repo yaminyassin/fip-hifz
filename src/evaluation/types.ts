@@ -64,6 +64,11 @@ export interface EventCategoryDefinition {
   order: number;
   questionCount: number;
   questionSlots: readonly CategoryQuestionSlot[];
+  /** URL/path reference to this category's display asset (e.g. an image
+   * shown on the randomizer/big-screen). Actual asset STORAGE is a later
+   * phase — this field is just the ref; consumers resolve it directly.
+   * Optional so existing configs without an asset need no migration. */
+  assetRef?: string;
 }
 
 export interface InputDefinitionCommon {

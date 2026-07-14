@@ -12,19 +12,17 @@ import type {
 } from '@/evaluation/types';
 
 /**
- * Config loading seam (docs/migrations/phase-1-evaluation-model.md section
- * 2, "Event metadata and config loading"): the event's evaluation config is
- * loaded exactly once per `currentEvent` change, and the previous event's
- * compiled config is cleared before the new one resolves. Consumers that
- * need the config read `evaluationConfigStatus === 'ready'` and
- * `evaluationConfig`; nothing here silently falls back to a default config
- * or a default category.
- *
- * Phase 1a trial scope: this seam is built and independently testable
- * (src/evaluation/__tests__/eventDescriptor.test.ts, e2e config-loading
- * coverage), but gating every consumer on `evaluationConfigStatus` is
- * deferred scale-out work — existing consumers keep reading `currentEvent`
- * exactly as before.
+ * Config loading seam (docs/migrations/phase-1-greenfield.md section 1,
+ * "Config storage model" + section 2, "Gating"): the event's evaluation
+ * config is loaded exactly once per `currentEvent` change (one-shot
+ * `getDoc`, not a subscription — config is immutable per event until the
+ * Phase 2 editor exists), and the previous event's compiled config is
+ * cleared synchronously before the new one resolves. Consumers that need
+ * the config read `evaluationConfigStatus === 'ready'` and
+ * `evaluationConfig`; nothing here (or anywhere downstream) falls back to a
+ * default config or a default category. `<EvaluationConfigGate>`
+ * (src/components/EvaluationConfigGate.tsx) is the render-blocking gate that
+ * every scored route wraps itself in.
  */
 export type EvaluationConfigStatus = 'idle' | 'loading' | 'ready' | 'failClosed';
 
@@ -83,17 +81,37 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
     useState<EventEvaluationDescriptorV2 | null>(null);
   const [evaluationConfigError, setEvaluationConfigError] = useState<string | null>(null);
 
+  // The event whose config/status the state above currently reflects.
+  // Compared against `currentEvent` on every render (not in an effect) so
+  // the previous event's compiled config is discarded in the SAME render
+  // that first sees the new `currentEvent` — never one render/paint later.
+  // This is React's documented "adjust state during rendering" pattern
+  // (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes):
+  // calling setState here bails out of committing/painting this render and
+  // immediately re-renders with the reset state, so a stale-config frame
+  // (old event's scored content momentarily rendered for the new event) is
+  // never shown, unlike clearing in a `useEffect`, which runs after commit
+  // and can paint once with mismatched event/config.
+  const [configEvent, setConfigEvent] = useState<string | null>(null);
+  if (configEvent !== currentEvent) {
+    setConfigEvent(currentEvent);
+    setEvaluationConfig(null);
+    setEvaluationDescriptor(null);
+    setEvaluationConfigError(null);
+    setEvaluationConfigStatus(currentEvent ? 'loading' : 'idle');
+  }
+
   useEffect(() => {
-    // Get event from URL query parameter (e.g., /admin?event=lisbon-2025)
+    // Get event from URL query parameter (e.g., /admin?event=demo-2026)
     const urlParams = new URLSearchParams(window.location.search);
     const eventFromUrl = urlParams.get('event');
 
     if (eventFromUrl) {
       setCurrentEvent(eventFromUrl);
     } else {
-      // Only default to lisbon-2025 if on a non-root page
+      // Only default to demo-2026 if on a non-root page
       if (window.location.pathname !== '/') {
-        setCurrentEvent('lisbon-2025');
+        setCurrentEvent('demo-2026');
       }
     }
     setIsEventLoaded(true);
@@ -111,22 +129,16 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Load (or clear) the event's evaluation config whenever currentEvent
-  // changes. Clears the previous event's compiled config synchronously,
-  // before the new one resolves, so a stale config is never read across an
-  // event switch.
+  // Fetch the event's evaluation config whenever currentEvent changes. The
+  // previous event's compiled config/status is already reset synchronously
+  // above (in the render-phase `configEvent` check) by the time this effect
+  // runs, so this effect only owns the async fetch and its resolution.
   useEffect(() => {
-    setEvaluationConfig(null);
-    setEvaluationDescriptor(null);
-    setEvaluationConfigError(null);
-
     if (!currentEvent) {
-      setEvaluationConfigStatus('idle');
       return;
     }
 
     let cancelled = false;
-    setEvaluationConfigStatus('loading');
 
     loadEvaluationConfig(currentEvent, firestoreEvaluationReaders(currentEvent))
       .then((result: LoadEvaluationConfigResult) => {
