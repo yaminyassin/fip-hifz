@@ -55,5 +55,13 @@ obs/
 # Build info files (can be regenerated)
 *.tsbuildinfo
 
+# Claude Code local state and agent worktrees
+.claude/worktrees/
+.claude/settings.local.json
+
+# Python bytecode
+__pycache__/
+*.pyc
+
 .cursorrules.env
 .cursorrules

@@ -13,8 +13,8 @@ import {
 const activeListeners = new Map<string, {
     unsubscribe: Unsubscribe;
     refCount: number;
-    callbacks: Set<(data: any) => void>;
-    currentData: any;
+    callbacks: Set<(data: unknown) => void>;
+    currentData: unknown;
 }>();
 
 interface UseFirestoreListenerOptions<T> {
@@ -52,17 +52,17 @@ export function useFirestoreListener<T>({
 
         if (existingListener) {
             // Add this component's callback to the existing listener
-            existingListener.callbacks.add(callbackRef.current);
+            existingListener.callbacks.add(callbackRef.current as (data: unknown) => void);
             existingListener.refCount++;
 
             // Immediately provide current data if available
             if (existingListener.currentData !== undefined) {
-                callbackRef.current(existingListener.currentData);
+                callbackRef.current(existingListener.currentData as T);
             }
 
             return () => {
                 // Remove this component's callback
-                existingListener.callbacks.delete(callbackRef.current);
+                existingListener.callbacks.delete(callbackRef.current as (data: unknown) => void);
 
                 // Decrement reference count on cleanup
                 if (existingListener.refCount > 1) {
@@ -77,8 +77,8 @@ export function useFirestoreListener<T>({
 
         // Create new listener
         let unsubscribe: Unsubscribe;
-        const callbacks = new Set<(data: T) => void>();
-        callbacks.add(callbackRef.current);
+        const callbacks = new Set<(data: unknown) => void>();
+        callbacks.add(callbackRef.current as (data: unknown) => void);
 
         // Handle both Query and DocumentReference types
         if ('type' in query && query.type === 'query') {
@@ -164,7 +164,7 @@ export function useFirestoreListener<T>({
             const listener = activeListeners.get(key);
             if (listener) {
                 // Remove this component's callback
-                listener.callbacks.delete(callbackRef.current);
+                listener.callbacks.delete(callbackRef.current as (data: unknown) => void);
 
                 if (listener.refCount > 1) {
                     listener.refCount--;

@@ -7,7 +7,7 @@ import pluginRouter from "@tanstack/eslint-plugin-router";
 
 export default tseslint.config(
   ...pluginRouter.configs["flat/recommended"],
-  { ignores: ["dist"] },
+  { ignores: ["dist", ".claude"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

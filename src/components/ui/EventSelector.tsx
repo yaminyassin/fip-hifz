@@ -3,13 +3,13 @@ import { Button } from '@/components/shadcn/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/shadcn/select';
 import { Card } from '@/components/shadcn/card';
 import { Plus, Calendar, Users } from 'lucide-react';
-import { collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { firestore } from '@/main';
 
 interface EventInfo {
   id: string;
   name: string;
-  createdAt?: any;
+  createdAt?: Timestamp;
   participantCount?: number;
   description?: string;
 }

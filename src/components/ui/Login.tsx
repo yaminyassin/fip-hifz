@@ -43,8 +43,8 @@ export function Login() {
       await auth.login(eventId, password);
       // Redirect to main page with event context
       navigate({ to: `/?event=${eventId}` });
-    } catch (err: any) {
-      setError(err.message || t("login.error"));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("login.error"));
     } finally {
       setIsLoading(false);
     }
