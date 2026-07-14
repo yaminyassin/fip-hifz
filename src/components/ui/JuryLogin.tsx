@@ -21,11 +21,12 @@ export const JuryLogin = ({ onLoginSuccess }: JuryLoginProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentEvent) return;
     setIsLoggingIn(true);
     setError(null);
 
     try {
-      const isAuthenticated = await authenticateJury(currentEvent || 'demo-2026', juryId);
+      const isAuthenticated = await authenticateJury(currentEvent, juryId);
       if (isAuthenticated) {
         setAuthenticatedJury(juryId);
         onLoginSuccess();

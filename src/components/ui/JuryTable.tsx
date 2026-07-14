@@ -28,9 +28,10 @@ export const JuryTable = () => {
   >(null);
 
   const handleToggleActive = async (juryId: string, currentStatus: boolean) => {
+    if (!currentEvent) return;
     setIsUpdating(juryId);
     try {
-      await updateJuryActiveStatus(currentEvent || 'demo-2026', juryId, !currentStatus);
+      await updateJuryActiveStatus(currentEvent, juryId, !currentStatus);
       // TODO: Add success toast notification
     } catch (error) {
       console.error("Error updating jury active status:", error);
@@ -44,9 +45,10 @@ export const JuryTable = () => {
     juryId: string,
     currentStatus: boolean
   ) => {
+    if (!currentEvent) return;
     setIsUpdatingEvaluation(juryId);
     try {
-      await updateJuryEvaluationStatus(currentEvent || 'demo-2026', juryId, !currentStatus);
+      await updateJuryEvaluationStatus(currentEvent, juryId, !currentStatus);
       // TODO: Add success toast notification
     } catch (error) {
       console.error("Error updating jury evaluation status:", error);
@@ -57,9 +59,10 @@ export const JuryTable = () => {
   };
 
   const handleSetAllActive = async () => {
+    if (!currentEvent) return;
     setIsBulkUpdating(true);
     try {
-      await setAllJuryActive(currentEvent || 'demo-2026', true);
+      await setAllJuryActive(currentEvent, true);
       // TODO: Add success toast notification
     } catch (error) {
       console.error("Error setting all jury active:", error);

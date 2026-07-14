@@ -33,7 +33,10 @@ export const ParticipantManagement = () => {
     useState(false);
 
   const resetStatusesMutation = useMutation({
-    mutationFn: () => resetAllParticipantStatuses(currentEvent || 'demo-2026'),
+    mutationFn: () => {
+      if (!currentEvent) throw new Error('No event selected');
+      return resetAllParticipantStatuses(currentEvent);
+    },
     onSuccess: () => {
       console.log("Participant statuses reset successfully.");
     },
@@ -69,9 +72,10 @@ export const ParticipantManagement = () => {
   };
 
   const handleDeleteClick = async (id: string) => {
+    if (!currentEvent) return;
     if (window.confirm(t("admin.participants.confirmDelete"))) {
       try {
-        await deleteParticipant(currentEvent || 'demo-2026', id);
+        await deleteParticipant(currentEvent, id);
         queryClient.invalidateQueries({ queryKey: ["participants"] });
       } catch (error) {
         console.error("Error deleting participant:", error);

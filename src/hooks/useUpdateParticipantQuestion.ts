@@ -17,9 +17,10 @@ export const useUpdateParticipantQuestion = () => {
       questionIndex: number;
       pageNumber: number;
     }) => {
+      if (!currentEvent) throw new Error('No event selected');
       try {
         return await updateParticipantQuestion(
-          currentEvent || 'demo-2026',
+          currentEvent,
           participantId,
           questionIndex,
           pageNumber

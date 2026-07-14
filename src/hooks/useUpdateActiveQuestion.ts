@@ -15,8 +15,9 @@ export const useUpdateActiveQuestion = () => {
       participantId: string;
       activeQuestionPage: number;
     }) => {
+      if (!currentEvent) throw new Error('No event selected');
       try {
-        return await updateActiveQuestion(currentEvent || 'demo-2026', participantId, activeQuestionPage);
+        return await updateActiveQuestion(currentEvent, participantId, activeQuestionPage);
       } catch (error) {
         console.error("Error in updateActiveQuestion mutation:", error);
         throw error;

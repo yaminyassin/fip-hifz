@@ -36,6 +36,34 @@ interface EventContextType {
   evaluationConfigError: string | null;
 }
 
+/**
+ * The last explicitly-selected event is persisted so an event-less URL on a
+ * non-root route (a reload, or a second tab/window on the SAME browser — e.g.
+ * a /quran-page display) recovers the operator's event instead of failing
+ * closed. localStorage is per-browser, so a genuinely separate device still
+ * needs ?event= in the URL (in-app navigation always includes it). This is
+ * persistent identity, never a hardcoded default; see EventProvider's mount
+ * effect.
+ */
+const CURRENT_EVENT_STORAGE_KEY = 'fip-hifz.currentEvent';
+
+function readPersistedEvent(): string | null {
+  try {
+    return localStorage.getItem(CURRENT_EVENT_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function persistEvent(event: string): void {
+  try {
+    localStorage.setItem(CURRENT_EVENT_STORAGE_KEY, event);
+  } catch {
+    // Storage unavailable (private mode / disabled): persistence is a
+    // convenience, not a correctness requirement; the URL param still works.
+  }
+}
+
 const EventContext = createContext<EventContextType | undefined>(undefined);
 
 export const useEvent = () => {
@@ -108,20 +136,37 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
 
     if (eventFromUrl) {
       setCurrentEvent(eventFromUrl);
-    } else {
-      // Only default to demo-2026 if on a non-root page
-      if (window.location.pathname !== '/') {
-        setCurrentEvent('demo-2026');
+      persistEvent(eventFromUrl);
+    } else if (window.location.pathname !== '/') {
+      // A non-root scored/display route opened without ?event= (a reload, or a
+      // second tab/window on the same browser — e.g. a /quran-page display).
+      // Restore the operator's last explicitly-selected event — persistent
+      // identity, NOT a hardcoded trial event — and reflect it into the URL so
+      // reloads and links stay stable. If nothing was ever selected,
+      // currentEvent stays null and <EvaluationConfigGate> fails closed ("No
+      // event selected"). Combined with dropping the demo-2026 default, this is
+      // the Phase 6 /quran-page fix: an event-less URL no longer shows the
+      // wrong event's (absent) active participant. A separate device still
+      // needs ?event= in the URL, which in-app navigation includes.
+      const persisted = readPersistedEvent();
+      if (persisted) {
+        setCurrentEvent(persisted);
+        const url = new URL(window.location.href);
+        url.searchParams.set('event', persisted);
+        window.history.replaceState({}, '', url.toString());
       }
     }
+    // On the root route with no ?event=, currentEvent stays null and the
+    // event selector is shown; nothing is defaulted.
     setIsEventLoaded(true);
 
     // Listen for URL changes
     const handlePopState = () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const eventFromUrl = urlParams.get('event');
-      if (eventFromUrl) {
-        setCurrentEvent(eventFromUrl);
+      const params = new URLSearchParams(window.location.search);
+      const nextEvent = params.get('event');
+      if (nextEvent) {
+        setCurrentEvent(nextEvent);
+        persistEvent(nextEvent);
       }
     };
 
@@ -167,6 +212,7 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
 
   const handleSetCurrentEvent = (event: string) => {
     setCurrentEvent(event);
+    persistEvent(event);
     // Update URL query parameter when event changes
     const url = new URL(window.location.href);
     url.searchParams.set('event', event);

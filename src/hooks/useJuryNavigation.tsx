@@ -99,8 +99,9 @@ export const useJuryNavigation = ({
       currentQuestion: number;
       hasFinishedEvaluating: boolean;
     }) => {
+      if (!currentEvent) throw new Error('No event selected');
       if (!juryId) return;
-      await updateJuryProgress(currentEvent || 'demo-2026', juryId, currentQuestion, hasFinishedEvaluating);
+      await updateJuryProgress(currentEvent, juryId, currentQuestion, hasFinishedEvaluating);
     },
     onSuccess: () => {
       // Removed invalidateQueries for jury data since we use real-time Firebase updates

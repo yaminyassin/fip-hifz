@@ -256,6 +256,7 @@ function RandomizerRoute() {
   const category = getCategory(participant, evaluationConfig);
 
   const handleStartAllQuestions = useCallback(async () => {
+    if (!currentEvent) return;
     if (!participant || isGeneratingAll || !category) return;
 
     const orderedSlots = category.questionSlots
@@ -271,7 +272,7 @@ function RandomizerRoute() {
     console.log(t("randomizer.messages.generationStartingTitle"));
 
     // Fetch previous questions to avoid duplicates
-    const previousQuestions = await getPreviousQuestions(currentEvent || 'demo-2026');
+    const previousQuestions = await getPreviousQuestions(currentEvent);
     console.log(
       `Fetched ${previousQuestions.length} previous questions to avoid`
     );
@@ -330,7 +331,7 @@ function RandomizerRoute() {
 
     // Replace all previous questions with the newly generated ones in the app_config collection
     try {
-      await addToPreviousQuestions(currentEvent || 'demo-2026', generatedPages);
+      await addToPreviousQuestions(currentEvent, generatedPages);
       console.log(
         "Successfully replaced previous questions with newly generated questions in app_config"
       );
