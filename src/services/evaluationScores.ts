@@ -1,12 +1,13 @@
 import {
   collection,
-  deleteDoc,
   doc,
   getDocs,
   query,
-  setDoc,
+  runTransaction,
   where,
+  writeBatch,
   Timestamp,
+  type DocumentReference,
   type Firestore,
 } from "firebase/firestore";
 import { firestore } from "@/main";
@@ -18,7 +19,11 @@ import {
   type QuestionValueMap,
 } from "@/evaluation/scoringEngine";
 import { computeAssignmentHash } from "@/evaluation/configHelpers";
+import { canonicalStringify, sha256Hex } from "@/evaluation/configHash";
 import type { EventEvaluationConfigV2 } from "@/evaluation/types";
+
+/** Maximum operations Firestore accepts in a single batched write. */
+const FIRESTORE_BATCH_LIMIT = 500;
 
 /**
  * Firestore access for the V2 score/adjustment collections (design doc §4,
@@ -33,19 +38,89 @@ import type { EventEvaluationConfigV2 } from "@/evaluation/types";
 export const EVALUATION_SCORES_COLLECTION = "evaluationScores";
 export const JURY_EVALUATION_INPUTS_COLLECTION = "juryEvaluationInputs";
 
+/** Document IDs are a bounded, injective hash of the full logical key rather
+ * than raw concatenation: `("a_b","c",1)` and `("a","b_c",1)` must not collide
+ * onto one document, and a long jury id must not overflow Firestore's
+ * 1500-byte id limit. The identifying fields are still stored on the document. */
 export function evaluationScoreDocId(
   participantId: string,
   juryId: string,
   questionNumber: number
-): string {
-  return `${participantId}_${juryId}_${questionNumber}`;
+): Promise<string> {
+  return sha256Hex(canonicalStringify({ participantId, juryId, questionNumber }));
 }
 
 export function juryEvaluationInputsDocId(
   participantId: string,
   juryId: string
-): string {
-  return `${participantId}_${juryId}`;
+): Promise<string> {
+  return sha256Hex(canonicalStringify({ participantId, juryId }));
+}
+
+interface EvaluationWriteExpectation {
+  categoryId: string;
+  assignedQuestions: readonly number[];
+  question?: {
+    number: number;
+    pageNumber: number;
+  };
+}
+
+function assignedQuestionsMatch(
+  current: unknown,
+  expected: readonly number[]
+): boolean {
+  return Array.isArray(current) && current.length === expected.length &&
+    current.every((value, index) => value === expected[index]);
+}
+
+async function writeEvaluationDocument(
+  db: Firestore,
+  eventId: string,
+  participantId: string,
+  expectation: EvaluationWriteExpectation,
+  collectionName: string,
+  documentId: string,
+  data: Record<string, unknown>
+): Promise<void> {
+  const participantRef = doc(
+    collection(db, getEventCollectionPath(eventId, "participants")),
+    participantId
+  );
+  const evaluationRef = doc(
+    collection(db, getEventCollectionPath(eventId, collectionName)),
+    documentId
+  );
+
+  await runTransaction(db, async (transaction) => {
+    const participantSnapshot = await transaction.get(participantRef);
+    if (!participantSnapshot.exists()) {
+      throw new Error(`Participant ${JSON.stringify(participantId)} does not exist`);
+    }
+    const participant = participantSnapshot.data();
+    if (participant.category !== expectation.categoryId) {
+      throw new Error("Participant category changed before the evaluation write completed");
+    }
+    if (!assignedQuestionsMatch(
+      participant.assignedQuestions,
+      expectation.assignedQuestions
+    )) {
+      throw new Error("Participant assigned questions changed before the evaluation write completed");
+    }
+    if (expectation.question &&
+      participant.assignedQuestions[expectation.question.number - 1] !==
+        expectation.question.pageNumber) {
+      throw new Error("Participant question page changed before the evaluation write completed");
+    }
+    // Preserve the original createdAt on re-saves; only stamp it on first write.
+    const existing = await transaction.get(evaluationRef);
+    const now = Timestamp.now();
+    const timestamps = existing.exists()
+      ? { updatedAt: now }
+      : { createdAt: now, updatedAt: now };
+    transaction.set(evaluationRef, { ...data, ...timestamps }, { merge: true });
+    transaction.update(participantRef, { evaluationStarted: true });
+  });
 }
 
 export interface SaveEvaluationScoreParams {
@@ -80,13 +155,20 @@ export async function saveEvaluationScore(
     params.assignedQuestions
   );
 
-  const docRef = doc(
-    collection(db, getEventCollectionPath(params.eventId, EVALUATION_SCORES_COLLECTION)),
-    evaluationScoreDocId(params.participantId, params.juryId, params.questionNumber)
-  );
-
-  await setDoc(
-    docRef,
+  await writeEvaluationDocument(
+    db,
+    params.eventId,
+    params.participantId,
+    {
+      categoryId: params.categoryId,
+      assignedQuestions: params.assignedQuestions,
+      question: {
+        number: params.questionNumber,
+        pageNumber: params.pageNumber,
+      },
+    },
+    EVALUATION_SCORES_COLLECTION,
+    await evaluationScoreDocId(params.participantId, params.juryId, params.questionNumber),
     {
       schemaVersion: 2,
       participantId: params.participantId,
@@ -100,10 +182,7 @@ export async function saveEvaluationScore(
       assignmentHash,
       values: params.values,
       source: { kind: "nativeV2" },
-      updatedAt: Timestamp.now(),
-      createdAt: Timestamp.now(),
-    },
-    { merge: true }
+    }
   );
 }
 
@@ -134,13 +213,16 @@ export async function saveJuryEvaluationInputs(
     params.assignedQuestions
   );
 
-  const docRef = doc(
-    collection(db, getEventCollectionPath(params.eventId, JURY_EVALUATION_INPUTS_COLLECTION)),
-    juryEvaluationInputsDocId(params.participantId, params.juryId)
-  );
-
-  await setDoc(
-    docRef,
+  await writeEvaluationDocument(
+    db,
+    params.eventId,
+    params.participantId,
+    {
+      categoryId: params.categoryId,
+      assignedQuestions: params.assignedQuestions,
+    },
+    JURY_EVALUATION_INPUTS_COLLECTION,
+    await juryEvaluationInputsDocId(params.participantId, params.juryId),
     {
       schemaVersion: 2,
       participantId: params.participantId,
@@ -152,25 +234,37 @@ export async function saveJuryEvaluationInputs(
       assignmentHash,
       values: params.values,
       source: { kind: "nativeV2" },
-      updatedAt: Timestamp.now(),
-      createdAt: Timestamp.now(),
-    },
-    { merge: true }
+    }
   );
 }
 
-/** Deletes every evaluationScores doc for a (participant, jury) pair — used
- * when a participant's assigned questions change and prior in-progress
- * scores must not survive the reassignment. */
+/** Deletes every score AND participant-adjustment doc for a (participant, jury)
+ * pair — used when a participant's assigned questions change so no
+ * in-progress evaluation (question scores or the overall-bonus adjustment)
+ * survives the reassignment under a now-stale assignmentHash.
+ *
+ * Each batch commit is atomic; a clear spanning multiple batches is not atomic
+ * across batches, but deletion is idempotent so an interrupted clear completes
+ * on a re-run. */
 export async function clearEvaluationScores(
   eventId: string,
   participantId: string,
   juryId: string,
   db: Firestore = firestore
 ): Promise<void> {
-  const scoresRef = collection(db, getEventCollectionPath(eventId, EVALUATION_SCORES_COLLECTION));
-  const snapshot = await getDocs(
-    query(scoresRef, where("participantId", "==", participantId), where("juryId", "==", juryId))
-  );
-  await Promise.all(snapshot.docs.map((d) => deleteDoc(d.ref)));
+  const refs: DocumentReference[] = [];
+  for (const collectionName of [EVALUATION_SCORES_COLLECTION, JURY_EVALUATION_INPUTS_COLLECTION]) {
+    const collectionRef = collection(db, getEventCollectionPath(eventId, collectionName));
+    const snapshot = await getDocs(
+      query(collectionRef, where("participantId", "==", participantId), where("juryId", "==", juryId))
+    );
+    refs.push(...snapshot.docs.map((d) => d.ref));
+  }
+  for (let start = 0; start < refs.length; start += FIRESTORE_BATCH_LIMIT) {
+    const batch = writeBatch(db);
+    for (const ref of refs.slice(start, start + FIRESTORE_BATCH_LIMIT)) {
+      batch.delete(ref);
+    }
+    await batch.commit();
+  }
 }

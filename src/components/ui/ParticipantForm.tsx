@@ -16,24 +16,14 @@ import {
 } from "@/components/shadcn/select";
 import { Upload, X } from "lucide-react";
 import { getAvailableCountries, getFlagForCountry } from "@/lib/countryUtils";
-
-// Available categories based on the files in the categories folder
-const AVAILABLE_CATEGORIES = [
-  "A1",
-  "A2",
-  "B1",
-  "B2",
-  "C1",
-  "C2",
-  "D1",
-  "D2",
-  "M1",
-  "M2",
-  "X",
-  "Y",
-  "W1",
-  "W2",
-];
+import {
+  generateParticipantId,
+  participantIdValidationError,
+} from "@/lib/participantId";
+import {
+  isParticipantCategoryValid,
+  participantCategoryOptions,
+} from "./participantFormCategories";
 
 // Available days and times for scheduling
 const AVAILABLE_DAYS = [
@@ -63,8 +53,13 @@ export const ParticipantForm = ({
   onCancel,
 }: ParticipantFormProps) => {
   const { t } = useTranslation();
-  const { currentEvent } = useEvent();
+  const {
+    currentEvent,
+    evaluationConfig,
+    evaluationConfigStatus,
+  } = useEvent();
   const queryClient = useQueryClient();
+  const categoryOptions = participantCategoryOptions(evaluationConfig);
   const isEditing = !!participant;
 
   // Form state
@@ -110,7 +105,7 @@ export const ParticipantForm = ({
           if (base64Regex.test(participant.photo.replace(/\s/g, ""))) {
             return `data:image/jpeg;base64,${participant.photo}`;
           }
-        } catch (e) {
+        } catch {
           console.warn("Invalid photo data for participant:", participant.name);
         }
       }
@@ -288,6 +283,11 @@ export const ParticipantForm = ({
 
     if (!formData.name.trim()) {
       newErrors.name = t("admin.participants.errors.nameRequired");
+    } else if (!isEditing) {
+      // Editing keeps the existing document id (no rename), so only a new
+      // participant's name has to yield a valid id.
+      const idError = participantIdValidationError(generateParticipantId(formData.name));
+      if (idError) newErrors.name = idError;
     }
 
     if (formData.age <= 0) {
@@ -300,6 +300,13 @@ export const ParticipantForm = ({
 
     if (!formData.category.trim()) {
       newErrors.category = t("admin.participants.errors.categoryRequired");
+    } else if (
+      evaluationConfigStatus !== "ready" ||
+      !isParticipantCategoryValid(evaluationConfig, formData.category)
+    ) {
+      newErrors.category = t("admin.participants.errors.categoryInvalid", {
+        defaultValue: "Select a category from this event's evaluation config",
+      });
     }
 
     // Validate email if provided
@@ -314,27 +321,24 @@ export const ParticipantForm = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    if (!validateForm() || !currentEvent) {
       return;
     }
 
     try {
       if (isEditing && participant) {
-        await updateParticipant(
-          currentEvent || "demo-2026",
-          participant.id,
-          formData
-        );
+        await updateParticipant(currentEvent, participant.id, formData);
       } else {
-        await createParticipant(currentEvent || "demo-2026", formData);
+        await createParticipant(currentEvent, formData);
       }
 
       // Invalidate participants query to refresh data
       queryClient.invalidateQueries({ queryKey: ["participants"] });
       onSuccess();
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       console.error("Error saving participant:", error);
-      // Handle error (could add error state and display message)
+      setErrors((current) => ({ ...current, submit: message }));
     }
   };
 
@@ -444,14 +448,15 @@ export const ParticipantForm = ({
           <Select
             value={formData.category}
             onValueChange={handleCategoryChange}
+            disabled={evaluationConfigStatus !== "ready"}
           >
             <SelectTrigger className={errors.category ? "border-red-500" : ""}>
               <SelectValue placeholder="Select a category" />
             </SelectTrigger>
             <SelectContent>
-              {AVAILABLE_CATEGORIES.map((category) => (
-                <SelectItem key={category} value={category}>
-                  {category}
+              {categoryOptions.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -597,6 +602,8 @@ export const ParticipantForm = ({
           </Select>
         </div>
       </div>
+
+      {errors.submit && <p className="text-red-500 text-sm">{errors.submit}</p>}
 
       <div className="flex justify-end space-x-4 pt-4">
         <Button

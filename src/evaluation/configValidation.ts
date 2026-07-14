@@ -22,6 +22,337 @@ const isFiniteNumber = (value: unknown): value is number =>
 const isFiniteInteger = (value: unknown): value is number =>
   isFiniteNumber(value) && Number.isInteger(value);
 
+const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+function rejectUnknownKeys(
+  value: Record<string, unknown>,
+  allowedKeys: readonly string[],
+  label: string,
+  push: (message: string) => void
+): void {
+  const allowed = new Set(allowedKeys);
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) push(`${label}.${key} is not a known field`);
+  }
+}
+
+/** Allowed keys per override-action discriminant, so a stray field (e.g. a
+ * `score` on a `voidQuestion`) can't slip into the scoring fingerprint. An
+ * unrecognized kind gets the union so the semantic pass reports the one clear
+ * "unknown action kind" error instead of noisy per-field errors. */
+function actionKeysForKind(kind: unknown): readonly string[] {
+  switch (kind) {
+    case "voidQuestion":
+      return ["kind"];
+    case "setSectionImpact":
+      return ["kind", "questionTypeId", "impact"];
+    case "setQuestionScore":
+      return ["kind", "score"];
+    default:
+      return ["kind", "questionTypeId", "impact", "score"];
+  }
+}
+
+export function isTimestampLike(value: unknown): boolean {
+  if (!isPlainRecord(value)) return false;
+  const seconds = value.seconds ?? value._seconds;
+  const nanoseconds = value.nanoseconds ?? value._nanoseconds;
+  return (
+    typeof value.toMillis === "function" &&
+    typeof value.toDate === "function" &&
+    isFiniteInteger(seconds) &&
+    isFiniteInteger(nanoseconds) &&
+    nanoseconds >= 0 &&
+    nanoseconds < 1_000_000_000
+  );
+}
+
+function validateLocalizedText(
+  value: unknown,
+  label: string,
+  push: (message: string) => void
+): void {
+  if (!isPlainRecord(value)) {
+    push(`${label} must be an object`);
+    return;
+  }
+  if (typeof value.default !== "string" || value.default.trim() === "") {
+    push(`${label}.default must be a non-empty string`);
+  }
+  if (value.translations !== undefined) {
+    if (!isPlainRecord(value.translations)) {
+      push(`${label}.translations must be an object`);
+    } else if (Object.values(value.translations).some((translation) => typeof translation !== "string")) {
+      push(`${label}.translations values must be strings`);
+    }
+  }
+}
+
+function validateInputShape(
+  value: unknown,
+  label: string,
+  push: (message: string) => void
+): void {
+  if (!isPlainRecord(value)) {
+    push(`${label} must be an object`);
+    return;
+  }
+  rejectUnknownKeys(
+    value,
+    ["id", "label", "order", "control", "min", "max", "step", "role", "perInputWeight"],
+    label,
+    push
+  );
+  if (typeof value.id !== "string" || value.id === "") push(`${label}.id must be a non-empty string`);
+  validateLocalizedText(value.label, `${label}.label`, push);
+  if (!isFiniteInteger(value.order)) push(`${label}.order must be a finite integer`);
+  if (!["integerCounter", "decimalCounter", "slider"].includes(String(value.control))) {
+    push(`${label}.control must be a known control`);
+  }
+  if (value.role !== "scored" && value.role !== "informational") {
+    push(`${label}.role must be scored or informational`);
+  }
+}
+
+function validateConfigShape(
+  value: unknown,
+  push: (message: string) => void
+): value is EventEvaluationConfigV2 {
+  if (!isPlainRecord(value)) {
+    push("config is not an object");
+    return false;
+  }
+  rejectUnknownKeys(
+    value,
+    [
+      "schemaVersion",
+      "configVersion",
+      "contentHash",
+      "scoringFingerprint",
+      "algorithmVersion",
+      "scoring",
+      "categories",
+      "questionTypes",
+      "overrideRules",
+      "participantAdjustments",
+      "provisionedAt",
+    ],
+    "config",
+    push
+  );
+  if (typeof value.contentHash !== "string" || value.contentHash === "") {
+    push("contentHash must be a non-empty string");
+  }
+  if (!isTimestampLike(value.provisionedAt)) push("provisionedAt must be a Firestore Timestamp");
+
+  const scoring = value.scoring;
+  if (!isPlainRecord(scoring)) {
+    push("scoring section is required");
+  } else {
+    rejectUnknownKeys(
+      scoring,
+      [
+        "baseScorePerQuestion",
+        "questionBounds",
+        "finalBounds",
+        "missingQuestionPolicy",
+        "outputDecimals",
+        "rounding",
+      ],
+      "scoring",
+      push
+    );
+    if (scoring.outputDecimals !== 2) push("scoring.outputDecimals must be exactly 2");
+    if (scoring.rounding !== "ecmascript-math-round") {
+      push('scoring.rounding must be "ecmascript-math-round"');
+    }
+    if (!isPlainRecord(scoring.questionBounds)) push("scoring.questionBounds must be an object");
+    if (!isPlainRecord(scoring.finalBounds)) push("scoring.finalBounds must be an object");
+  }
+
+  const categories = value.categories;
+  if (!isPlainRecord(categories)) {
+    push("categories is required and must be an object");
+  } else {
+    for (const [key, category] of Object.entries(categories)) {
+      const label = `categories.${key}`;
+      if (!isPlainRecord(category)) {
+        push(`${label} must be an object`);
+        continue;
+      }
+      rejectUnknownKeys(
+        category,
+        ["id", "groupId", "label", "order", "questionCount", "questionSlots", "assetRef"],
+        label,
+        push
+      );
+      validateLocalizedText(category.label, `${label}.label`, push);
+      if (category.groupId !== undefined && typeof category.groupId !== "string") {
+        push(`${label}.groupId must be a string`);
+      }
+      if (!Array.isArray(category.questionSlots)) {
+        push(`${label}.questionSlots must be an array`);
+      } else {
+        category.questionSlots.forEach((slot, index) => {
+          const slotLabel = `${label}.questionSlots[${index}]`;
+          if (!isPlainRecord(slot)) {
+            push(`${slotLabel} must be an object`);
+            return;
+          }
+          rejectUnknownKeys(
+            slot,
+            ["questionNumber", "pageRange", "sourceJuzRange"],
+            slotLabel,
+            push
+          );
+          if (!isFiniteInteger(slot.questionNumber)) push(`${slotLabel}.questionNumber must be a finite integer`);
+          if (!isPlainRecord(slot.pageRange)) push(`${slotLabel}.pageRange must be an object`);
+          if (slot.sourceJuzRange !== undefined) {
+            if (!isPlainRecord(slot.sourceJuzRange)) {
+              push(`${slotLabel}.sourceJuzRange must be an object`);
+            } else if (
+              !isFiniteInteger(slot.sourceJuzRange.start) ||
+              !isFiniteInteger(slot.sourceJuzRange.end) ||
+              slot.sourceJuzRange.start < 1 ||
+              slot.sourceJuzRange.start > slot.sourceJuzRange.end ||
+              slot.sourceJuzRange.end > 30
+            ) {
+              push(`${slotLabel}.sourceJuzRange must satisfy 1 <= start <= end <= 30`);
+            }
+          }
+        });
+      }
+    }
+  }
+
+  const questionTypes = value.questionTypes;
+  if (!isPlainRecord(questionTypes)) {
+    push("questionTypes is required and must be an object");
+  } else {
+    for (const [key, questionType] of Object.entries(questionTypes)) {
+      const label = `questionTypes.${key}`;
+      if (!isPlainRecord(questionType)) {
+        push(`${label} must be an object`);
+        continue;
+      }
+      rejectUnknownKeys(
+        questionType,
+        [
+          "id",
+          "label",
+          "order",
+          "inputCount",
+          "inputs",
+          "operation",
+          "perSectionDeductionCap",
+          "perSectionAdditionCap",
+        ],
+        label,
+        push
+      );
+      validateLocalizedText(questionType.label, `${label}.label`, push);
+      if (questionType.operation !== "subtract" && questionType.operation !== "add") {
+        push(`${label}.operation must be add or subtract`);
+      }
+      if (!Array.isArray(questionType.inputs)) {
+        push(`${label}.inputs must be an array`);
+      } else {
+        questionType.inputs.forEach((input, index) => validateInputShape(input, `${label}.inputs[${index}]`, push));
+      }
+    }
+  }
+
+  if (!Array.isArray(value.overrideRules)) {
+    push("overrideRules is required and must be an array");
+  } else {
+    value.overrideRules.forEach((rule, index) => {
+      const label = `overrideRules[${index}]`;
+      if (!isPlainRecord(rule)) {
+        push(`${label} must be an object`);
+        return;
+      }
+      rejectUnknownKeys(rule, ["id", "priority", "when", "action"], label, push);
+      if (typeof rule.id !== "string" || rule.id.length === 0) {
+        push(`${label}.id must be a non-empty string`);
+      }
+      if (!isPlainRecord(rule.when)) {
+        push(`${label}.when must be an object`);
+      } else {
+        rejectUnknownKeys(rule.when, ["kind", "conditions"], `${label}.when`, push);
+        if (!Array.isArray(rule.when.conditions)) {
+          push(`${label}.when.conditions must be an array`);
+        } else {
+          rule.when.conditions.forEach((condition, conditionIndex) => {
+            const conditionLabel = `${label}.when.conditions[${conditionIndex}]`;
+            if (!isPlainRecord(condition)) {
+              push(`${conditionLabel} must be an object`);
+              return;
+            }
+            rejectUnknownKeys(condition, ["input", "operator", "value"], conditionLabel, push);
+            if (!isPlainRecord(condition.input)) {
+              push(`${conditionLabel}.input must be an object`);
+            } else {
+              rejectUnknownKeys(
+                condition.input,
+                ["questionTypeId", "inputId"],
+                `${conditionLabel}.input`,
+                push
+              );
+            }
+          });
+        }
+      }
+      if (!isPlainRecord(rule.action)) {
+        push(`${label}.action must be an object`);
+      } else {
+        rejectUnknownKeys(rule.action, actionKeysForKind(rule.action.kind), `${label}.action`, push);
+      }
+    });
+  }
+
+  const adjustments = value.participantAdjustments;
+  if (!isPlainRecord(adjustments)) {
+    push("participantAdjustments is required and must be an object");
+  } else {
+    for (const [key, adjustment] of Object.entries(adjustments)) {
+      const label = `participantAdjustments.${key}`;
+      if (!isPlainRecord(adjustment)) {
+        push(`${label} must be an object`);
+        continue;
+      }
+      rejectUnknownKeys(
+        adjustment,
+        [
+          "id",
+          "label",
+          "order",
+          "scope",
+          "inputCount",
+          "inputs",
+          "operation",
+          "deductionCap",
+          "additionCap",
+        ],
+        label,
+        push
+      );
+      validateLocalizedText(adjustment.label, `${label}.label`, push);
+      if (adjustment.scope !== "participantJury") push(`${label}.scope must be participantJury`);
+      if (adjustment.operation !== "subtract" && adjustment.operation !== "add") {
+        push(`${label}.operation must be add or subtract`);
+      }
+      if (!Array.isArray(adjustment.inputs)) {
+        push(`${label}.inputs must be an array`);
+      } else {
+        adjustment.inputs.forEach((input, index) => validateInputShape(input, `${label}.inputs[${index}]`, push));
+      }
+    }
+  }
+
+  return true;
+}
+
 /**
  * Validates an `EventEvaluationConfigV2` against every rule in
  * docs/migrations/phase-1-evaluation-model.md section 2 ("Config
@@ -35,10 +366,11 @@ export function validateEvaluationConfig(
   const errors: string[] = [];
   const push = (message: string) => errors.push(message);
 
-  if (typeof input !== "object" || input === null) {
-    return { ok: false, errors: ["config is not an object"], config: null };
+  if (!validateConfigShape(input, push)) {
+    return { ok: false, errors, config: null };
   }
-  const config = input as Partial<EventEvaluationConfigV2>;
+  if (errors.length > 0) return { ok: false, errors, config: null };
+  const config = input as EventEvaluationConfigV2;
 
   if (config.schemaVersion !== 2) {
     push("schemaVersion must be exactly 2");
@@ -493,8 +825,13 @@ export function validateEvaluationConfig(
 
   // --- size budget ---
   if (errors.length === 0) {
+    // `provisionedAt` is operational metadata, not config content. Excluding it
+    // also keeps this measurement independent of Web vs Admin Timestamp internals.
+    const sizeInput = Object.fromEntries(
+      Object.entries(config).filter(([key]) => key !== "provisionedAt")
+    );
     const byteLength = new TextEncoder().encode(
-      canonicalStringify(config)
+      canonicalStringify(sizeInput)
     ).length;
     if (byteLength > MAX_CONFIG_BYTES) {
       push(

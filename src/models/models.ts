@@ -36,6 +36,7 @@ export type Participant = {
   photo?: string; // Base64 encoded photo of the participant
   assignedQuestions: number[]; // Array of assigned question page numbers
   activeQuestion: number; // The page number the participant is currently reciting
+  evaluationStarted?: boolean;
 };
 
 export type Jury = {

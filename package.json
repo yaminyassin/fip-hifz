@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start-quran-web": "python scripts/quran_page_viewer_web.py",
-    "insert-participants": "export GOOGLE_APPLICATION_CREDENTIALS=google-services-key.json && python scripts/import_participants_from_csv.py",
+    "insert-participants": "tsx scripts/import-participants.mts",
     "get-quran-images": "export GOOGLE_APPLICATION_CREDENTIALS=google-services-key.json && python scripts/get_quran_images.py",
     "dev": "vite",
     "build": "tsc -b && vite build",

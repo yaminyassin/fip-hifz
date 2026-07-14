@@ -2,90 +2,53 @@ import { firestore } from "@/main";
 import { Participant } from "@/models/models";
 import { getEventCollectionPath } from "@/utils/firebaseUtils";
 import {
+  assertValidParticipantId,
+  generateParticipantId,
+} from "@/lib/participantId";
+import {
+  EVALUATION_SCORES_COLLECTION,
+  JURY_EVALUATION_INPUTS_COLLECTION,
+} from "@/services/evaluationScores";
+import {
   collection,
-  deleteDoc,
   doc,
-  getDoc,
-  setDoc,
   serverTimestamp,
   updateDoc,
   query,
   getDocs,
+  runTransaction,
+  where,
   writeBatch,
 } from "firebase/firestore";
 
-type ParticipantInput = Omit<Participant, "id" | "assignedQuestions"> & {
+type ParticipantInput = Omit<
+  Participant,
+  "id" | "assignedQuestions" | "evaluationStarted"
+> & {
   assignedQuestions?: number[];
 };
 
-/**
- * Converts a participant name to a valid Firestore document ID
- * @param name The participant's name
- * @returns A lowercase, underscore-separated document ID
- */
-const generateParticipantId = (name: string): string => {
-  return (
-    name
-      .toLowerCase()
-      .trim()
-      // Replace spaces with underscores
-      .replace(/\s+/g, "_")
-      // Remove any characters that aren't letters, numbers, or underscores
-      .replace(/[^a-z0-9_]/g, "")
-      // Ensure it doesn't start or end with underscore
-      .replace(/^_+|_+$/g, "")
-      // Collapse multiple underscores into single ones
-      .replace(/_+/g, "_")
+const MAX_PARTICIPANT_ID_SUFFIX = 100;
+const FIRESTORE_BATCH_LIMIT = 500;
+
+function participantDocumentRef(eventId: string, participantId: string) {
+  return doc(
+    collection(firestore, getEventCollectionPath(eventId, "participants")),
+    participantId
   );
-};
+}
 
-/**
- * Generates a unique participant ID by checking for existing documents
- * @param eventId The event identifier
- * @param name The participant's name
- * @returns A unique document ID
- */
-const generateUniqueParticipantId = async (
+function participantEvaluationQuery(
   eventId: string,
-  name: string
-): Promise<string> => {
-  const baseId = generateParticipantId(name);
-
-  if (!baseId) {
-    throw new Error(
-      "Unable to generate valid document ID from participant name"
-    );
-  }
-
-  let participantId = baseId;
-  let counter = 1;
-
-  // Check if document already exists and add suffix if needed
-  while (true) {
-    const participantsCollection = collection(
-      firestore,
-      getEventCollectionPath(eventId, "participants")
-    );
-    const participantRef = doc(participantsCollection, participantId);
-    const docSnapshot = await getDoc(participantRef);
-
-    if (!docSnapshot.exists()) {
-      // Found a unique ID
-      return participantId;
-    }
-
-    // Document exists, try with a suffix
-    participantId = `${baseId}_${counter}`;
-    counter++;
-
-    // Safety check to prevent infinite loop (though very unlikely)
-    if (counter > 100) {
-      throw new Error(
-        "Unable to generate unique participant ID after 100 attempts"
-      );
-    }
-  }
-};
+  collectionName: string,
+  participantId: string
+) {
+  const collectionRef = collection(
+    firestore,
+    getEventCollectionPath(eventId, collectionName)
+  );
+  return query(collectionRef, where("participantId", "==", participantId));
+}
 
 /**
  * Creates a new participant in Firestore
@@ -97,30 +60,36 @@ export const createParticipant = async (
   eventId: string,
   participant: ParticipantInput
 ): Promise<string> => {
-  // Generate unique document ID from participant name
-  const participantId = await generateUniqueParticipantId(
-    eventId,
-    participant.name
-  );
+  const baseId = generateParticipantId(participant.name);
+  assertValidParticipantId(baseId);
 
-  const participantsCollection = collection(
-    firestore,
-    getEventCollectionPath(eventId, "participants")
-  );
-  const participantRef = doc(participantsCollection, participantId);
-
-  // Default values for a new participant
   const newParticipant = {
     ...participant,
     assignedQuestions: participant.assignedQuestions || [],
     isDone: participant.isDone || false,
     isActive: participant.isActive || false,
+    evaluationStarted: false,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
 
-  await setDoc(participantRef, newParticipant);
-  return participantId;
+  // Two distinct people can share a normalized name; allocate the first free
+  // base/base_1/base_2 id. The transaction re-checks occupancy so a concurrent
+  // create can't hand out the same id.
+  return runTransaction(firestore, async (transaction) => {
+    for (let suffix = 0; suffix <= MAX_PARTICIPANT_ID_SUFFIX; suffix++) {
+      const candidateId = suffix === 0 ? baseId : `${baseId}_${suffix}`;
+      const candidateRef = participantDocumentRef(eventId, candidateId);
+      const existing = await transaction.get(candidateRef);
+      if (!existing.exists()) {
+        transaction.set(candidateRef, newParticipant);
+        return candidateId;
+      }
+    }
+    throw new Error(
+      `Unable to allocate a unique participant id for base ${JSON.stringify(baseId)}`
+    );
+  });
 };
 
 /**
@@ -134,33 +103,64 @@ export const updateParticipant = async (
   id: string,
   participant: ParticipantInput
 ): Promise<void> => {
-  const participantsCollection = collection(
-    firestore,
-    getEventCollectionPath(eventId, "participants")
-  );
-  const participantRef = doc(participantsCollection, id);
+  const participantRef = participantDocumentRef(eventId, id);
 
-  await updateDoc(participantRef, {
-    ...participant,
-    updatedAt: serverTimestamp(),
+  await runTransaction(firestore, async (transaction) => {
+    const currentSnapshot = await transaction.get(participantRef);
+    if (!currentSnapshot.exists()) throw new Error(`Participant ${JSON.stringify(id)} does not exist`);
+    const current = currentSnapshot.data() as Participant;
+    if (current.category !== participant.category) {
+      const hasAssignments = current.assignedQuestions.length > 0;
+      const hasProgress = current.activeQuestion !== 0 || current.isDone;
+      if (hasAssignments || hasProgress || current.evaluationStarted === true) {
+        throw new Error(
+          "Category cannot be changed after questions have been assigned or evaluation has started"
+        );
+      }
+    }
+    transaction.update(participantRef, {
+      ...participant,
+      updatedAt: serverTimestamp(),
+    });
   });
 };
 
 /**
- * Deletes a participant from Firestore
- * @param eventId The event identifier
- * @param id The ID of the participant to delete
+ * Deletes a participant and cascades to its evaluation score / jury-input docs
+ * so a later participant reusing the same deterministic id can't resurrect a
+ * previous evaluation. Not atomic with concurrent evaluation writes: a score
+ * written between the reads and the deletes can be orphaned (accepted for this
+ * single-operator offline admin flow).
  */
 export const deleteParticipant = async (
   eventId: string,
   id: string
 ): Promise<void> => {
-  const participantsCollection = collection(
-    firestore,
-    getEventCollectionPath(eventId, "participants")
-  );
-  const participantRef = doc(participantsCollection, id);
-  await deleteDoc(participantRef);
+  const participantRef = participantDocumentRef(eventId, id);
+  const [evaluationScores, juryEvaluationInputs] = await Promise.all([
+    getDocs(participantEvaluationQuery(eventId, EVALUATION_SCORES_COLLECTION, id)),
+    getDocs(participantEvaluationQuery(eventId, JURY_EVALUATION_INPUTS_COLLECTION, id)),
+  ]);
+
+  // Dependents first, the participant doc LAST: if a later batch fails, the
+  // participant still exists, so a re-run finds and clears the leftovers —
+  // rather than deleting the participant and orphaning scores under an id that
+  // can be reused.
+  const refs = [
+    ...evaluationScores.docs.map((snapshot) => snapshot.ref),
+    ...juryEvaluationInputs.docs.map((snapshot) => snapshot.ref),
+    participantRef,
+  ];
+
+  // Chunk to Firestore's per-batch write limit so a large evaluation history
+  // can't push the delete past 500 ops and fail wholesale.
+  for (let start = 0; start < refs.length; start += FIRESTORE_BATCH_LIMIT) {
+    const batch = writeBatch(firestore);
+    for (const ref of refs.slice(start, start + FIRESTORE_BATCH_LIMIT)) {
+      batch.delete(ref);
+    }
+    await batch.commit();
+  }
 };
 
 /**

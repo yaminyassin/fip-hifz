@@ -1,5 +1,6 @@
 import {
   CANONICAL_CONFIG_HASH_FIELDS,
+  SCORING_FINGERPRINT_FIELDS,
   type EventEvaluationConfigV2,
 } from "./types";
 
@@ -22,7 +23,10 @@ function canonicalize(value: unknown): unknown {
     // seconds/nanoseconds shape rather than relying on key order.
     const record = value as Record<string, unknown>;
     const sortedKeys = Object.keys(record).sort();
-    const out: Record<string, unknown> = {};
+    // Null-prototype accumulator so an own "__proto__" key (a legal config
+    // record id from JSON/Firestore) becomes a real data property instead of
+    // invoking Object.prototype's setter and vanishing from the hash.
+    const out = Object.create(null) as Record<string, unknown>;
     for (const key of sortedKeys) {
       out[key] = canonicalize(record[key]);
     }
@@ -68,6 +72,18 @@ export async function computeConfigContentHash(
 ): Promise<string> {
   const canonicalInput = extractCanonicalHashInput(config);
   return sha256Hex(canonicalStringify(canonicalInput));
+}
+
+export async function computeScoringFingerprint(
+  config: Pick<
+    EventEvaluationConfigV2,
+    (typeof SCORING_FINGERPRINT_FIELDS)[number]
+  >
+): Promise<string> {
+  const input = Object.fromEntries(
+    SCORING_FINGERPRINT_FIELDS.map((field) => [field, config[field]])
+  );
+  return sha256Hex(canonicalStringify(input));
 }
 
 /** Recomputes the hash from a fully stamped config and compares it with the

@@ -1,11 +1,48 @@
 import { test, expect } from "@playwright/test";
-import { doc, getDoc, writeBatch } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  writeBatch,
+  type DocumentData,
+  type Firestore,
+  type QueryDocumentSnapshot,
+} from "firebase/firestore";
 import { seedAuthenticatedSession } from "./auth";
 import { getEmulatorFirestore } from "./firestoreTestClient";
 
 const EVENT_ID = "demo-2026";
 const JURY_ID = "jury-three";
 const PARTICIPANT_ID = "participant-active"; // Ahmad Al-Hafiz, category CAT_A, pages [27, 76]
+
+// Score/adjustment document IDs are an opaque hash of their logical key, so
+// tests locate them by their identifying fields rather than a reconstructed id.
+async function fetchScoreDoc(
+  firestore: Firestore,
+  questionNumber: number
+): Promise<QueryDocumentSnapshot<DocumentData> | undefined> {
+  const snap = await getDocs(query(
+    collection(firestore, "events", EVENT_ID, "evaluationScores"),
+    where("participantId", "==", PARTICIPANT_ID),
+    where("juryId", "==", JURY_ID),
+    where("questionNumber", "==", questionNumber)
+  ));
+  return snap.docs[0];
+}
+
+async function fetchAdjustmentDoc(
+  firestore: Firestore
+): Promise<QueryDocumentSnapshot<DocumentData> | undefined> {
+  const snap = await getDocs(query(
+    collection(firestore, "events", EVENT_ID, "juryEvaluationInputs"),
+    where("participantId", "==", PARTICIPANT_ID),
+    where("juryId", "==", JURY_ID)
+  ));
+  return snap.docs[0];
+}
 
 /**
  * End-to-end proof that the jury flow is entirely config-driven (design doc
@@ -87,10 +124,8 @@ test.describe("/jury: config-driven evaluation flow (demo-2026, CAT_A)", () => {
     // down, so no async write is left racing the next test.
     await expect
       .poll(async () => {
-        const snap = await getDoc(
-          doc(firestore, "events", EVENT_ID, "evaluationScores", `${PARTICIPANT_ID}_${JURY_ID}_1`)
-        );
-        return snap.exists() ? snap.data()?.values?.hifdh?.judge_correction : undefined;
+        const snap = await fetchScoreDoc(firestore, 1);
+        return snap ? snap.data()?.values?.hifdh?.judge_correction : undefined;
       })
       .toBe(3);
   });
@@ -113,10 +148,8 @@ test.describe("/jury: config-driven evaluation flow (demo-2026, CAT_A)", () => {
     // happened before the debounce timer would have fired.
     await expect
       .poll(async () => {
-        const snap = await getDoc(
-          doc(firestore, "events", EVENT_ID, "evaluationScores", `${PARTICIPANT_ID}_${JURY_ID}_1`)
-        );
-        return snap.exists() ? snap.data()?.values?.presentation?.fluency : undefined;
+        const snap = await fetchScoreDoc(firestore, 1);
+        return snap ? snap.data()?.values?.presentation?.fluency : undefined;
       })
       .toBe(1);
 
@@ -133,10 +166,8 @@ test.describe("/jury: config-driven evaluation flow (demo-2026, CAT_A)", () => {
     await page.getByRole("button", { name: "Fluency Decrease score" }).click();
     await expect
       .poll(async () => {
-        const snap = await getDoc(
-          doc(firestore, "events", EVENT_ID, "evaluationScores", `${PARTICIPANT_ID}_${JURY_ID}_1`)
-        );
-        return snap.exists() ? snap.data()?.values?.presentation?.fluency : undefined;
+        const snap = await fetchScoreDoc(firestore, 1);
+        return snap ? snap.data()?.values?.presentation?.fluency : undefined;
       })
       .toBe(0);
   });
@@ -152,10 +183,8 @@ test.describe("/jury: config-driven evaluation flow (demo-2026, CAT_A)", () => {
 
     await expect
       .poll(async () => {
-        const snap = await getDoc(
-          doc(firestore, "events", EVENT_ID, "evaluationScores", `${PARTICIPANT_ID}_${JURY_ID}_1`)
-        );
-        return snap.exists() ? snap.data()?.values?.presentation?.fluency : undefined;
+        const snap = await fetchScoreDoc(firestore, 1);
+        return snap ? snap.data()?.values?.presentation?.fluency : undefined;
       })
       .toBe(1);
 
@@ -168,29 +197,23 @@ test.describe("/jury: config-driven evaluation flow (demo-2026, CAT_A)", () => {
     await expect(page.getByRole("button", { name: /completed/i })).toBeVisible();
 
     // Q1 doc: score = 100 (base) + 1*1 (fluency weight 1, add) = 101.
-    const q1 = await getDoc(
-      doc(firestore, "events", EVENT_ID, "evaluationScores", `${PARTICIPANT_ID}_${JURY_ID}_1`)
-    );
-    expect(q1.exists()).toBe(true);
-    expect(q1.data()?.categoryId).toBe("CAT_A");
-    expect(q1.data()?.pageNumber).toBe(27);
-    expect(q1.data()?.values.presentation.fluency).toBe(1);
+    const q1 = await fetchScoreDoc(firestore, 1);
+    expect(q1).toBeDefined();
+    expect(q1?.data()?.categoryId).toBe("CAT_A");
+    expect(q1?.data()?.pageNumber).toBe(27);
+    expect(q1?.data()?.values.presentation.fluency).toBe(1);
 
     // Q2 doc: written when Finish saved the current (Q2) question at its
     // all-zero default.
-    const q2 = await getDoc(
-      doc(firestore, "events", EVENT_ID, "evaluationScores", `${PARTICIPANT_ID}_${JURY_ID}_2`)
-    );
-    expect(q2.exists()).toBe(true);
-    expect(q2.data()?.pageNumber).toBe(76);
+    const q2 = await fetchScoreDoc(firestore, 2);
+    expect(q2).toBeDefined();
+    expect(q2?.data()?.pageNumber).toBe(76);
 
     // The participant-level adjustment doc (overall bonus) is written too,
     // even at its default (0) value.
-    const adjustments = await getDoc(
-      doc(firestore, "events", EVENT_ID, "juryEvaluationInputs", `${PARTICIPANT_ID}_${JURY_ID}`)
-    );
-    expect(adjustments.exists()).toBe(true);
-    expect(adjustments.data()?.values.overall_bonus.bonus).toBe(0);
+    const adjustments = await fetchAdjustmentDoc(firestore);
+    expect(adjustments).toBeDefined();
+    expect(adjustments?.data()?.values.overall_bonus.bonus).toBe(0);
 
     // Jury progress reflects completion.
     const juryDoc = await getDoc(doc(firestore, "events", EVENT_ID, "jury", JURY_ID));

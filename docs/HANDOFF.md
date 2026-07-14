@@ -18,7 +18,7 @@ The program is defined in **`PROMPT.md`** (10 work items, run as phases with an 
 | `5748694` | Phase 1a engine trial (with Lisbon parity — later superseded) |
 | `476b8ea` | **Phase 1 greenfield** — the current, per-event config-driven evaluation model |
 
-**Current head is `476b8ea`.** `npx tsc -b` is clean; `npm run test:unit` = 75/75; `npm run test:e2e:emulator` = 18/18.
+**Current committed head is `476b8ea`.** A large **uncommitted** working-tree change (see §11) then replaced the participant importer and hardened the greenfield reader/scoring path. With that change: `npx tsc -b` is clean; `npm run test:unit` = **174**; `npm run test:e2e:emulator` = **19/19**; ESLint on every changed file is clean. Nothing new is committed yet.
 
 ---
 
@@ -109,8 +109,8 @@ From the user's global config: high-value design & the hardest reasoning → **g
 ## 8. What's next (pick up here)
 
 **Immediate / small:**
-- (Optional) Re-run the **gpt-5.6-sol adversarial review** on `476b8ea` once Codex background jobs are stable, to restore the full two-model gate on the greenfield commit.
-- Reconcile `scripts/import_participants_from_csv.py` field shape to the V2 event-scoped model (it writes `events/{id}/participants` but its fields predate V2). Noted in `docs/migrations/phase-1-evaluation-model.md` item 13.
+- **DONE (uncommitted, see §11):** the participant importer was reconciled to the V2 model — `scripts/import_participants_from_csv.py` is deleted and replaced by a fail-closed TypeScript CLI `scripts/import-participants.mts`.
+- Commit the §11 working-tree change once reviewed. It was gated by opus + fable + hand-verification + the full test suite; **gpt-5.6-sol was unavailable this session (hard usage-limit cooldown)**, so re-running a sol adversarial pass over the §11 diff is an open optional follow-up.
 
 **Phase 1b (the natural next build) — blocked on auth:**
 - In-app **config editor** (create/edit event categories, question types, assets in the UI) + **enforced freeze**/immutable archive once an event has scores.
@@ -132,3 +132,33 @@ From the user's global config: high-value design & the hardest reasoning → **g
 
 - Commit/PR messages: describe the change and intent as a human author would. **No AI attribution, no co-author trailers, no "generated with" lines** (user's global rule).
 - Confirm outward-facing or hard-to-reverse actions before doing them. Report failures honestly with output.
+
+## 11. Uncommitted working-tree change (this session)
+
+A single **uncommitted** change sits on top of `476b8ea`. It began as the bounded importer reconciliation, then (at the user's direction) grew to keep the greenfield reader/scoring hardening that adversarial review surfaced. `tsc` clean · lint clean · **174** unit · **19/19** emulator e2e.
+
+**Design docs:** `docs/migrations/phase-1-participant-import-v2.md` (new, the importer contract); `docs/migrations/phase-1-greenfield.md` is now tracked and de-cruft'd.
+
+**Participant importer (Phase 1 cleanup):** `scripts/import_participants_from_csv.py` → `scripts/import-participants.mts` (`npm run insert-participants`). Fail-closed, dry-run by default (`--apply` to write), reuses `loadEvaluationConfig` + shared country data, validates all rows/collisions before an all-or-nothing atomic batch, requires exact config category IDs / positive age / recognized country, emoji flags, raw-base64-or-absent photo, inactive+unassigned defaults. Photo refs confined to the CSV dir. An ambiguous commit reports **`indeterminate`** (not "zero writes"). `scripts/participants.csv` was intentionally not modified (its legacy categories/blank ages must be fixed by an operator, not guessed).
+
+**Greenfield reader/scoring hardening (in scope by user decision):**
+- `useParticipants.ts` — strict V2 score/adjustment boundary decode; incomplete jury **omitted** (not fatal); duplicate logical keys fail closed; event-generation guard against cross-event publish.
+- `evaluationScores.ts` — score/adjustment **document IDs are now a SHA-256 of the logical key** (was raw concatenation — fixed a real cross-participant collision); `createdAt` preserved on re-save; `clearEvaluationScores` uses atomic chunked batches. **Tests/tools must locate score docs by field query, not a reconstructed `pid_jid_q` id.**
+- `participants.ts` — create restores same-name suffix allocation inside a transaction; delete cascades to score/adjustment docs in ≤500-op batches.
+- `configValidation.ts` — recursive unknown-key rejection into override-rule `action`/`when`/`conditions`; non-string rule `id` rejected.
+- `ParticipantForm.tsx` — categories come from the event config; generated-id validation only on create.
+
+**HIGH product bugs from the multi-model adversarial review, fixed here:**
+- `useParticipants.ts` scoring — an *incomplete* jury (missing question docs) is omitted, but a *complete* jury whose values fail the engine now **fails closed** (was silently skipped).
+- `useParticipants.ts` publish gate — rankings publish only after all three listeners (participants/scores/adjustments) deliver their first snapshot per event generation, so a participant is never scored with default adjustments before jury inputs arrive.
+- `participants.ts` cascade delete — dependents deleted first, participant doc **last**, so a >500-doc mid-failure leaves the participant (a re-run finishes cleanup) instead of orphaning scores under a reusable id.
+- `configHash.ts` — canonicalization uses a null-prototype accumulator so an own `__proto__` config key can't collide two distinct configs to one hash.
+- `evaluationScores.ts` `clearEvaluationScores` — reassignment now clears **both** `evaluationScores` and `juryEvaluationInputs`.
+
+**Accepted risk (documented, deliberately NOT built — all reduce to "no server authority", i.e. Phase 1b):**
+- **Hashed doc IDs are not backward-compatible with any score docs written under the old `pid_jid_q` scheme.** Greenfield has no such data (nothing deployed from this branch; `demo-2026` is re-provisioned fresh), so this is a *deploy-before-first-real-scoring* constraint, not a live bug — building a legacy dual-read migration would re-introduce exactly the migration code the greenfield pivot deleted.
+- Cascade-delete is not atomic with a concurrent evaluation write (single-operator offline admin flow).
+- No config-version re-check between validation and commit (importer apply) or on live score writes — reprovisioning an event mid-scoring is a destructive operator action regardless.
+- A couple of niche CSV parser edges (leading quoted-blank delimiter detection; bare-CR-in-quote line numbering).
+
+**Review caveat (honesty):** two-family adversarial review ran as **opus + fable**; **gpt-5.6-sol was hard-rate-limited all session**, and several fixer/reviewer subagents died on it — the final fixes and the scoring-regression corrections were applied and verified by hand plus the full test suite. A sol pass over this diff is the recommended optional follow-up before/after commit.

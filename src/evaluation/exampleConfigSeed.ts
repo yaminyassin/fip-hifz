@@ -1,5 +1,5 @@
 import { Timestamp } from "firebase/firestore";
-import { canonicalStringify, computeConfigContentHash, sha256Hex } from "./configHash";
+import { computeConfigContentHash, computeScoringFingerprint } from "./configHash";
 import type {
   EventCategoryDefinition,
   EventEvaluationConfigV2,
@@ -198,14 +198,13 @@ const scoringSection = {
 };
 
 async function computeExampleScoringFingerprint(): Promise<string> {
-  const canonicalInput = canonicalStringify({
+  return computeScoringFingerprint({
     scoring: scoringSection,
     categories,
     questionTypes,
     overrideRules,
     participantAdjustments,
   });
-  return sha256Hex(canonicalInput);
 }
 
 /**

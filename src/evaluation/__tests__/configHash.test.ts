@@ -1,9 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { Timestamp } from "firebase/firestore";
-import { computeConfigContentHash, verifyConfigContentHash } from "../configHash";
+import {
+  canonicalStringify,
+  computeConfigContentHash,
+  verifyConfigContentHash,
+} from "../configHash";
 import { buildExampleEvaluationConfig } from "../exampleConfigSeed";
 
 describe("config content hash", () => {
+  it("preserves an own __proto__ record key instead of dropping it from the hash", () => {
+    // JSON.parse creates an OWN "__proto__" data property (not the setter).
+    const withProto = JSON.parse('{"categories":{"__proto__":{"id":"x"}}}');
+    const without = { categories: {} };
+    expect(canonicalStringify(withProto)).toContain("__proto__");
+    expect(canonicalStringify(withProto)).not.toBe(canonicalStringify(without));
+  });
+
   it("verifies against a freshly built example config", async () => {
     const config = await buildExampleEvaluationConfig(Timestamp.now());
     expect(await verifyConfigContentHash(config)).toBe(true);

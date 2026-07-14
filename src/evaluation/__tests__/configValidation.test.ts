@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validateEvaluationConfig } from "../configValidation";
+import { canonicalStringify } from "../configHash";
 import { buildExampleEvaluationConfig } from "../exampleConfigSeed";
 import {
   buildOverrideMatrixConfig,
@@ -41,7 +42,229 @@ describe("validateEvaluationConfig: rejects invalid configs", () => {
   const valid = buildTrialWeightedConfig();
 
   const mutate = (fn: (c: EventEvaluationConfigV2) => EventEvaluationConfigV2) =>
-    validateEvaluationConfig(fn(structuredClone(valid)));
+    validateEvaluationConfig(fn({
+      ...structuredClone(valid),
+      provisionedAt: valid.provisionedAt,
+    }));
+
+  it("rejects unsupported rounding and output decimal semantics", () => {
+    const config = structuredClone(valid) as unknown as Record<string, unknown>;
+    config.scoring = {
+      ...(config.scoring as Record<string, unknown>),
+      outputDecimals: 9,
+      rounding: "floor",
+    };
+    const result = validateEvaluationConfig(config);
+    expect(result.ok).toBe(false);
+    expect(result.errors).toEqual(expect.arrayContaining([
+      "scoring.outputDecimals must be exactly 2",
+      'scoring.rounding must be "ecmascript-math-round"',
+    ]));
+  });
+
+  it("rejects missing localized labels and non-string translations", () => {
+    const config = structuredClone(valid) as unknown as Record<string, unknown>;
+    const categories = config.categories as Record<string, Record<string, unknown>>;
+    delete categories.S.label;
+    const questionTypes = config.questionTypes as Record<string, Record<string, unknown>>;
+    questionTypes.accuracy.label = { default: "Accuracy", translations: { pt: 7 } };
+    const result = validateEvaluationConfig(config);
+    expect(result.ok).toBe(false);
+    expect(result.errors.some((error) => error.includes("categories.S.label"))).toBe(true);
+    expect(result.errors.some((error) => error.includes("translations values"))).toBe(true);
+  });
+
+  it("rejects malformed collection shapes and timestamps without throwing", () => {
+    const config = structuredClone(valid) as unknown as Record<string, unknown>;
+    config.categories = [];
+    config.provisionedAt = "not-a-timestamp";
+    const result = validateEvaluationConfig(config);
+    expect(result.ok).toBe(false);
+    expect(result.errors).toEqual(expect.arrayContaining([
+      "categories is required and must be an object",
+      "provisionedAt must be a Firestore Timestamp",
+    ]));
+  });
+
+  it.each([
+    { seconds: 1, nanoseconds: 0 },
+    { _seconds: 1, _nanoseconds: 0 },
+  ])("rejects plain timestamp-shaped maps: %o", (provisionedAt) => {
+    const result = validateEvaluationConfig({ ...valid, provisionedAt });
+    expect(result.ok).toBe(false);
+    expect(result.errors).toContain("provisionedAt must be a Firestore Timestamp");
+  });
+
+  it.each([
+    {
+      level: "config root",
+      addExtra: (config: Record<string, unknown>) => {
+        config.unexpected = true;
+        return "config.unexpected";
+      },
+    },
+    {
+      level: "scoring",
+      addExtra: (config: Record<string, unknown>) => {
+        (config.scoring as Record<string, unknown>).unexpected = true;
+        return "scoring.unexpected";
+      },
+    },
+    {
+      level: "category",
+      addExtra: (config: Record<string, unknown>) => {
+        const categories = config.categories as Record<string, Record<string, unknown>>;
+        categories.S.unexpected = true;
+        return "categories.S.unexpected";
+      },
+    },
+    {
+      level: "question slot",
+      addExtra: (config: Record<string, unknown>) => {
+        const categories = config.categories as Record<string, Record<string, unknown>>;
+        const slots = categories.S.questionSlots as Record<string, unknown>[];
+        slots[0].unexpected = true;
+        return "categories.S.questionSlots[0].unexpected";
+      },
+    },
+    {
+      level: "question type",
+      addExtra: (config: Record<string, unknown>) => {
+        const questionTypes = config.questionTypes as Record<string, Record<string, unknown>>;
+        questionTypes.accuracy.unexpected = true;
+        return "questionTypes.accuracy.unexpected";
+      },
+    },
+    {
+      level: "input",
+      addExtra: (config: Record<string, unknown>) => {
+        const questionTypes = config.questionTypes as Record<string, Record<string, unknown>>;
+        const inputs = questionTypes.accuracy.inputs as Record<string, unknown>[];
+        inputs[0].unexpected = true;
+        return "questionTypes.accuracy.inputs[0].unexpected";
+      },
+    },
+    {
+      level: "override rule",
+      addExtra: (config: Record<string, unknown>) => {
+        config.overrideRules = [{
+          id: "strict-shape",
+          priority: 99,
+          when: {
+            kind: "all",
+            conditions: [
+              { input: { questionTypeId: "accuracy", inputId: "x" }, operator: "gte", value: 1 },
+            ],
+          },
+          action: { kind: "voidQuestion" },
+          unexpected: true,
+        }];
+        return "overrideRules[0].unexpected";
+      },
+    },
+    {
+      level: "override rule action (nested)",
+      addExtra: (config: Record<string, unknown>) => {
+        config.overrideRules = [{
+          id: "strict-action",
+          priority: 42,
+          when: {
+            kind: "all",
+            conditions: [
+              { input: { questionTypeId: "accuracy", inputId: "x" }, operator: "gte", value: 1 },
+            ],
+          },
+          // A voidQuestion action carries no score; a stray score field would
+          // otherwise pollute the scoring fingerprint.
+          action: { kind: "voidQuestion", score: 100 },
+        }];
+        return "overrideRules[0].action.score";
+      },
+    },
+    {
+      level: "participant adjustment",
+      addExtra: (config: Record<string, unknown>) => {
+        const adjustments = config.participantAdjustments as Record<string, Record<string, unknown>>;
+        adjustments.bonus.unexpected = true;
+        return "participantAdjustments.bonus.unexpected";
+      },
+    },
+  ])("rejects unknown fields at the $level level", ({ addExtra }) => {
+    const config = {
+      ...structuredClone(valid),
+      provisionedAt: valid.provisionedAt,
+    } as unknown as Record<string, unknown>;
+    const expectedError = addExtra(config);
+
+    const result = validateEvaluationConfig(config);
+
+    expect(result.ok).toBe(false);
+    expect(result.config).toBeNull();
+    expect(result.errors).toContain(`${expectedError} is not a known field`);
+  });
+
+  it("rejects a non-string override-rule id", () => {
+    const config = {
+      ...structuredClone(valid),
+      provisionedAt: valid.provisionedAt,
+    } as unknown as Record<string, unknown>;
+    config.overrideRules = [{
+      id: 42,
+      priority: 7,
+      when: {
+        kind: "all",
+        conditions: [
+          { input: { questionTypeId: "accuracy", inputId: "x" }, operator: "gte", value: 1 },
+        ],
+      },
+      action: { kind: "voidQuestion" },
+    }];
+
+    const result = validateEvaluationConfig(config);
+
+    expect(result.ok).toBe(false);
+    expect(result.config).toBeNull();
+    expect(result.errors).toContain("overrideRules[0].id must be a non-empty string");
+  });
+
+  it("measures the 64 KiB limit identically for Web and Admin Timestamp shapes", () => {
+    const timestampShapes = [
+      {
+        seconds: 1,
+        nanoseconds: 2,
+        toMillis: () => 1_000,
+        toDate: () => new Date(1_000),
+      },
+      {
+        _seconds: 1,
+        _nanoseconds: 2,
+        toMillis: () => 1_000,
+        toDate: () => new Date(1_000),
+      },
+    ];
+    const configAtSize = (targetBytes: number, provisionedAt: unknown) => {
+      const config = {
+        ...structuredClone(valid),
+        configVersion: "",
+        provisionedAt,
+      } as unknown as Record<string, unknown>;
+      const sizeInput = Object.fromEntries(
+        Object.entries(config).filter(([key]) => key !== "provisionedAt")
+      );
+      const baseBytes = new TextEncoder().encode(canonicalStringify(sizeInput)).length;
+      config.configVersion = "x".repeat(targetBytes - baseBytes);
+      return config;
+    };
+
+    for (const provisionedAt of timestampShapes) {
+      expect(validateEvaluationConfig(configAtSize(64 * 1024, provisionedAt)).ok).toBe(true);
+      const overBudget = validateEvaluationConfig(configAtSize(64 * 1024 + 1, provisionedAt));
+      expect(overBudget.ok).toBe(false);
+      expect(overBudget.errors).toContain(
+        "config canonical size 65537 bytes exceeds 65536 byte budget"
+      );
+    }
+  });
 
   it("rejects a priority tie", () => {
     const result = validateEvaluationConfig(buildPriorityTieConfig());

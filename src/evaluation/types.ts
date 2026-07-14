@@ -192,16 +192,20 @@ export interface EventEvaluationConfigV2 {
 /** Fields hashed into `contentHash`, in canonical field order. Excludes
  * `contentHash` itself and `provisionedAt` (the only operational/timestamp
  * config field under this V2 contract). */
-export const CANONICAL_CONFIG_HASH_FIELDS = [
-  "schemaVersion",
-  "configVersion",
-  "scoringFingerprint",
-  "algorithmVersion",
+export const SCORING_FINGERPRINT_FIELDS = [
   "scoring",
   "categories",
   "questionTypes",
   "overrideRules",
   "participantAdjustments",
+] as const satisfies readonly (keyof EventEvaluationConfigV2)[];
+
+export const CANONICAL_CONFIG_HASH_FIELDS = [
+  "schemaVersion",
+  "configVersion",
+  "scoringFingerprint",
+  "algorithmVersion",
+  ...SCORING_FINGERPRINT_FIELDS,
 ] as const satisfies readonly (keyof EventEvaluationConfigV2)[];
 
 // ---------------------------------------------------------------------------

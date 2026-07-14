@@ -1,5 +1,11 @@
-import { validateEvaluationConfig } from "./configValidation";
-import { verifyConfigContentHash } from "./configHash";
+import {
+  isTimestampLike,
+  validateEvaluationConfig,
+} from "./configValidation";
+import {
+  computeScoringFingerprint,
+  verifyConfigContentHash,
+} from "./configHash";
 import type { EventEvaluationConfigV2, EventEvaluationDescriptorV2 } from "./types";
 
 /**
@@ -52,12 +58,7 @@ function parseDescriptor(
   if (!isPlainObject(evaluation)) return null;
 
   if (evaluation.schemaVersion !== 2) return null;
-  if (
-    evaluation.mode !== "legacy-lisbon-display-v1" &&
-    evaluation.mode !== "jury-first-v2"
-  ) {
-    return null;
-  }
+  if (evaluation.mode !== "jury-first-v2") return null;
   if (typeof evaluation.configVersion !== "string" || evaluation.configVersion === "") {
     return null;
   }
@@ -74,7 +75,7 @@ function parseDescriptor(
     return null;
   }
   if (evaluation.provisionedBy !== "offline-admin-sdk") return null;
-  if (!evaluation.provisionedAt) return null;
+  if (!isTimestampLike(evaluation.provisionedAt)) return null;
 
   return evaluation as unknown as EventEvaluationDescriptorV2;
 }
@@ -105,6 +106,14 @@ export async function loadEvaluationConfig(
     };
   }
 
+  const expectedConfigPath = `events/${eventId}/app_config/evaluation`;
+  if (descriptor.configPath !== expectedConfigPath) {
+    return {
+      status: "failClosed",
+      reason: `event descriptor configPath must be ${JSON.stringify(expectedConfigPath)}`,
+    };
+  }
+
   const rawConfig = await readers.getConfigDocument(descriptor.configPath);
 
   if (rawConfig === undefined) {
@@ -122,6 +131,20 @@ export async function loadEvaluationConfig(
     };
   }
   const config = validation.config;
+
+  if (config.algorithmVersion !== "jury-first-v2") {
+    return {
+      status: "failClosed",
+      reason: "config algorithmVersion must be jury-first-v2",
+    };
+  }
+  const recomputedScoringFingerprint = await computeScoringFingerprint(config);
+  if (config.scoringFingerprint !== recomputedScoringFingerprint) {
+    return {
+      status: "failClosed",
+      reason: "config scoringFingerprint does not match its recomputed scoring semantics",
+    };
+  }
 
   if (config.schemaVersion !== descriptor.schemaVersion) {
     return { status: "failClosed", reason: "config schemaVersion does not match event descriptor" };
