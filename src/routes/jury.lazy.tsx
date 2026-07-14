@@ -2,17 +2,14 @@ import { createLazyFileRoute } from "@tanstack/react-router";
 
 import { useActiveParticipant } from "../hooks/useActiveParticipant";
 import { useJuryAuth } from "../hooks/useJuryAuth";
-import { useJuryScores } from "../hooks/useJuryScores.tsx";
-import { useJuryNavigation } from "../hooks/useJuryNavigation";
 import { JuryLogin } from "@/components/ui/JuryLogin";
 import { JuryHeader } from "../components/ui/JuryHeader";
-import { ScoreForm } from "../components/ui/ScoreForm";
+import { JuryScoringPanel } from "@/components/ui/JuryScoringPanel";
 import { EvaluationConfigGate } from "@/components/EvaluationConfigGate";
 
 function RouteComponent() {
   const { data: participant } = useActiveParticipant();
 
-  // Use custom hooks for modular functionality
   const {
     isAuthenticated,
     juryId,
@@ -20,39 +17,6 @@ function RouteComponent() {
     handleLoginSuccess,
     handleLogout,
   } = useJuryAuth();
-
-  const {
-    currentScores,
-    allScores,
-    adjustmentValues,
-    pendingSave,
-    setCurrentScores,
-    handleScoreChange,
-    handleAdjustmentChange,
-    saveScoresMutation,
-    saveAdjustmentMutation,
-    debounceTimeoutRef,
-    defaultQuestionValues,
-  } = useJuryScores({ participant: participant || null, juryId });
-
-  const {
-    selectedQuestion,
-    questionChangedExternally,
-    isViewingActiveQuestion,
-    activeQuestionNumber,
-    handleQuestionChange,
-    handleDone,
-    handleGoToActiveQuestion,
-  } = useJuryNavigation({
-      participant: participant || null,
-      juryMember: juryMember || null,
-      juryId,
-      debounceTimeoutRef,
-      saveScoresMutation,
-      saveAdjustmentMutation,
-      currentScores,
-      adjustmentValues,
-    });
 
   // Show login if not authenticated
   if (!isAuthenticated) {
@@ -70,26 +34,14 @@ function RouteComponent() {
       <div className="flex flex-row px-4 flex-grow">
         <div className="flex flex-col w-full">
           <div className="p-4 space-y-4 flex-grow">
+            {/* The scoring hooks live inside JuryScoringPanel so they only
+                mount under a `ready` config, never against a loading or
+                fail-closed one. */}
             <EvaluationConfigGate>
-              <ScoreForm
+              <JuryScoringPanel
                 participant={participant || null}
                 juryMember={juryMember || null}
-                selectedQuestion={selectedQuestion}
-                questionChangedExternally={questionChangedExternally}
-                isViewingActiveQuestion={isViewingActiveQuestion}
-                activeQuestionNumber={activeQuestionNumber}
-                currentScores={currentScores}
-                adjustmentValues={adjustmentValues}
-                allScores={allScores}
-                pendingSave={pendingSave}
-                onScoreChange={handleScoreChange}
-                onAdjustmentChange={handleAdjustmentChange}
-                onQuestionChange={handleQuestionChange}
-                onDone={handleDone}
-                onGoToActiveQuestion={handleGoToActiveQuestion}
-                isSaving={saveScoresMutation.isPending}
-                setCurrentScores={setCurrentScores}
-                defaultQuestionValues={defaultQuestionValues}
+                juryId={juryId}
               />
             </EvaluationConfigGate>
           </div>

@@ -210,6 +210,14 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
     [juryId, participant?.id, saveAdjustmentMutation]
   );
 
+  // NOTE: intentionally no debounce-cancel on unmount. A pending 500ms save
+  // timer fires post-unmount and its Firestore write still completes (only the
+  // onSuccess setState is a harmless no-op), so a juror's last edit persists
+  // even if they log out or leave /jury immediately after typing. Cancelling
+  // here would silently drop that last edit. Genuinely stale writes (question
+  // / participant / event changes) are already prevented by the navigation
+  // flush in useJuryNavigation and the reset effects below.
+
   // Reset scores when participant changes.
   useEffect(() => {
     if (participant?.id && participant.id !== lastParticipantId) {
