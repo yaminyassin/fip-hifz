@@ -185,6 +185,55 @@ describe("F6: scoreJury on an empty assignment/scores", () => {
   });
 });
 
+describe("Engine boundary hardening: duplicate assignments and non-finite aggregation", () => {
+  const config = buildTrialWeightedConfig();
+  const q1: QuestionValueMap = { accuracy: { x: 0, y: 0 }, delivery: { z: 0 } };
+  const q2: QuestionValueMap = { accuracy: { x: 10, y: 0 }, delivery: { z: 0 } };
+
+  it("duplicate assigned question numbers fail closed instead of double-scoring one question", () => {
+    // The assignment list contains a duplicate (1, 1). The map has two entries,
+    // so the size check alone would pass; without the uniqueness guard the loop
+    // would score question 1 twice and silently ignore the map's other entry,
+    // skewing the average.
+    const result = scoreJury(
+      config,
+      [1, 1],
+      new Map([
+        [1, q1],
+        [2, q2],
+      ]),
+      { bonus: { amount: 0 } }
+    );
+    expect(result).toEqual({
+      ok: false,
+      errors: ["incomplete evaluation: assigned question numbers contain duplicates"],
+    });
+  });
+
+  it("scoreParticipant rejects a non-finite jury final instead of emitting NaN/Infinity", () => {
+    const jury = scoreJury(
+      config,
+      [1, 2],
+      new Map([
+        [1, q1],
+        [2, q2],
+      ]),
+      { bonus: { amount: 0 } }
+    );
+    expect(jury.ok).toBe(true);
+    if (!jury.ok) return;
+
+    const corrupted = { ...jury.value, juryFinal: Number.POSITIVE_INFINITY };
+    const result = scoreParticipant(
+      new Map([
+        ["jury-1", jury.value],
+        ["jury-2", corrupted],
+      ])
+    );
+    expect(result.ok).toBe(false);
+  });
+});
+
 describe("Trial 3: trial-shapes-2026 (three subtractive weights, additive section, adjustments)", () => {
   const config = buildTrialShapesConfig();
 

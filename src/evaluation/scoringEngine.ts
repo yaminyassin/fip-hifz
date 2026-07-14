@@ -354,6 +354,17 @@ export function scoreJury(
     };
   }
 
+  // The contract is exactly one score per assigned question. A duplicate in
+  // the assignment list would otherwise score that question twice (and let an
+  // unrelated map entry satisfy the size check below), silently skewing the
+  // average. Enforce uniqueness rather than trust callers.
+  if (new Set(orderedQuestionNumbers).size !== orderedQuestionNumbers.length) {
+    return {
+      ok: false,
+      errors: ["incomplete evaluation: assigned question numbers contain duplicates"],
+    };
+  }
+
   if (questionValues.size !== orderedQuestionNumbers.length) {
     errors.push(
       `expected exactly ${orderedQuestionNumbers.length} scored questions, got ${questionValues.size}`
@@ -426,9 +437,20 @@ export function scoreParticipant(
     return { ok: false, errors: ["no jury results to aggregate"] };
   }
   const sortedJuryIds = Array.from(juryResultsByJuryId.keys()).sort();
-  const sum = sortedJuryIds.reduce(
-    (total, juryId) => total + juryResultsByJuryId.get(juryId)!.juryFinal,
-    0
-  );
-  return { ok: true, value: round2(sum / sortedJuryIds.length) };
+  let sum = 0;
+  for (const juryId of sortedJuryIds) {
+    const juryFinal = juryResultsByJuryId.get(juryId)!.juryFinal;
+    // A well-formed JuryScoreResult from scoreJury is always finite, but this
+    // is the aggregation boundary: never emit a NaN/Infinity participant score
+    // if a caller hands in a malformed jury result.
+    if (!Number.isFinite(juryFinal)) {
+      return { ok: false, errors: [`non-finite jury final for jury "${juryId}"`] };
+    }
+    sum += juryFinal;
+  }
+  const value = round2(sum / sortedJuryIds.length);
+  if (!Number.isFinite(value)) {
+    return { ok: false, errors: ["non-finite aggregate participant score"] };
+  }
+  return { ok: true, value };
 }
