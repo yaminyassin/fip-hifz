@@ -75,6 +75,7 @@ const CheckboxItem = ({
   </div>
 );
 import { calculateFinalScore } from "@/utils/scoreUtils";
+import { clamp, round2 } from "@/evaluation/scoringEngine";
 import {
   fillMissingQuestionsAndCalculateAverage,
   fillMissingQuestionsWithPerfectScores,
@@ -86,6 +87,23 @@ import * as XLSX from "xlsx";
 export const Route = createLazyFileRoute("/participants")({
   component: RouteComponent,
 });
+
+/**
+ * Phase 1a `legacy-lisbon-display-v1` delta (the only authorized Lisbon
+ * scoring change): the jury bonus is additive to the displayed final,
+ * clamped to `[0, 105]`, instead of tracked for breakdown display only. See
+ * docs/migrations/phase-1-evaluation-model.md section 2, "Bonus behavior",
+ * and src/evaluation/lisbonCompat.ts for the pure, independently-tested
+ * reproduction of this exact formula.
+ *
+ * Single source of truth for this formula so the on-screen table, the Excel
+ * summary/detailed export, and the per-jury export sheets can never diverge
+ * (F7: the export previously wrote the non-additive percentage while the
+ * table displayed the additive+clamped total).
+ */
+function applyAdditiveLisbonBonus(base: number, bonus: number): number {
+  return round2(clamp(base + bonus, 0, 105));
+}
 
 function RouteComponent() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -293,9 +311,13 @@ function RouteComponent() {
         filledAverageScores,
         averageOverallBonus
       );
+      const newDisplayedFinal = applyAdditiveLisbonBonus(
+        scoreResult.percentage,
+        averageOverallBonus
+      );
       return {
         ...p,
-        finalScore: scoreResult.percentage,
+        finalScore: newDisplayedFinal,
         breakdown: scoreResult.breakdownBySection,
       };
     });
@@ -378,9 +400,16 @@ function RouteComponent() {
           filledAverageScores,
           averageOverallBonus
         );
+        // F7: the export must apply the same additive bonus + [0, 105]
+        // clamp as the on-screen table (`applyAdditiveLisbonBonus`), or the
+        // exported "Final Score" silently disagrees with the displayed one.
+        const newDisplayedFinal = applyAdditiveLisbonBonus(
+          scoreResult.percentage,
+          averageOverallBonus
+        );
         return {
           ...p,
-          finalScore: scoreResult.percentage,
+          finalScore: newDisplayedFinal,
           breakdown: scoreResult.breakdownBySection,
         };
       });
@@ -475,6 +504,13 @@ function RouteComponent() {
                 filledScores,
                 overallBonus
               );
+              // F7: apply the same additive bonus + [0, 105] clamp as the
+              // on-screen table and the summary export, so a per-jury sheet
+              // never disagrees with the displayed/exported total.
+              const juryDisplayedFinal = applyAdditiveLisbonBonus(
+                juryResult.percentage,
+                overallBonus
+              );
 
               // Add participant header row
               juryData.push({
@@ -492,7 +528,7 @@ function RouteComponent() {
                 "Waqf Meaning": "",
                 "Husn al-Ada Score": "",
                 "Overall Bonus": `${overallBonus.toFixed(2)}`,
-                "Final Score": `${juryResult.percentage.toFixed(2)} pts`,
+                "Final Score": `${juryDisplayedFinal.toFixed(2)} pts`,
               });
 
               // Add question details

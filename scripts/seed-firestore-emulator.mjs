@@ -18,6 +18,12 @@ import {
   setDoc,
   Timestamp,
 } from "firebase/firestore";
+import {
+  LISBON_CONFIG_CONTENT_HASH,
+  LISBON_CONFIG_VERSION,
+  LISBON_SCORING_FINGERPRINT,
+} from "./lisbonEvaluationDescriptorFixture.mjs";
+import { LISBON_EIGHT_FIELD_FIXTURE_SCORES } from "./lisbonEightFieldFixtureScores.mjs";
 
 const EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST;
 const PROJECT_ID = process.env.VITE_FIREBASE_PROJECT_ID ?? "demo-fip-hifz";
@@ -73,11 +79,46 @@ function buildFixtureWrites(firestore) {
   const writes = [];
 
   // events/lisbon-2025
+  //
+  // Stamps a Phase 1a evaluation descriptor (design section 2, "Event
+  // metadata and config loading") but deliberately does NOT write the
+  // `app_config/evaluation` document it points to. This exercises the
+  // bundled-fallback trigger: loading `evaluation.configPath` fails because
+  // the document is missing, and the client falls back to the bundled
+  // Lisbon config ONLY because `lisbon-2025` is on the allowlist, its mode
+  // is `legacy-lisbon-display-v1`, and its configVersion matches the known
+  // Lisbon seed version. See src/evaluation/eventDescriptor.ts and
+  // src/evaluation/__tests__/eventDescriptor.test.ts.
   writes.push([
     doc(firestore, "events", EVENT_ID),
     {
       name: "Lisbon 2025",
       description: "Phase 0 trial fixture event",
+      status: "active",
+      createdAt: FIXED_TIMESTAMP,
+      updatedAt: FIXED_TIMESTAMP,
+      evaluation: {
+        schemaVersion: 2,
+        mode: "legacy-lisbon-display-v1",
+        configVersion: LISBON_CONFIG_VERSION,
+        configPath: `events/${EVENT_ID}/app_config/evaluation`,
+        contentHash: LISBON_CONFIG_CONTENT_HASH,
+        scoringFingerprint: LISBON_SCORING_FINGERPRINT,
+        provisionedBy: "offline-admin-sdk",
+        provisionedAt: FIXED_TIMESTAMP,
+      },
+    },
+  ]);
+
+  // A second, non-allowlisted event with NO evaluation descriptor at all —
+  // exercises the "new/partial events fail closed" gate (design section 2,
+  // "Config loading"): a missing descriptor never triggers the bundled
+  // Lisbon fallback for any event, allowlisted or not.
+  writes.push([
+    doc(firestore, "events", "unconfigured-event"),
+    {
+      name: "Unconfigured Event",
+      description: "Phase 1a fixture: no evaluation descriptor stamped",
       status: "active",
       createdAt: FIXED_TIMESTAMP,
       updatedAt: FIXED_TIMESTAMP,
@@ -145,6 +186,30 @@ function buildFixtureWrites(firestore) {
     },
   ]);
 
+  // Phase 1a "completed ranking fixture" (design section 5, "Completed
+  // ranking fixture"): a separate participant/score/bonus document set so
+  // the unchanged eight-field fixture above stays byte-for-byte identical.
+  // isDone: true and score-derived juryIds.length > 0, so it IS
+  // ranking-eligible and should display finalScore = 100.5 (base 98.5 +
+  // additive bonus 2), unlike `participant-active` above. Shares the "1"
+  // schedule group with `participant-active` so a single rendered table can
+  // assert their relative row order.
+  writes.push([
+    eventPath("participants", "participant-ranking-done"),
+    {
+      ...baseParticipant,
+      name: "Zainab Haddad",
+      age: 17,
+      category: "A1",
+      school: "Lisbon Quran School",
+      scheduled: "1",
+      isDone: true,
+      isActive: false,
+      assignedQuestions: [42, 87],
+      activeQuestion: 87,
+    },
+  ]);
+
   writes.push([
     eventPath("participants", "participant-done"),
     {
@@ -194,16 +259,7 @@ function buildFixtureWrites(firestore) {
       juryId: "jury-one",
       questionNumber: 1,
       pageNumber: 42,
-      scores: {
-        hifdh_judge_correction: 0,
-        hifdh_self_correction: 1,
-        hifdh_stuck_count: 0,
-        tajweed_major: 0,
-        tajweed_minor: 1,
-        waqf_ibtida_incorrect: 0,
-        waqf_ibtida_meaning: 0,
-        husn_al_ada_score: 0,
-      },
+      scores: LISBON_EIGHT_FIELD_FIXTURE_SCORES,
       createdAt: FIXED_TIMESTAMP,
       updatedAt: FIXED_TIMESTAMP,
     },
@@ -215,6 +271,35 @@ function buildFixtureWrites(firestore) {
     {
       id: "participant-active_jury-one",
       participantId: "participant-active",
+      juryId: "jury-one",
+      overallBonus: 2,
+      createdAt: FIXED_TIMESTAMP,
+      updatedAt: FIXED_TIMESTAMP,
+    },
+  ]);
+
+  // Completed ranking fixture: same eight values as the unchanged fixture
+  // above (Q1 = 97, Q2 missing = 100, legacy base = 98.5), plus the same
+  // bonus (2), on a separate participant/jury/score/bonus document set.
+  writes.push([
+    eventPath("scores", "participant-ranking-done_jury-one_1"),
+    {
+      id: "participant-ranking-done_jury-one_1",
+      participantId: "participant-ranking-done",
+      juryId: "jury-one",
+      questionNumber: 1,
+      pageNumber: 42,
+      scores: LISBON_EIGHT_FIELD_FIXTURE_SCORES,
+      createdAt: FIXED_TIMESTAMP,
+      updatedAt: FIXED_TIMESTAMP,
+    },
+  ]);
+
+  writes.push([
+    eventPath("overallBonuses", "participant-ranking-done_jury-one"),
+    {
+      id: "participant-ranking-done_jury-one",
+      participantId: "participant-ranking-done",
       juryId: "jury-one",
       overallBonus: 2,
       createdAt: FIXED_TIMESTAMP,

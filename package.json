@@ -16,6 +16,7 @@
     "tsc": "tsc -b",
     "preview": "vite preview",
     "seed:emulator": "node scripts/seed-firestore-emulator.mjs",
+    "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:ci": "npm run seed:emulator && playwright test",
     "test:e2e:emulator": "firebase emulators:exec --only firestore --project demo-fip-hifz --config firebase.test.json \"npm run test:e2e:ci\""
@@ -70,6 +71,7 @@
     "tailwindcss": "^3.4.14",
     "typescript": "~5.6.2",
     "typescript-eslint": "^8.11.0",
-    "vite": "^5.4.10"
+    "vite": "^5.4.10",
+    "vitest": "^2.1.9"
   }
 }
