@@ -20,6 +20,9 @@ export default defineConfig({
       "scripts/**/*.test.mts",
     ],
     environment: "node",
-    environmentMatchGlobs: [["src/contexts/**/*.test.tsx", "jsdom"]],
+    environmentMatchGlobs: [
+      ["src/contexts/**/*.test.tsx", "jsdom"],
+      ["src/components/**/*.test.tsx", "jsdom"],
+    ],
   },
 });

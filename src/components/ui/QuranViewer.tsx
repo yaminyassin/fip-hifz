@@ -1,5 +1,5 @@
 import { useQuranPage } from "@/hooks/useQuranPage";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Label } from "../shadcn/label";
 import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
@@ -18,8 +18,14 @@ export function QuranViewer({
   const containerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
 
-  // Always call hook unconditionally
-  const { data: pageData, isLoading, error } = useQuranPage(pageNumber);
+  // Static URL for the page image (no async fetch).
+  const { url } = useQuranPage(pageNumber);
+  const [hasError, setHasError] = useState(false);
+
+  // Reset the image error whenever the page (URL) changes.
+  useEffect(() => {
+    setHasError(false);
+  }, [url]);
 
   // Effect to handle initial size and window resize
   useEffect(() => {
@@ -68,28 +74,17 @@ export function QuranViewer({
           : ""}
       </Label>
 
-      {isLoading && (
-        <div className="flex items-center justify-center h-full w-full">
-          <div className="text-center">{t("common.loading")}</div>
-        </div>
-      )}
-
-      {error && (
-        <div className="flex items-center justify-center h-full w-full text-red-500">
-          {t("common.error")}
-        </div>
-      )}
-
-      {!isLoading && !error && !pageData?.page && hasAssignedQuestions && (
+      {(!url || hasError) && hasAssignedQuestions && (
         <div className="flex items-center justify-center h-full w-full">
           {t("randomizer.messages.noParticipant")}
         </div>
       )}
 
-      {!isLoading && !error && pageData?.page && (
+      {url && !hasError && (
         <div className="border-2 border-slate-800 h-full w-full flex items-start justify-center overflow-hidden">
           <img
-            src={`data:image/png;base64,${pageData.page}`}
+            src={url}
+            onError={() => setHasError(true)}
             alt={t("randomizer.questionLabel", { number: pageNumber })}
             className="max-w-full max-h-full w-auto h-auto object-contain"
           />
