@@ -38,21 +38,34 @@ export function useFirestoreListener<T>({
     transform,
     enabled = true
 }: UseFirestoreListenerOptions<T>) {
-    const unsubscribeRef = useRef<Unsubscribe | null>(null);
     const callbackRef = useRef(onData);
 
     // Keep callback up to date
     callbackRef.current = onData;
 
+    // A single stable subscriber per hook instance. It always invokes the
+    // LATEST onData (via callbackRef), but its own identity never changes, so
+    // the registry Set's add-on-subscribe and delete-on-cleanup use the same
+    // reference. Adding callbackRef.current directly leaks: onData is usually a
+    // fresh closure each render, so the value deleted at cleanup differs from
+    // the one added, accumulating stale callbacks that fire on every snapshot.
+    const subscriberRef = useRef<(data: unknown) => void>((data) =>
+      callbackRef.current(data as T)
+    );
+
     useEffect(() => {
         if (!query || !enabled) return;
+
+        // Capture the stable subscriber once so subscribe and cleanup use the
+        // exact same reference.
+        const subscriber = subscriberRef.current;
 
         // Check if we already have an active listener for this key
         const existingListener = activeListeners.get(key);
 
         if (existingListener) {
             // Add this component's callback to the existing listener
-            existingListener.callbacks.add(callbackRef.current as (data: unknown) => void);
+            existingListener.callbacks.add(subscriber);
             existingListener.refCount++;
 
             // Immediately provide current data if available
@@ -62,7 +75,7 @@ export function useFirestoreListener<T>({
 
             return () => {
                 // Remove this component's callback
-                existingListener.callbacks.delete(callbackRef.current as (data: unknown) => void);
+                existingListener.callbacks.delete(subscriber);
 
                 // Decrement reference count on cleanup
                 if (existingListener.refCount > 1) {
@@ -78,7 +91,7 @@ export function useFirestoreListener<T>({
         // Create new listener
         let unsubscribe: Unsubscribe;
         const callbacks = new Set<(data: unknown) => void>();
-        callbacks.add(callbackRef.current as (data: unknown) => void);
+        callbacks.add(subscriber);
 
         // Handle both Query and DocumentReference types
         if ('type' in query && query.type === 'query') {
@@ -157,14 +170,12 @@ export function useFirestoreListener<T>({
             currentData: undefined
         });
 
-        unsubscribeRef.current = unsubscribe;
-
         // Cleanup function
         return () => {
             const listener = activeListeners.get(key);
             if (listener) {
                 // Remove this component's callback
-                listener.callbacks.delete(callbackRef.current as (data: unknown) => void);
+                listener.callbacks.delete(subscriber);
 
                 if (listener.refCount > 1) {
                     listener.refCount--;
@@ -176,20 +187,6 @@ export function useFirestoreListener<T>({
             }
         };
     }, [query, key, enabled]); // Removed onData from dependencies since we use ref
-
-    // Provide a way to manually refresh the listener
-    const refresh = () => {
-        if (unsubscribeRef.current && query) {
-            unsubscribeRef.current();
-            const listener = activeListeners.get(key);
-            if (listener) {
-                activeListeners.delete(key);
-            }
-            // The useEffect will automatically create a new listener
-        }
-    };
-
-    return { refresh };
 }
 
 // Helper function to get listener stats (useful for debugging)

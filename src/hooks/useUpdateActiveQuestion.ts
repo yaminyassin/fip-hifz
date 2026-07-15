@@ -25,11 +25,12 @@ export const useUpdateActiveQuestion = () => {
     },
     onMutate: async ({ participantId, activeQuestionPage }) => {
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ["activeParticipant"] });
+      await queryClient.cancelQueries({ queryKey: ["activeParticipant", currentEvent] });
 
       // Snapshot the previous value
       const previousParticipant = queryClient.getQueryData<Participant | null>([
         "activeParticipant",
+        currentEvent,
       ]);
 
       // Optimistically update to the new value
@@ -40,7 +41,7 @@ export const useUpdateActiveQuestion = () => {
         };
 
         // Update the cache with our optimistic value
-        queryClient.setQueryData(["activeParticipant"], updatedParticipant);
+        queryClient.setQueryData(["activeParticipant", currentEvent], updatedParticipant);
       }
 
       // Return the previous value so we can roll back if something goes wrong
@@ -52,14 +53,14 @@ export const useUpdateActiveQuestion = () => {
       // If we have a previous value, roll back to it
       if (context?.previousParticipant) {
         queryClient.setQueryData(
-          ["activeParticipant"],
+          ["activeParticipant", currentEvent],
           context.previousParticipant
         );
       }
     },
     onSettled: () => {
       // Always refetch after error or success to ensure we're in sync with the server
-      queryClient.invalidateQueries({ queryKey: ["activeParticipant"] });
+      queryClient.invalidateQueries({ queryKey: ["activeParticipant", currentEvent] });
     },
   });
 };
