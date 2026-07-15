@@ -237,7 +237,8 @@
     "questions": "Questões",
     "setActive": "Definir como Ativo",
     "currentlyActive": "Ativo Atualmente",
-    "setActiveAria": "Definir participante como ativo"
+    "setActiveAria": "Definir participante como ativo",
+    "listenerError": "Atualizações em direto desligadas — as pontuações podem estar desatualizadas. Por favor, recarregue a página."
   },
   "admin": {
     "title": "Painel Administrativo",

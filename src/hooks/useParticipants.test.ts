@@ -47,6 +47,7 @@ import type { Participant } from "@/models/models";
 import {
   computeParticipantScoring,
   useParticipants,
+  useParticipantsListenerError,
   type ParticipantWithScores,
   type RawEvaluationScoreDoc,
   type RawJuryEvaluationInputsDoc,
@@ -354,6 +355,49 @@ describe("useParticipants event generation", () => {
     expect(oldEvent ?? []).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ id: participant.id })])
     );
+
+    unmount();
+  });
+});
+
+describe("useParticipants listener error surfacing", () => {
+  beforeEach(() => {
+    firestoreHarness.listeners.length = 0;
+    eventContext.currentEvent = "event-one";
+    eventContext.evaluationConfig = buildTrialWeightedConfig();
+  });
+
+  it("exposes a Firestore listener error and clears it for a fresh event", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children);
+
+    const { result, rerender, unmount } = renderHook(
+      () => ({
+        participants: useParticipants(),
+        error: useParticipantsListenerError(),
+      }),
+      { wrapper }
+    );
+    expect(firestoreHarness.listeners).toHaveLength(3);
+    expect(result.current.error).toBeNull();
+
+    // A terminal onSnapshot error surfaces its message.
+    act(() => {
+      firestoreHarness.listeners[1].error(new Error("permission-denied"));
+    });
+    await waitFor(() => {
+      expect(result.current.error).toBe("permission-denied");
+    });
+
+    // Switching events re-establishes fresh listeners and clears the error.
+    eventContext.currentEvent = "event-two";
+    rerender();
+    await waitFor(() => {
+      expect(result.current.error).toBeNull();
+    });
 
     unmount();
   });

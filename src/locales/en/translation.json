@@ -240,7 +240,8 @@
       "selectedJuries": "Selected: {{count}} jury member{{plural}}",
       "cancel": "Cancel",
       "export": "Export Excel"
-    }
+    },
+    "listenerError": "Live updates disconnected — scores may be out of date. Please reload the page."
   },
   "admin": {
     "title": "Admin Panel",

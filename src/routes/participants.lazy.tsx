@@ -9,6 +9,7 @@ import { Search, Filter, ListFilter, Download } from "lucide-react";
 import { useState } from "react";
 import {
   useParticipants,
+  useParticipantsListenerError,
   ParticipantWithScores,
 } from "@/hooks/useParticipants";
 import { useJuryMembers } from "@/hooks/useJuryMembers";
@@ -135,6 +136,7 @@ function RouteComponent() {
 function ParticipantsRoute() {
   const [searchQuery, setSearchQuery] = useState("");
   const { data: participants = [], isLoading } = useParticipants();
+  const listenerError = useParticipantsListenerError();
   const { data: juryMembers = [] } = useJuryMembers();
   const { evaluationConfig } = useEvent();
   const { t } = useTranslation();
@@ -423,6 +425,19 @@ function ParticipantsRoute() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6 space-y-6">
+        {listenerError && (
+          <div
+            role="alert"
+            data-testid="participants-listener-error"
+            className="rounded-lg border-2 border-red-500 bg-red-50 dark:bg-red-950/40 p-4 text-red-800 dark:text-red-200"
+          >
+            {t(
+              "participants.listenerError",
+              "Live updates disconnected — scores may be out of date. Please reload the page."
+            )}
+          </div>
+        )}
+
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold tracking-tight">{t("participants.header.title")}</h1>
         </div>

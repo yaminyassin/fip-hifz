@@ -384,6 +384,8 @@ interface EventGeneration {
   generation: number;
 }
 
+const LISTENER_ERROR_KEY = "participantsListenerError";
+
 export const useParticipants = () => {
   const queryClient = useQueryClient();
   const { currentEvent, evaluationConfig } = useEvent();
@@ -464,6 +466,9 @@ export const useParticipants = () => {
     const eventId = currentEvent;
     const generation = eventGenerationRef.current.generation;
 
+    // Fresh listeners for this event: clear any prior disconnect error.
+    queryClient.setQueryData([LISTENER_ERROR_KEY, eventId], null);
+
     const participantsCollection = collection(
       firestore,
       getEventCollectionPath(eventId, "participants")
@@ -479,7 +484,13 @@ export const useParticipants = () => {
         listenersReadyRef.current.participants = true;
         void recompute(eventId, generation);
       },
-      (error) => console.error("Error in participants listener:", error)
+      (error) => {
+        console.error("Error in participants listener:", error);
+        queryClient.setQueryData(
+          [LISTENER_ERROR_KEY, eventId],
+          error?.message ?? "participants listener error"
+        );
+      }
     );
 
     const scoresRef = collection(
@@ -494,7 +505,13 @@ export const useParticipants = () => {
         listenersReadyRef.current.scores = true;
         void recompute(eventId, generation);
       },
-      (error) => console.error("Error in evaluation scores listener:", error)
+      (error) => {
+        console.error("Error in evaluation scores listener:", error);
+        queryClient.setQueryData(
+          [LISTENER_ERROR_KEY, eventId],
+          error?.message ?? "evaluation scores listener error"
+        );
+      }
     );
 
     const adjustmentsRef = collection(
@@ -509,7 +526,13 @@ export const useParticipants = () => {
         listenersReadyRef.current.adjustments = true;
         void recompute(eventId, generation);
       },
-      (error) => console.error("Error in jury evaluation inputs listener:", error)
+      (error) => {
+        console.error("Error in jury evaluation inputs listener:", error);
+        queryClient.setQueryData(
+          [LISTENER_ERROR_KEY, eventId],
+          error?.message ?? "jury evaluation inputs listener error"
+        );
+      }
     );
 
     return () => {
@@ -535,3 +558,26 @@ export const useParticipants = () => {
     enabled: !!currentEvent,
   });
 };
+
+/**
+ * The message of the last Firestore listener error for the current event, or
+ * null. A Firestore `onSnapshot` error is terminal — the listener stops
+ * delivering — so once this is set the ranking data is frozen until the page
+ * reloads (which re-establishes fresh listeners). Consumers show a "live
+ * updates disconnected" surface so an operator never trusts stale scores.
+ */
+export function useParticipantsListenerError(): string | null {
+  const { currentEvent } = useEvent();
+  const queryClient = useQueryClient();
+  const { data } = useQuery<string | null>({
+    queryKey: [LISTENER_ERROR_KEY, currentEvent],
+    queryFn: () =>
+      (queryClient.getQueryData([LISTENER_ERROR_KEY, currentEvent]) as string | null) ?? null,
+    staleTime: Infinity,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    enabled: !!currentEvent,
+  });
+  return data ?? null;
+}
