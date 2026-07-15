@@ -204,15 +204,22 @@ export const PerformanceMonitor: React.FC = () => {
                         <h3 className="text-lg font-semibold">
                             {t("performance.activeListeners", "Active Listeners")}
                         </h3>
-                        <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={handleCleanupListeners}
-                            disabled={totalListeners === 0}
-                        >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            {t("performance.cleanup", "Cleanup All")}
-                        </Button>
+                        {/* Dev-only: cleanupAllListeners disconnects every live
+                            Firestore listener without resubscribing, so mounted
+                            views freeze until a reload. Useful for debugging,
+                            dangerous during a live event — never expose it in a
+                            production build. */}
+                        {import.meta.env.DEV && (
+                            <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={handleCleanupListeners}
+                                disabled={totalListeners === 0}
+                            >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                {t("performance.cleanup", "Cleanup All")}
+                            </Button>
+                        )}
                     </div>
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                         {Object.entries(stats.listeners).length === 0 ? (
