@@ -321,7 +321,7 @@
         "category": "Categoria",
         "school": "Escola",
         "namePlaceholder": "Digite o nome do participante",
-        "agePlaceholder": "Digite a idade",
+        "agePlaceholder": "Introduza a idade (ex.: 25)",
         "countryPlaceholder": "Selecione um país",
         "categoryPlaceholder": "Selecione uma categoria",
         "schoolPlaceholder": "Digite o nome da escola",
@@ -343,7 +343,10 @@
         "photoUpload": "Carregar foto do participante",
         "photoSizeLimit": "Tamanho máximo: 2MB. Formatos suportados: JPEG, PNG, GIF.",
         "photoPreview": "Visualização da Foto",
-        "participantPhoto": "Foto do Participante"
+        "participantPhoto": "Foto do Participante",
+        "photoAlt": "Pré-visualização da foto",
+        "dayPlaceholder": "Selecione um dia",
+        "timePlaceholder": "Selecione a hora"
       },
       "errors": {
         "nameRequired": "Nome é obrigatório",

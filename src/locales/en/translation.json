@@ -245,7 +245,11 @@
   "admin": {
     "title": "Admin Panel",
     "juryStatus": "Jury Status",
-    "activeParticipant": "Active Participant",
+    "activeParticipant": {
+      "current": "Current Participant",
+      "setInstruction": "Select a participant to begin",
+      "noneSet": "No participant selected"
+    },
     "participantStatus": "Participant Status",
     "sceneControl": "Scene Control",
     "question": "Question",
@@ -328,7 +332,13 @@
         "photoUpload": "Upload participant photo",
         "photoSizeLimit": "Maximum file size: 2MB. Supported formats: JPEG, PNG, GIF.",
         "photoPreview": "Photo Preview",
-        "participantPhoto": "Participant Photo"
+        "participantPhoto": "Participant Photo",
+        "agePlaceholder": "Enter age (e.g., 25)",
+        "countryPlaceholder": "Select a country",
+        "categoryPlaceholder": "Select a category",
+        "photoAlt": "Photo preview",
+        "dayPlaceholder": "Select a day",
+        "timePlaceholder": "Select time"
       },
       "errors": {
         "nameRequired": "Name is required",
@@ -384,11 +394,6 @@
     "activeQuestion": {
       "label": "Active Question",
       "page": "Page"
-    },
-    "activeParticipant": {
-      "current": "Current Participant",
-      "setInstruction": "Select a participant to begin",
-      "noneSet": "No participant selected"
     }
   },
   "performance": {

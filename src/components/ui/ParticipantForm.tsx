@@ -385,7 +385,7 @@ export const ParticipantForm = ({
             value={formData.age || ""}
             onChange={handleChange}
             className={errors.age ? "border-red-500" : ""}
-            placeholder="Enter age (e.g., 25)"
+            placeholder={t("admin.participants.form.agePlaceholder")}
           />
           {errors.age && <p className="text-red-500 text-sm">{errors.age}</p>}
         </div>
@@ -411,7 +411,7 @@ export const ParticipantForm = ({
           <Label>{t("admin.participants.form.country")}</Label>
           <Select value={formData.country} onValueChange={handleCountryChange}>
             <SelectTrigger className={errors.country ? "border-red-500" : ""}>
-              <SelectValue placeholder="Select a country">
+              <SelectValue placeholder={t("admin.participants.form.countryPlaceholder")}>
                 {formData.country ? (
                   <div className="flex items-center gap-2">
                     <span className="text-lg">
@@ -420,7 +420,7 @@ export const ParticipantForm = ({
                     <span>{formData.country}</span>
                   </div>
                 ) : (
-                  "Select a country"
+                  t("admin.participants.form.countryPlaceholder")
                 )}
               </SelectValue>
             </SelectTrigger>
@@ -451,7 +451,7 @@ export const ParticipantForm = ({
             disabled={evaluationConfigStatus !== "ready"}
           >
             <SelectTrigger className={errors.category ? "border-red-500" : ""}>
-              <SelectValue placeholder="Select a category" />
+              <SelectValue placeholder={t("admin.participants.form.categoryPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
               {categoryOptions.map((category) => (
@@ -523,7 +523,7 @@ export const ParticipantForm = ({
                 <div className="w-24 h-24 border rounded overflow-hidden">
                   <img
                     src={photoPreview}
-                    alt="Photo preview"
+                    alt={t("admin.participants.form.photoAlt")}
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -571,7 +571,7 @@ export const ParticipantForm = ({
           </Label>
           <Select value={selectedDay} onValueChange={handleDayChange}>
             <SelectTrigger>
-              <SelectValue placeholder="Select a day" />
+              <SelectValue placeholder={t("admin.participants.form.dayPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
               {AVAILABLE_DAYS.map((day) => (
@@ -590,7 +590,7 @@ export const ParticipantForm = ({
           </Label>
           <Select value={selectedTime} onValueChange={handleTimeChange}>
             <SelectTrigger>
-              <SelectValue placeholder="Select time" />
+              <SelectValue placeholder={t("admin.participants.form.timePlaceholder")} />
             </SelectTrigger>
             <SelectContent>
               {AVAILABLE_TIMES.map((time) => (
