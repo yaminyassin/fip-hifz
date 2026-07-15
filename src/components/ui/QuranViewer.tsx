@@ -81,12 +81,12 @@ export function QuranViewer({
       )}
 
       {url && !hasError && (
-        <div className="border-2 border-slate-800 h-full w-full flex items-start justify-center overflow-hidden">
+        <div className="border-2 border-slate-800 flex-1 min-h-0 w-full flex items-center justify-center overflow-hidden">
           <img
             src={url}
             onError={() => setHasError(true)}
             alt={t("randomizer.questionLabel", { number: pageNumber })}
-            className="max-w-full max-h-full w-auto h-auto object-contain"
+            className="h-full w-full object-contain"
           />
         </div>
       )}
