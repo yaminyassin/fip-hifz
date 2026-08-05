@@ -48,8 +48,8 @@
       "empty": "Ainda não há tipos de pergunta. Um jurado não teria nada para preencher.",
       "operation": "Operação",
       "operationHint": "Se esta secção retira pontos ou os acrescenta.",
-      "subtract": "Retirar pontos",
-      "add": "Acrescentar pontos",
+      "operationSubtract": "Retirar pontos",
+      "operationAdd": "Acrescentar pontos",
       "cap": "Limite da secção",
       "capHint": "O máximo que esta secção pode alterar a pontuação de uma pergunta."
     },

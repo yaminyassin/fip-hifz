@@ -12,9 +12,18 @@ import {
 const PREVIOUS_QUESTIONS_DOC = "previous_questions";
 
 /**
- * Gets the previous questions from the app_config collection
+ * Gets the previous questions from the app_config collection.
+ *
+ * Rejects on a read failure rather than returning `[]`. An empty list is a
+ * meaningful answer — "nothing has been issued yet" — so swallowing the error
+ * into one told the randomizer every page was free to re-issue, and a
+ * participant could be handed a page a previous participant had already
+ * recited. The caller must decide whether to proceed without the exclusion
+ * list; this function will not decide it silently.
+ *
  * @param eventId The event ID to get previous questions for
  * @returns A promise that resolves to the array of previous question page numbers
+ * @throws when the app_config document cannot be read
  */
 export const getPreviousQuestions = async (eventId: string): Promise<number[]> => {
   try {
@@ -36,7 +45,7 @@ export const getPreviousQuestions = async (eventId: string): Promise<number[]> =
     }
   } catch (error) {
     console.error("Error getting previous questions:", error);
-    return [];
+    throw new Error("Failed to load the previously issued questions.");
   }
 };
 

@@ -39,6 +39,7 @@
       "subtitle": "Digite seu ID de júri para continuar",
       "placeholder": "Digite o ID do Júri",
       "button": "Entrar",
+      "loggingIn": "A entrar...",
       "error": {
         "invalid": "Autenticação Falhou",
         "invalidDesc": "ID de júri inválido",
@@ -87,7 +88,8 @@
       "saving": "Salvando...",
       "completed": "Concluído",
       "decrease": "Diminuir pontuação",
-      "increase": "Aumentar pontuação"
+      "increase": "Aumentar pontuação",
+      "retryLoad": "Tentar novamente"
     },
     "selectQuestion": "Selecionar Questão",
     "currentQuestion": "Questão Atual",
@@ -111,7 +113,20 @@
       "inactiveDesc": "Seu acesso de avaliação foi temporariamente desabilitado. Entre em contato com o administrador.",
       "contactAdmin": "Entrar em Contato com Administrador",
       "questionChangedTo": "Questão alterada para {{question}}",
-      "goToActiveQuestion": "Ir para questão ativa {{question}}"
+      "goToActiveQuestion": "Ir para questão ativa {{question}}",
+      "saveFailedTitle": "Pontuação não guardada",
+      "saveFailedDesc": "A questão {{number}} não foi guardada no servidor. A sua pontuação não ficou registada. ({{reason}})",
+      "adjustmentSaveFailedDesc": "As pontuações ao nível do participante não foram guardadas no servidor. ({{reason}})",
+      "loadFailedTitle": "Não foi possível carregar as pontuações",
+      "loadFailedDesc": "Não foi possível ler as pontuações já guardadas para este participante, pelo que a avaliação está bloqueada para não as substituir. Tente novamente antes de continuar.",
+      "clearFailedTitle": "Pontuações anteriores não eliminadas",
+      "clearFailedDesc": "Não foi possível eliminar as pontuações da atribuição de questões anterior, pelo que podem continuar guardadas. ({{reason}})",
+      "finishBlockedTitle": "Avaliação não concluída",
+      "finishBlockedDesc": "A questão {{questions}} não tem pontuação guardada. Avalie-a antes de concluir, caso contrário a sua avaliação fica de fora da média deste participante.",
+      "finishBlockedDesc_other": "As questões {{questions}} não têm pontuação guardada. Avalie-as antes de concluir, caso contrário a sua avaliação fica de fora da média deste participante.",
+      "finishFailedDesc": "Não foi possível concluir a avaliação. ({{reason}})",
+      "finishBlockedDesc_one": "A questão {{questions}} não tem pontuação guardada. Avalie-a antes de concluir, caso contrário a sua avaliação fica de fora da média deste participante.",
+      "unknownCategory": "A categoria \"{{category}}\" não está definida nas regras de avaliação deste evento."
     },
     "questionBreakdown": "Detalhamento por Questão"
   },
@@ -132,7 +147,17 @@
       "error": "Erro",
       "errorDesc": "Falha ao atualizar a questão",
       "scoresInitialized": "Pontuações inicializadas para todos os membros ativos do júri",
-      "scoresInitializationError": "Erro ao inicializar pontuações para membros do júri"
+      "scoresInitializationError": "Erro ao inicializar pontuações para membros do júri",
+      "generationFailedTitle": "Problemas neste sorteio",
+      "noQuestionsToGenerate": "A categoria {{category}} não tem questões configuradas, pelo que não é possível sortear.",
+      "questionsNotSaved": "A questão {{questions}} aparece no ecrã mas não foi guardada. Repita o sorteio antes de a recitação começar.",
+      "questionsNotSaved_other": "As questões {{questions}} aparecem no ecrã mas não foram guardadas. Repita o sorteio antes de a recitação começar.",
+      "activeQuestionNotSet": "A primeira página foi sorteada mas os ecrãs do público não foram informados — continuam a mostrar a página anterior.",
+      "previousQuestionsUnreadable": "Não foi possível ler a lista de páginas já utilizadas, pelo que uma página pode repetir-se de um participante anterior.",
+      "previousQuestionsNotRecorded": "As páginas agora sorteadas não ficaram registadas, pelo que um sorteio posterior as pode repetir.",
+      "retryGeneration": "Sortear novamente",
+      "questionsNotSaved_one": "A questão {{questions}} aparece no ecrã mas não foi guardada. Repita o sorteio antes de a recitação começar.",
+      "unknownCategory": "A categoria \"{{category}}\" não está definida nas regras de avaliação deste evento."
     }
   },
   "participants": {
@@ -189,7 +214,10 @@
       "statusComplete": "Concluído",
       "statusPending": "Pendente",
       "questions": "Questões",
-      "actions": "Ações"
+      "actions": "Ações",
+      "juryCountLabel": "Avaliações do júri",
+      "juryCountOfExpected": "{{counted}} de {{expected}}",
+      "juryCountShortTooltip": "Menos avaliações do que o esperado — este total está incompleto."
     },
     "visualizations": {
       "title": "Visualizações de Pontuação",
@@ -231,14 +259,19 @@
       "juryFilterDescription": "Selecione quais membros do júri incluir na exportação. Apenas participantes avaliados por TODOS os júris selecionados mostrarão pontuações.",
       "selectedJuries": "Selecionado{{plural}}: {{count}} membro{{plural}} do júri",
       "cancel": "Cancelar",
-      "export": "Exportar Excel"
+      "export": "Exportar Excel",
+      "doneTitle": "Exportação concluída",
+      "doneDesc": "{{file}} foi transferido.",
+      "failedTitle": "Falha na exportação",
+      "failedDesc": "O ficheiro não foi criado e nada foi transferido. ({{reason}})"
     },
     "progress": "Progresso",
     "questions": "Questões",
     "setActive": "Definir como Ativo",
     "currentlyActive": "Ativo Atualmente",
     "setActiveAria": "Definir participante como ativo",
-    "listenerError": "Atualizações em direto desligadas — as pontuações podem estar desatualizadas. Por favor, recarregue a página."
+    "listenerError": "Atualizações em direto desligadas — as pontuações podem estar desatualizadas. Por favor, recarregue a página.",
+    "listenerErrorAudience": "Atualizações em direto desligadas"
   },
   "admin": {
     "title": "Painel Administrativo",
@@ -291,7 +324,9 @@
       "control": "Painel de Controle",
       "participants": "Gerenciamento de Participantes",
       "jury": "Gerenciamento de Jurados",
-      "performance": "Monitor de Desempenho"
+      "performance": "Monitor de Desempenho",
+      "events": "Gestão de Eventos",
+      "evaluation": "Regras de Avaliação"
     },
     "participants": {
       "title": "Gerenciamento de Participantes",
@@ -373,7 +408,20 @@
       "scheduled": "Programado",
       "scheduledGroup": "Grupo da Programação {{scheduled}}",
       "participant": "participante",
-      "participants": "participantes"
+      "participants": "participantes",
+      "updatedTitle": "Participante atualizado",
+      "createdTitle": "Participante criado",
+      "savedDesc": "{{name}} foi guardado.",
+      "saveFailedTitle": "Participante não guardado",
+      "saveFailedDesc": "{{name}} não foi guardado no servidor. ({{reason}})",
+      "deletedTitle": "Participante eliminado",
+      "deletedDesc": "{{name}} foi eliminado.",
+      "deleteFailedTitle": "Participante não eliminado",
+      "deleteFailedDesc": "{{name}} não foi eliminado do servidor. ({{reason}})",
+      "resetStatusesDoneTitle": "Estados repostos",
+      "resetStatusesDoneDesc": "O estado de todos os participantes foi reposto.",
+      "resetStatusesFailedTitle": "Estados não repostos",
+      "resetStatusesFailedDesc": "Não foi possível repor os estados dos participantes no servidor. ({{reason}})"
     },
     "jury": {
       "title": "Gerenciamento de Jurados",
@@ -394,7 +442,19 @@
       "form": {
         "name": "Nome",
         "namePlaceholder": "Digite o nome do jurado"
-      }
+      },
+      "activeStatusUpdatedTitle": "Estado ativo atualizado",
+      "activatedDesc": "{{name}} está agora ativo.",
+      "deactivatedDesc": "{{name}} está agora inativo.",
+      "activeStatusFailedTitle": "Estado ativo não alterado",
+      "actionFailedDesc": "{{name}} não foi atualizado no servidor. ({{reason}})",
+      "evaluationStatusUpdatedTitle": "Estado da avaliação atualizado",
+      "evaluationStatusUpdatedDesc": "O estado da avaliação de {{name}} foi alterado.",
+      "evaluationStatusFailedTitle": "Estado da avaliação não alterado",
+      "allActivatedTitle": "Todos os jurados ativados",
+      "allActivatedDesc": "Todos os membros do júri estão agora ativos.",
+      "allActivatedFailedTitle": "Jurados não ativados",
+      "bulkFailedDesc": "Os membros do júri não foram atualizados no servidor. ({{reason}})"
     },
     "activeQuestion": {
       "label": "Questão Ativa",
@@ -453,7 +513,8 @@
     "unnamed": "Sem Nome",
     "markingDone": "Marcando como concluído...",
     "markDone": "Marcar como Concluído",
-    "settingActive": "Definindo como ativo..."
+    "settingActive": "Definindo como ativo...",
+    "dismiss": "Dispensar"
   },
   "validation": {
     "required": "Este campo é obrigatório"
@@ -519,6 +580,7 @@
     "password": "Senha",
     "button": "Entrar",
     "loggingIn": "Verificando...",
-    "error": "Senha inválida. Por favor, tente novamente."
+    "error": "Senha inválida. Por favor, tente novamente.",
+    "noEvent": "Nenhum evento selecionado. Escolha um evento antes de introduzir o código de acesso."
   }
 }

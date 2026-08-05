@@ -102,7 +102,10 @@ describe("union fields stay honest across operation changes", () => {
       operation: "add",
     });
 
-    const qt = draft.questionTypes[questionTypeId] as Record<string, unknown>;
+    const qt = draft.questionTypes[questionTypeId] as unknown as Record<
+      string,
+      unknown
+    >;
     expect(qt.operation).toBe("add");
     expect(qt.perSectionAdditionCap).toBe(7);
     // The validator rejects unknown keys, so the old cap must be GONE, not
@@ -122,10 +125,8 @@ describe("union fields stay honest across operation changes", () => {
       patch: { role: "informational" },
     });
 
-    const input = draft.questionTypes[questionTypeId].inputs[0] as Record<
-      string,
-      unknown
-    >;
+    const input = draft.questionTypes[questionTypeId]
+      .inputs[0] as unknown as Record<string, unknown>;
     expect(input.role).toBe("informational");
     expect("perInputWeight" in input).toBe(false);
   });

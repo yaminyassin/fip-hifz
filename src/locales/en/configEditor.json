@@ -48,8 +48,8 @@
       "empty": "No question types yet. A juror would have nothing to fill in.",
       "operation": "Operation",
       "operationHint": "Whether this section takes points away or adds them.",
-      "subtract": "Subtract points",
-      "add": "Add points",
+      "operationSubtract": "Subtract points",
+      "operationAdd": "Add points",
       "cap": "Section cap",
       "capHint": "The most this section can move a question score."
     },

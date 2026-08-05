@@ -14,6 +14,7 @@ import {
 } from "@/hooks/useParticipants";
 import { useJuryMembers } from "@/hooks/useJuryMembers";
 import { useEvent } from "@/contexts/EventContext";
+import { notifyError, notifySuccess, NOTIFY_KEYS } from "@/lib/notify";
 import { orderedEntries } from "@/evaluation/configHelpers";
 import type { EventEvaluationConfigV2 } from "@/evaluation/types";
 import {
@@ -183,6 +184,18 @@ function ParticipantsRoute() {
     return Array.from(allJuryIds).sort();
   }, [participants]);
 
+  /**
+   * How many juries a completed participant SHOULD have contributed scores.
+   * Pairing this with the number actually counted is the detector for a jury
+   * silently dropped from the average: `computeParticipantScoring` omits any
+   * jury missing a question, so "3 of 4" on screen means one jury's work is
+   * not in the ranking.
+   */
+  const expectedJuryCount = useMemo(
+    () => juryMembers.filter((jury) => jury.isActive).length,
+    [juryMembers]
+  );
+
   const juryIdToName = useMemo(() => {
     const mapping = new Map<string, string>();
     juryMembers.forEach((jury) => mapping.set(jury.id, jury.name || `Jury ${jury.id}`));
@@ -276,7 +289,12 @@ function ParticipantsRoute() {
         Status: participant.isDone ? "Complete" : "Pending",
         "Final Score":
           participant.finalScore > 0 ? `${participant.finalScore.toFixed(2)} pts` : "-",
-        "Jury Count": participant.juryIds.length,
+        "Juries Counted": participant.juryIds.length,
+        "Juries Expected": expectedJuryCount,
+        "All Juries Counted":
+          expectedJuryCount > 0 && participant.juryIds.length < expectedJuryCount
+            ? "NO"
+            : "YES",
       }));
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(summaryData), "Summary");
 
@@ -305,7 +323,8 @@ function ParticipantsRoute() {
           for (const [, adjustment] of orderedAdjustments) {
             row[adjustment.label.default] = `${averageAdjustmentTotal(participant).toFixed(2)} pts`;
           }
-          row["Jury Count"] = participant.juryIds.length;
+          row["Juries Counted"] = participant.juryIds.length;
+          row["Juries Expected"] = expectedJuryCount;
           return row;
         });
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(detailedData), "Detailed Scores");
@@ -377,6 +396,13 @@ function ParticipantsRoute() {
           { Metric: "Evaluated Participants", Value: evaluatedParticipants.length },
           { Metric: "Pending Participants", Value: sortedParticipants.length - evaluatedParticipants.length },
           { Metric: "Active Jury Members", Value: allJuryIds.size },
+          { Metric: "Juries Expected Per Participant", Value: expectedJuryCount },
+          {
+            Metric: "Participants Missing A Jury",
+            Value: evaluatedParticipants.filter(
+              (p) => expectedJuryCount > 0 && p.juryIds.length < expectedJuryCount
+            ).length,
+          },
           { Metric: "Jury Filtering Applied", Value: exportWithJuryFilter ? "Yes" : "No" },
           { Metric: "", Value: "" },
           { Metric: "Average Final Score", Value: `${avgFinalScore.toFixed(2)} pts` },
@@ -407,12 +433,24 @@ function ParticipantsRoute() {
           ? `-Jury-Filtered-${selectedJuriesForExport.length}`
           : "";
       const currentDate = new Date().toISOString().split("T")[0];
-      XLSX.writeFile(
-        workbook,
-        `Participants-Export-${selectedCategoryNames}${juryFilterSuffix}-${currentDate}.xlsx`
-      );
+      const fileName = `Participants-Export-${selectedCategoryNames}${juryFilterSuffix}-${currentDate}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+      notifySuccess({
+        key: NOTIFY_KEYS.exportParticipants,
+        title: t("participants.export.doneTitle"),
+        description: t("participants.export.doneDesc", { file: fileName }),
+      });
     } catch (error) {
+      // A half-built workbook never reaches the disk, so the operator would
+      // otherwise just see the dialog close and assume the file downloaded.
       console.error("Error exporting to Excel:", error);
+      notifyError({
+        key: NOTIFY_KEYS.exportParticipants,
+        title: t("participants.export.failedTitle"),
+        description: t("participants.export.failedDesc", {
+          reason: error instanceof Error ? error.message : String(error),
+        }),
+      });
     } finally {
       setIsExporting(false);
     }
@@ -548,7 +586,10 @@ function ParticipantsRoute() {
         </div>
 
         <div className="rounded-lg border bg-card">
-          <ParticipantsTable participants={processedParticipants} />
+          <ParticipantsTable
+            participants={processedParticipants}
+            expectedJuryCount={expectedJuryCount}
+          />
         </div>
 
         <ParticipantScoreVisualizations participants={searchFilteredParticipants} />

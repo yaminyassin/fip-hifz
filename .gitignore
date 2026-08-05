@@ -65,3 +65,11 @@ __pycache__/
 
 .cursorrules.env
 .cursorrules
+
+# Interactive journey harness (scripts/journey-up.sh)
+.emulator-data/
+journey-emulator.log
+journey-vite.log
+firestore-debug.log
+ui-debug.log
+journey-up.out

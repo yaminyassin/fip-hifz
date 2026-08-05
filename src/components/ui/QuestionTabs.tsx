@@ -89,7 +89,13 @@ export const QuestionTabs = ({
   };
 
   const isEvaluationComplete = juryMember?.hasFinishedEvaluating === true;
-  const isButtonDisabled = !participant?.id || questionCount === 0 || isSaving || isEvaluationComplete;
+  // `disabled` carries the load-failure lock from ScoreForm. It MUST gate
+  // Finish, not just the tabs: Finish writes `currentScores` to Firestore
+  // (useJuryNavigation.handleDone), and while the stored scores are unreadable
+  // `currentScores` holds the config defaults (zeros) rather than the juror's
+  // real marks — concluding would overwrite the persisted score with zeros.
+  const isButtonDisabled =
+    disabled || !participant?.id || questionCount === 0 || isSaving || isEvaluationComplete;
 
   return (
     <div className="w-full">

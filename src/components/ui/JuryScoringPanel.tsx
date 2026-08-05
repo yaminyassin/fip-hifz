@@ -28,6 +28,10 @@ export function JuryScoringPanel({ participant, juryMember, juryId }: JuryScorin
     setCurrentScores,
     handleScoreChange,
     handleAdjustmentChange,
+    saveError,
+    loadError,
+    retryLoad,
+    dismissSaveError,
     saveScoresMutation,
     saveAdjustmentMutation,
     debounceTimeoutRef,
@@ -42,6 +46,8 @@ export function JuryScoringPanel({ participant, juryMember, juryId }: JuryScorin
     handleQuestionChange,
     handleDone,
     handleGoToActiveQuestion,
+    finishError,
+    dismissFinishError,
   } = useJuryNavigation({
     participant,
     juryMember,
@@ -51,6 +57,8 @@ export function JuryScoringPanel({ participant, juryMember, juryId }: JuryScorin
     saveAdjustmentMutation,
     currentScores,
     adjustmentValues,
+    allScores,
+    loadError,
   });
 
   return (
@@ -73,6 +81,12 @@ export function JuryScoringPanel({ participant, juryMember, juryId }: JuryScorin
       isSaving={saveScoresMutation.isPending}
       setCurrentScores={setCurrentScores}
       defaultQuestionValues={defaultQuestionValues}
+      saveError={saveError}
+      loadError={loadError}
+      finishError={finishError}
+      onRetryLoad={retryLoad}
+      onDismissSaveError={dismissSaveError}
+      onDismissFinishError={dismissFinishError}
     />
   );
 }

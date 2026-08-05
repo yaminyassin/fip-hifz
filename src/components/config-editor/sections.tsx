@@ -173,9 +173,9 @@ export function QuestionTypesSection({ draft, dispatch, disabled }: SectionProps
                     options={[
                       {
                         value: "subtract",
-                        label: t("configEditor.questionTypes.subtract"),
+                        label: t("configEditor.questionTypes.operationSubtract"),
                       },
-                      { value: "add", label: t("configEditor.questionTypes.add") },
+                      { value: "add", label: t("configEditor.questionTypes.operationAdd") },
                     ]}
                     onChange={(value) =>
                       dispatch({

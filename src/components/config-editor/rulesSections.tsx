@@ -328,10 +328,10 @@ export function AdjustmentsSection({ draft, dispatch, disabled }: SectionProps) 
                     disabled={disabled}
                     testId={`adj-${adj.id}-operation`}
                     options={[
-                      { value: "add", label: t("configEditor.questionTypes.add") },
+                      { value: "add", label: t("configEditor.questionTypes.operationAdd") },
                       {
                         value: "subtract",
-                        label: t("configEditor.questionTypes.subtract"),
+                        label: t("configEditor.questionTypes.operationSubtract"),
                       },
                     ]}
                     onChange={(value) =>

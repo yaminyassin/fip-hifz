@@ -31,11 +31,11 @@ export const JuryLogin = ({ onLoginSuccess }: JuryLoginProps) => {
         setAuthenticatedJury(juryId);
         onLoginSuccess();
       } else {
-        setError(t("jury.login.invalidId", "Invalid jury ID"));
+        setError(t("jury.login.error.invalidDesc"));
       }
     } catch (error) {
       console.error("Authentication failed:", error);
-      setError(t("jury.login.error", "Login failed. Please try again."));
+      setError(t("jury.login.error.failedDesc"));
     } finally {
       setIsLoggingIn(false);
     }
@@ -68,7 +68,7 @@ export const JuryLogin = ({ onLoginSuccess }: JuryLoginProps) => {
             disabled={!juryId.trim() || isLoggingIn}
           >
             {isLoggingIn
-              ? t("jury.login.loggingIn", "Logging in...")
+              ? t("jury.login.loggingIn")
               : t("jury.login.button")
             }
           </Button>

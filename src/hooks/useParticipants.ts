@@ -384,7 +384,13 @@ interface EventGeneration {
   generation: number;
 }
 
-const LISTENER_ERROR_KEY = "participantsListenerError";
+/**
+ * One per-event flag for "a live Firestore listener died". Exported so every
+ * listener in the app reports into the SAME slot and `useParticipantsListenerError`
+ * stays the single read side — `useActiveParticipant` writes here too rather
+ * than growing a parallel mechanism.
+ */
+export const LISTENER_ERROR_KEY = "participantsListenerError";
 
 export const useParticipants = () => {
   const queryClient = useQueryClient();
@@ -562,9 +568,14 @@ export const useParticipants = () => {
 /**
  * The message of the last Firestore listener error for the current event, or
  * null. A Firestore `onSnapshot` error is terminal — the listener stops
- * delivering — so once this is set the ranking data is frozen until the page
- * reloads (which re-establishes fresh listeners). Consumers show a "live
- * updates disconnected" surface so an operator never trusts stale scores.
+ * delivering — so once this is set the data is frozen until the page reloads
+ * (which re-establishes fresh listeners). Consumers show a "live updates
+ * disconnected" surface so nobody trusts a stale screen.
+ *
+ * Covers every live listener for the event, not just the participants
+ * collection: `useActiveParticipant` reports into the same key, because from
+ * a viewer's point of view "the screen stopped updating" is one condition
+ * regardless of which subscription died.
  */
 export function useParticipantsListenerError(): string | null {
   const { currentEvent } = useEvent();

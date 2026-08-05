@@ -143,6 +143,15 @@ export const ScoreDetailsDialog = ({
 
   const juryIds = useMemo(() => participant.juryIds ?? [], [participant.juryIds]);
 
+  // Counted vs expected. A jury that left any question unscored is dropped
+  // from the average by `computeParticipantScoring`, so a short count here is
+  // the visible symptom of an evaluation that was concluded incomplete.
+  const expectedJuryCount = useMemo(
+    () => juryMembers.filter((jury) => jury.isActive).length,
+    [juryMembers]
+  );
+  const juryCountIsShort = expectedJuryCount > 0 && juryIds.length < expectedJuryCount;
+
   const selectedResults = useMemo(() => {
     if (selectedJuryId === "average") {
       return juryIds.map((id) => participant.juryResults[id]).filter(Boolean);
@@ -357,6 +366,19 @@ export const ScoreDetailsDialog = ({
           <p className="text-sm text-muted-foreground">
             {t("participants.visualizations.title")} - {juryName}
           </p>
+          {expectedJuryCount > 0 && (
+            <p
+              data-testid="score-details-jury-count"
+              className={`text-sm ${juryCountIsShort ? "font-semibold text-amber-600" : "text-muted-foreground"}`}
+            >
+              {t("participants.table.juryCountLabel")}:{" "}
+              {t("participants.table.juryCountOfExpected", {
+                counted: juryIds.length,
+                expected: expectedJuryCount,
+              })}
+              {juryCountIsShort && ` \u2014 ${t("participants.table.juryCountShortTooltip")}`}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Select value={selectedJuryId} onValueChange={setSelectedJuryId}>

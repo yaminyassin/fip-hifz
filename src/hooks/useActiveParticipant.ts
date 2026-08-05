@@ -6,7 +6,18 @@ import { useFirestoreListener } from "./useFirestoreListener";
 import { useMemo } from "react";
 import { useEvent } from "@/contexts/EventContext";
 import { getEventCollectionPath } from "@/utils/firebaseUtils";
+import { LISTENER_ERROR_KEY } from "./useParticipants";
 
+/**
+ * The single listener behind /jury, /big-screen, /quran-page, /randomizer and
+ * /randomizer-audience. A Firestore `onSnapshot` error is terminal, so before
+ * this reported anywhere the whole hall's screens would simply freeze on the
+ * previous participant with no indication anything was wrong. The error is
+ * published into the shared `LISTENER_ERROR_KEY` slot read by
+ * `useParticipantsListenerError`, which routes render as an in-layout banner
+ * (a toast is suppressed on the audience routes — its viewport sits in the
+ * middle of the projector).
+ */
 export const useActiveParticipant = () => {
   const queryClient = useQueryClient();
   const { currentEvent } = useEvent();
@@ -23,6 +34,7 @@ export const useActiveParticipant = () => {
     query: participantQuery,
     key: `activeParticipant-${currentEvent}`,
     onData: (querySnapshot) => {
+      queryClient.setQueryData([LISTENER_ERROR_KEY, currentEvent], null);
       if (!querySnapshot.empty) {
         const activeParticipant = {
           id: querySnapshot.docs[0].id,
@@ -35,6 +47,10 @@ export const useActiveParticipant = () => {
     },
     onError: (error) => {
       console.error("Error fetching active participant:", error);
+      queryClient.setQueryData(
+        [LISTENER_ERROR_KEY, currentEvent],
+        error?.message ?? "active participant listener error"
+      );
     },
     enabled: !!participantQuery,
   });

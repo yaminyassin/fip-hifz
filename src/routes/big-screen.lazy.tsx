@@ -5,6 +5,7 @@ import { useActiveParticipant } from "@/hooks/useActiveParticipant";
 import { User } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { EvaluationConfigGate } from "@/components/EvaluationConfigGate";
+import { LiveUpdatesBanner } from "@/components/ui/LiveUpdatesBanner";
 import { useEvent } from "@/contexts/EventContext";
 import type { EventEvaluationConfigV2 } from "@/evaluation/types";
 
@@ -96,6 +97,13 @@ const BigScreen = () => {
       style={{ height: `${containerHeight}px` }}
     >
       <div className="max-w-[1800px] mx-auto h-full">
+        {/* Toasts are suppressed on this route (projector), so a dead listener
+            has to be reported on the page itself. The audience variant is
+            fixed-position and takes no layout space, which matters here: this
+            container is sized to `innerHeight - 48` with `overflow-hidden` and
+            the grid below claims `h-full`, so a flow element would push the
+            bottom of the Quran viewer off the screen. */}
+        <LiveUpdatesBanner variant="audience" />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
           {/* Left side - Participant info */}
           <div className="flex flex-col gap-6 h-full overflow-hidden">

@@ -39,6 +39,7 @@
       "subtitle": "Enter your jury ID to continue",
       "placeholder": "Enter Jury ID",
       "button": "Login",
+      "loggingIn": "Logging in...",
       "error": {
         "invalid": "Authentication Failed",
         "invalidDesc": "Invalid jury ID",
@@ -91,7 +92,8 @@
       "completed": "Completed",
       "decrease": "Decrease score",
       "increase": "Increase score",
-      "anull_question": "Anull Question"
+      "anull_question": "Anull Question",
+      "retryLoad": "Retry"
     },
     "selectQuestion": "Select Question",
     "currentQuestion": "Current Question",
@@ -117,7 +119,20 @@
       "inactiveDesc": "Your evaluation access has been temporarily disabled. Please contact the administrator.",
       "contactAdmin": "Contact Administrator",
       "questionChangedTo": "Question changed to {{question}}",
-      "goToActiveQuestion": "Go to active question {{question}}"
+      "goToActiveQuestion": "Go to active question {{question}}",
+      "saveFailedTitle": "Score not saved",
+      "saveFailedDesc": "Question {{number}} was not saved to the server. Your score is not recorded. ({{reason}})",
+      "adjustmentSaveFailedDesc": "The participant-level marks were not saved to the server. ({{reason}})",
+      "loadFailedTitle": "Scores could not be loaded",
+      "loadFailedDesc": "The scores already stored for this participant could not be read, so scoring is locked to avoid overwriting them. Retry before continuing.",
+      "clearFailedTitle": "Previous scores not cleared",
+      "clearFailedDesc": "The scores from the previous question assignment could not be removed, so old scores may still be stored. ({{reason}})",
+      "finishBlockedTitle": "Evaluation not concluded",
+      "finishBlockedDesc": "Question {{questions}} has no saved score. Score it before concluding, or your evaluation will be left out of this participant's average.",
+      "finishBlockedDesc_other": "Questions {{questions}} have no saved score. Score them before concluding, or your evaluation will be left out of this participant's average.",
+      "finishFailedDesc": "The evaluation could not be concluded. ({{reason}})",
+      "finishBlockedDesc_one": "Question {{questions}} has no saved score. Score it before concluding, or your evaluation will be left out of this participant's average.",
+      "unknownCategory": "Category \"{{category}}\" is not defined in this event's evaluation rules."
     },
     "questionBreakdown": "Per-Question Breakdown"
   },
@@ -140,7 +155,17 @@
       "error": "Error",
       "errorDesc": "Failed to update question",
       "scoresInitialized": "Scores initialized for all active jury members",
-      "scoresInitializationError": "Error initializing scores for jury members"
+      "scoresInitializationError": "Error initializing scores for jury members",
+      "generationFailedTitle": "Problems during this draw",
+      "noQuestionsToGenerate": "Category {{category}} has no questions configured, so nothing can be drawn.",
+      "questionsNotSaved": "Question {{questions}} is shown on screen but was not saved. Draw again before the recitation starts.",
+      "questionsNotSaved_other": "Questions {{questions}} are shown on screen but were not saved. Draw again before the recitation starts.",
+      "activeQuestionNotSet": "The first page was drawn but the audience screens were not told about it — they are still showing the previous page.",
+      "previousQuestionsUnreadable": "The list of pages already used could not be read, so a page may be repeated from an earlier participant.",
+      "previousQuestionsNotRecorded": "The pages drawn now were not recorded, so a later draw may repeat them.",
+      "retryGeneration": "Draw again",
+      "questionsNotSaved_one": "Question {{questions}} is shown on screen but was not saved. Draw again before the recitation starts.",
+      "unknownCategory": "Category \"{{category}}\" is not defined in this event's evaluation rules."
     }
   },
   "participants": {
@@ -197,7 +222,10 @@
       "juryCount": "Jury Evaluations",
       "statusComplete": "Complete",
       "statusPending": "Pending",
-      "questions": "Questions"
+      "questions": "Questions",
+      "juryCountLabel": "Jury evaluations",
+      "juryCountOfExpected": "{{counted}} of {{expected}}",
+      "juryCountShortTooltip": "Fewer evaluations than expected — this total is incomplete."
     },
     "visualizations": {
       "title": "Score Visualizations",
@@ -239,9 +267,14 @@
       "juryFilterDescription": "Select which jury members to include in the export. Only participants evaluated by ALL selected juries will show scores.",
       "selectedJuries": "Selected: {{count}} jury member{{plural}}",
       "cancel": "Cancel",
-      "export": "Export Excel"
+      "export": "Export Excel",
+      "doneTitle": "Export complete",
+      "doneDesc": "{{file}} was downloaded.",
+      "failedTitle": "Export failed",
+      "failedDesc": "The file was not created and nothing was downloaded. ({{reason}})"
     },
-    "listenerError": "Live updates disconnected — scores may be out of date. Please reload the page."
+    "listenerError": "Live updates disconnected — scores may be out of date. Please reload the page.",
+    "listenerErrorAudience": "Live updates disconnected"
   },
   "admin": {
     "title": "Admin Panel",
@@ -294,7 +327,9 @@
       "control": "Control Panel",
       "participants": "Participants Management",
       "jury": "Jury Management",
-      "performance": "Performance Monitor"
+      "performance": "Performance Monitor",
+      "events": "Event Management",
+      "evaluation": "Evaluation Rules"
     },
     "participants": {
       "title": "Participants Management",
@@ -369,7 +404,20 @@
       "actions": "Actions",
       "scheduledGroup": "Schedule Group {{scheduled}}",
       "participant": "participant",
-      "participants": "participants"
+      "participants": "participants",
+      "updatedTitle": "Participant updated",
+      "createdTitle": "Participant created",
+      "savedDesc": "{{name}} was saved.",
+      "saveFailedTitle": "Participant not saved",
+      "saveFailedDesc": "{{name}} was not saved to the server. ({{reason}})",
+      "deletedTitle": "Participant deleted",
+      "deletedDesc": "{{name}} was deleted.",
+      "deleteFailedTitle": "Participant not deleted",
+      "deleteFailedDesc": "{{name}} was not deleted from the server. ({{reason}})",
+      "resetStatusesDoneTitle": "Statuses reset",
+      "resetStatusesDoneDesc": "Every participant status was reset.",
+      "resetStatusesFailedTitle": "Statuses not reset",
+      "resetStatusesFailedDesc": "The participant statuses were not reset on the server. ({{reason}})"
     },
     "jury": {
       "title": "Jury Management",
@@ -390,7 +438,19 @@
       "form": {
         "name": "Name",
         "namePlaceholder": "Enter jury member name"
-      }
+      },
+      "activeStatusUpdatedTitle": "Active status updated",
+      "activatedDesc": "{{name}} is now active.",
+      "deactivatedDesc": "{{name}} is now inactive.",
+      "activeStatusFailedTitle": "Active status not changed",
+      "actionFailedDesc": "{{name}} was not updated on the server. ({{reason}})",
+      "evaluationStatusUpdatedTitle": "Evaluation status updated",
+      "evaluationStatusUpdatedDesc": "The evaluation status for {{name}} was changed.",
+      "evaluationStatusFailedTitle": "Evaluation status not changed",
+      "allActivatedTitle": "All jury members activated",
+      "allActivatedDesc": "Every jury member is now active.",
+      "allActivatedFailedTitle": "Jury members not activated",
+      "bulkFailedDesc": "The jury members were not updated on the server. ({{reason}})"
     },
     "activeQuestion": {
       "label": "Active Question",
@@ -446,7 +506,8 @@
     "unnamed": "Unnamed",
     "markingDone": "Marking as complete...",
     "markDone": "Mark as Complete",
-    "settingActive": "Setting as active..."
+    "settingActive": "Setting as active...",
+    "dismiss": "Dismiss"
   },
   "validation": {
     "required": "This field is required."
@@ -515,6 +576,7 @@
     "password": "Password",
     "button": "Enter",
     "loggingIn": "Verifying...",
-    "error": "Invalid password. Please try again."
+    "error": "Invalid password. Please try again.",
+    "noEvent": "No event selected. Choose an event before entering the access code."
   }
 }

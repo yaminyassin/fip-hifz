@@ -1,5 +1,6 @@
 import { Label } from "@/components/shadcn/label";
 import { ParticipantBanner } from "@/components/ui/ParticipantBanner";
+import { LiveUpdatesBanner } from "@/components/ui/LiveUpdatesBanner";
 import { EvaluationConfigGate } from "@/components/EvaluationConfigGate";
 import { createLazyFileRoute } from "@tanstack/react-router";
 import React, {
@@ -238,8 +239,12 @@ function RandomizerAudienceRoute() {
   );
 }
 
+// Toasts are suppressed on this route (projector), so the disconnect badge is
+// the only surface — and it sits outside the route body, which returns early
+// while loading.
 const RouteComponent = () => (
   <EvaluationConfigGate>
+    <LiveUpdatesBanner variant="audience" />
     <RandomizerAudienceRoute />
   </EvaluationConfigGate>
 );

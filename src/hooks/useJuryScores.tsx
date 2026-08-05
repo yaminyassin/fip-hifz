@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { collection, getDocs, query, updateDoc, doc, where } from "firebase/firestore";
 import { firestore } from "@/main";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import { dismissNotification, notifyError, NOTIFY_KEYS } from "@/lib/notify";
 import { useEvent } from "@/contexts/EventContext";
 import { getEventCollectionPath } from "@/utils/firebaseUtils";
 import {
@@ -48,8 +50,20 @@ interface SaveScoresParams {
   scoresToSave: QuestionValueMap;
 }
 
+/** A write that did not reach Firestore. `questionNumber` is null for the
+ * participant-level adjustment write, which is not tied to one question. */
+export interface JuryScoreSaveError {
+  questionNumber: number | null;
+  message: string;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
   const { currentEvent, evaluationConfig } = useEvent();
+  const { t } = useTranslation();
 
   const defaultQuestionValues = evaluationConfig
     ? buildDefaultQuestionValues(evaluationConfig)
@@ -66,6 +80,41 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
   const [lastParticipantId, setLastParticipantId] = useState<string | null>(null);
   const [pendingSave, setPendingSave] = useState(false);
   const [pendingAdjustmentSave, setPendingAdjustmentSave] = useState(false);
+
+  // Error surfaces (design doc §9). A juror is looking at the form, so both
+  // of these are rendered in place by ScoreForm as well as being notified.
+  const [saveError, setSaveError] = useState<JuryScoreSaveError | null>(null);
+  const [scoresLoadError, setScoresLoadError] = useState<string | null>(null);
+  const [adjustmentsLoadError, setAdjustmentsLoadError] = useState<string | null>(null);
+  // Bumped by `retryLoad` to re-run both fetch effects.
+  const [loadAttempt, setLoadAttempt] = useState(0);
+
+  /**
+   * A read failure is more dangerous than a write failure here: when the
+   * stored scores never arrive, `allScores` stays empty, ScoreForm's reset
+   * effect fills the inputs with the config defaults (zeros), and the first
+   * slider a juror touches writes that whole zeroed map over the scores that
+   * ARE persisted. So a load failure must disable the inputs, not just warn.
+   */
+  const loadError = scoresLoadError ?? adjustmentsLoadError;
+
+  const retryLoad = useCallback(() => {
+    setScoresLoadError(null);
+    setAdjustmentsLoadError(null);
+    setLoadAttempt((attempt) => attempt + 1);
+  }, []);
+
+  const dismissSaveError = useCallback(() => {
+    setSaveError(null);
+  }, []);
+
+  // The persistent toast and the in-place banner must never disagree about
+  // whether a write is still outstanding, so the toast is tied to the state
+  // rather than dismissed at each individual call site: a save that resolves
+  // one failure while another is still live leaves both surfaces up.
+  useEffect(() => {
+    if (saveError === null) dismissNotification(NOTIFY_KEYS.juryScoreSave);
+  }, [saveError]);
 
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const adjustmentDebounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -87,9 +136,17 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
 
         queryClient.invalidateQueries({ queryKey: ["juryScores"] });
       } catch (error) {
+        // A failed clear leaves scores keyed to the OLD assignment behind, so
+        // the juror must know their re-scoring is starting from a dirty slate.
         console.error("Error clearing previous scores:", error);
+        notifyError({
+          key: NOTIFY_KEYS.juryScoreSave,
+          title: t("jury.messages.clearFailedTitle"),
+          description: t("jury.messages.clearFailedDesc", { reason: errorMessage(error) }),
+        });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [queryClient, currentEvent]
   );
 
@@ -120,11 +177,29 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
         [variables.questionNumToSave]: variables.scoresToSave,
       }));
       setPendingSave(false);
+      // Only THIS question's failure is resolved. Clearing unconditionally
+      // would erase a still-unpersisted failure for a different write — Q1's
+      // "not saved" banner vanishing because Q2 saved, or the participant-level
+      // adjustment failure vanishing because any question saved. The keyed
+      // toast is dismissed by the effect below, once `saveError` is really null.
+      setSaveError((current) =>
+        current?.questionNumber === variables.questionNumToSave ? null : current
+      );
       queryClient.invalidateQueries({ queryKey: ["juryScores"] });
     },
     onError: (error, variables) => {
       console.error(`Error saving scores for Q${variables.questionNumToSave}:`, error);
       setPendingSave(false);
+      const message = errorMessage(error);
+      setSaveError({ questionNumber: variables.questionNumToSave, message });
+      notifyError({
+        key: NOTIFY_KEYS.juryScoreSave,
+        title: t("jury.messages.saveFailedTitle"),
+        description: t("jury.messages.saveFailedDesc", {
+          number: variables.questionNumToSave,
+          reason: message,
+        }),
+      });
     },
   });
 
@@ -143,11 +218,19 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
     },
     onSuccess: () => {
       setPendingAdjustmentSave(false);
+      setSaveError((current) => (current?.questionNumber === null ? null : current));
       queryClient.invalidateQueries({ queryKey: ["juryScores"] });
     },
     onError: (error) => {
       console.error("Error saving jury evaluation inputs:", error);
       setPendingAdjustmentSave(false);
+      const message = errorMessage(error);
+      setSaveError({ questionNumber: null, message });
+      notifyError({
+        key: NOTIFY_KEYS.juryScoreSave,
+        title: t("jury.messages.saveFailedTitle"),
+        description: t("jury.messages.adjustmentSaveFailedDesc", { reason: message }),
+      });
     },
   });
 
@@ -226,6 +309,11 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
       setAdjustmentValues(defaultAdjustmentValues);
       setPendingSave(false);
       setPendingAdjustmentSave(false);
+      setSaveError(null);
+      setScoresLoadError(null);
+      setAdjustmentsLoadError(null);
+      dismissNotification(NOTIFY_KEYS.juryScoreSave);
+      dismissNotification(NOTIFY_KEYS.juryScoreLoad);
       setLastParticipantId(participant.id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -264,13 +352,22 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
         });
 
         setAllScores(scoresByQuestion);
+        setScoresLoadError(null);
+        dismissNotification(NOTIFY_KEYS.juryScoreLoad);
       } catch (error) {
         console.error("Error fetching all scores:", error);
+        setScoresLoadError(errorMessage(error));
+        notifyError({
+          key: NOTIFY_KEYS.juryScoreLoad,
+          title: t("jury.messages.loadFailedTitle"),
+          description: t("jury.messages.loadFailedDesc"),
+        });
       }
     };
 
     fetchAllScores();
-  }, [participant, juryId, currentEvent, evaluationConfig]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [participant, juryId, currentEvent, evaluationConfig, loadAttempt]);
 
   // Fetch the jury's participant-level adjustment values.
   useEffect(() => {
@@ -298,15 +395,25 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
         } else {
           setAdjustmentValues(defaultAdjustmentValues);
         }
+        setAdjustmentsLoadError(null);
       } catch (error) {
+        // Same hazard as the score read: falling back to the defaults here
+        // silently zeroes a bonus the jury already awarded, and the next
+        // adjustment write would persist that zero.
         console.error("Error fetching jury evaluation inputs:", error);
         setAdjustmentValues(defaultAdjustmentValues);
+        setAdjustmentsLoadError(errorMessage(error));
+        notifyError({
+          key: NOTIFY_KEYS.juryScoreLoad,
+          title: t("jury.messages.loadFailedTitle"),
+          description: t("jury.messages.loadFailedDesc"),
+        });
       }
     };
 
     fetchAdjustmentValues();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [participant?.id, juryId, pendingAdjustmentSave, currentEvent, evaluationConfig]);
+  }, [participant?.id, juryId, pendingAdjustmentSave, currentEvent, evaluationConfig, loadAttempt]);
 
   // Reset in-progress state when the participant's assigned questions
   // change (a reassignment) — never keep stale scores for a new set of
@@ -342,6 +449,10 @@ export const useJuryScores = ({ participant, juryId }: UseJuryScoresProps) => {
     setAllScores,
     handleScoreChange,
     handleAdjustmentChange,
+    saveError,
+    loadError,
+    retryLoad,
+    dismissSaveError,
     saveScoresMutation,
     saveAdjustmentMutation,
     clearPreviousScores,

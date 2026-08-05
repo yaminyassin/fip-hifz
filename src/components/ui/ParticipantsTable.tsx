@@ -17,12 +17,19 @@ interface ParticipantsTableProps {
   participants: ParticipantWithScores[];
   isLoading?: boolean;
   isFetching?: boolean;
+  /**
+   * How many juries are expected to contribute to each participant (the
+   * active jury members for the event). 0 means "unknown", and the column
+   * falls back to the bare count.
+   */
+  expectedJuryCount?: number;
 }
 
 export const ParticipantsTable = ({
   participants,
   isLoading = false,
   isFetching = false,
+  expectedJuryCount = 0,
 }: ParticipantsTableProps) => {
   const { t } = useTranslation();
   const [selectedParticipant, setSelectedParticipant] =
@@ -69,6 +76,10 @@ export const ParticipantsTable = ({
   // Render participant row
   const renderParticipantRow = (participant: ParticipantWithScores) => {
     const juryCount = participant.juryIds?.length || 0;
+    // A jury that did not score every question is omitted from the average
+    // entirely (useParticipants.ts). Showing counted-of-expected is what makes
+    // that omission visible instead of silently shifting the ranking.
+    const juryCountIsShort = expectedJuryCount > 0 && juryCount < expectedJuryCount;
 
     return (
       <TableRow key={participant.id}>
@@ -98,7 +109,28 @@ export const ParticipantsTable = ({
             ? `${participant.finalScore.toFixed(2)} pts`
             : "-"}
         </TableCell>
-        <TableCell>{juryCount > 0 ? juryCount : "-"}</TableCell>
+        <TableCell>
+          {expectedJuryCount > 0 ? (
+            <span
+              className={juryCountIsShort ? "font-semibold text-amber-600" : ""}
+              title={
+                juryCountIsShort
+                  ? t("participants.table.juryCountShortTooltip")
+                  : undefined
+              }
+            >
+              {t("participants.table.juryCountOfExpected", {
+                counted: juryCount,
+                expected: expectedJuryCount,
+              })}
+              {juryCountIsShort && " \u26A0"}
+            </span>
+          ) : juryCount > 0 ? (
+            juryCount
+          ) : (
+            "-"
+          )}
+        </TableCell>
         <TableCell>
           <Button
             variant="outline"

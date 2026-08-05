@@ -3,6 +3,7 @@ import { Participant } from "@/models/models";
 import { useTranslation } from "react-i18next";
 import { createParticipant, updateParticipant } from "@/services/participants";
 import { useEvent } from "@/contexts/EventContext";
+import { notifyError, notifySuccess, NOTIFY_KEYS } from "@/lib/notify";
 import { Input } from "@/components/shadcn/input";
 import { Button } from "@/components/shadcn/button";
 import { useQueryClient } from "@tanstack/react-query";
@@ -204,13 +205,19 @@ export const ParticipantForm = ({
     try {
       // Check if file is an image
       if (!file.type.startsWith("image/")) {
-        alert(t("admin.participants.errors.invalidImageType"));
+        setErrors((current) => ({
+          ...current,
+          photo: t("admin.participants.errors.invalidImageType"),
+        }));
         return;
       }
 
       // Check file size (limit to 2MB)
       if (file.size > 2 * 1024 * 1024) {
-        alert(t("admin.participants.errors.imageTooLarge"));
+        setErrors((current) => ({
+          ...current,
+          photo: t("admin.participants.errors.imageTooLarge"),
+        }));
         return;
       }
 
@@ -226,9 +233,17 @@ export const ParticipantForm = ({
       // Set photo preview with full data URL for display
       const dataURL = `data:${file.type};base64,${base64String}`;
       setPhotoPreview(dataURL);
+      setErrors((current) => {
+        const next = { ...current };
+        delete next.photo;
+        return next;
+      });
     } catch (error) {
       console.error("Error processing image:", error);
-      alert(t("admin.participants.errors.imageProcessingError"));
+      setErrors((current) => ({
+        ...current,
+        photo: t("admin.participants.errors.imageProcessingError"),
+      }));
     }
   };
 
@@ -334,11 +349,26 @@ export const ParticipantForm = ({
 
       // Invalidate participants query to refresh data
       queryClient.invalidateQueries({ queryKey: ["participants"] });
+      notifySuccess({
+        key: NOTIFY_KEYS.participantSave,
+        title: isEditing
+          ? t("admin.participants.updatedTitle")
+          : t("admin.participants.createdTitle"),
+        description: t("admin.participants.savedDesc", { name: formData.name }),
+      });
       onSuccess();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error("Error saving participant:", error);
       setErrors((current) => ({ ...current, submit: message }));
+      notifyError({
+        key: NOTIFY_KEYS.participantSave,
+        title: t("admin.participants.saveFailedTitle"),
+        description: t("admin.participants.saveFailedDesc", {
+          name: formData.name,
+          reason: message,
+        }),
+      });
     }
   };
 
@@ -562,6 +592,11 @@ export const ParticipantForm = ({
               </div>
             )}
           </div>
+          {errors.photo && (
+            <p className="text-red-500 text-sm" role="alert">
+              {errors.photo}
+            </p>
+          )}
         </div>
 
         {/* Scheduled Day */}
