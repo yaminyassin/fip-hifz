@@ -4,6 +4,8 @@ on:
   push:
     branches: [main, "feature/**"]
   pull_request:
+  # Lets the deploy workflow require this job before shipping anything.
+  workflow_call:
 
 jobs:
   quality:
@@ -34,7 +36,15 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
 
-      - name: E2E tests (Firestore emulator)
+      # Runs the real firestore.rules against every write payload the app
+      # makes. Must pass before the e2e suite, which also now runs under the
+      # production ruleset — a rules regression should fail here, with a
+      # precise message, rather than as an opaque PERMISSION_DENIED in a
+      # browser test.
+      - name: Rules tests (Firestore emulator)
+        run: npm run test:rules:emulator
+
+      - name: E2E tests (Firestore emulator, production ruleset)
         run: npm run test:e2e:emulator
 
       - uses: actions/upload-artifact@v4

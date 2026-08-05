@@ -102,6 +102,30 @@ function participantRow(
   ];
 }
 
+/**
+ * A complete participant document, used where a test only needs an id to be
+ * OCCUPIED. It has to be a real participant rather than a `{ name }` stub:
+ * firestore.rules shape-validates every client write, and in production an
+ * occupied id always belongs to a full participant anyway.
+ */
+function occupyingParticipant(name: string): Record<string, unknown> {
+  return {
+    name,
+    age: 17,
+    country: "Portugal",
+    category: "CAT_A",
+    school: "",
+    scheduled: "S0",
+    isDone: false,
+    isActive: false,
+    flag: "🇵🇹",
+    parentsName: "",
+    phoneNum: "",
+    assignedQuestions: [],
+    activeQuestion: 0,
+  };
+}
+
 async function deleteTestParticipants(): Promise<void> {
   const firestore = getEmulatorFirestore();
   await Promise.all(
@@ -228,7 +252,7 @@ test("participant importer is dry-run by default, writes canonical documents ato
 
     await setDoc(
       doc(firestore, "events", EVENT_ID, "participants", "collision_existing_person"),
-      { name: "pre-existing collision fixture" }
+      occupyingParticipant("pre-existing collision fixture")
     );
     const collisionCsv = await writeParticipantCsv(directory, "collision.csv", [
       participantRow("Collision Existing", "Person", "17", "Portugal", "CAT_A", "S6"),
@@ -250,7 +274,7 @@ test("participant importer is dry-run by default, writes canonical documents ato
 
     await setDoc(
       doc(firestore, "events", EVENT_ID, "participants", "late_collision_existing"),
-      { name: "occupied after preflight" }
+      occupyingParticipant("occupied after preflight")
     );
     const plannedData = {
       age: 17,
