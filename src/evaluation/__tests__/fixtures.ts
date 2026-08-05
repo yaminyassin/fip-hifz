@@ -32,7 +32,20 @@ function baseConfig(
       outputDecimals: 2,
       rounding: "ecmascript-math-round",
     },
-    categories: {},
+    // A config with no categories is no longer valid (it cannot score
+    // anyone), so fixtures that only care about question types or override
+    // rules still need one. Fixtures that exercise categories override this.
+    categories: {
+      FIXTURE_CAT: {
+        id: "FIXTURE_CAT",
+        label: { default: "Fixture Category" },
+        order: 1,
+        questionCount: 1,
+        questionSlots: [
+          { questionNumber: 1, pageRange: { startPage: 1, endPage: 10 } },
+        ],
+      },
+    },
     questionTypes: {},
     overrideRules: [],
     participantAdjustments: {},

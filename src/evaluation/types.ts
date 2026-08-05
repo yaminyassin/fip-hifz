@@ -25,9 +25,20 @@ export interface EventEvaluationDescriptorV2 {
   configPath: string;
   contentHash: string;
   scoringFingerprint: ScoringFingerprint;
-  provisionedBy: "offline-admin-sdk";
+  /** Which surface wrote this descriptor. `in-app-editor` is the config
+   * editor running in the operator's browser; `offline-admin-sdk` is
+   * scripts/provision-event.mts and the migration scripts. Recorded so a
+   * config's origin is auditable — the two are otherwise indistinguishable. */
+  provisionedBy: ProvisionedBy;
   provisionedAt: Timestamp;
 }
+
+export const PROVISIONED_BY_VALUES = [
+  "offline-admin-sdk",
+  "in-app-editor",
+] as const;
+
+export type ProvisionedBy = (typeof PROVISIONED_BY_VALUES)[number];
 
 export interface EventDocumentV2 {
   name: string;

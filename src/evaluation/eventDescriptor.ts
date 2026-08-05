@@ -6,7 +6,12 @@ import {
   computeScoringFingerprint,
   verifyConfigContentHash,
 } from "./configHash";
-import type { EventEvaluationConfigV2, EventEvaluationDescriptorV2 } from "./types";
+import {
+  PROVISIONED_BY_VALUES,
+  type EventEvaluationConfigV2,
+  type EventEvaluationDescriptorV2,
+  type ProvisionedBy,
+} from "./types";
 
 /**
  * Config loading seam, per docs/migrations/phase-1-greenfield.md section 1
@@ -74,7 +79,11 @@ function parseDescriptor(
   ) {
     return null;
   }
-  if (evaluation.provisionedBy !== "offline-admin-sdk") return null;
+  if (
+    !PROVISIONED_BY_VALUES.includes(evaluation.provisionedBy as ProvisionedBy)
+  ) {
+    return null;
+  }
   if (!isTimestampLike(evaluation.provisionedAt)) return null;
 
   return evaluation as unknown as EventEvaluationDescriptorV2;

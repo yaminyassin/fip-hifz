@@ -1,3 +1,4 @@
+import { semanticProjection } from "./configSemantics";
 import {
   CANONICAL_CONFIG_HASH_FIELDS,
   SCORING_FINGERPRINT_FIELDS,
@@ -74,16 +75,22 @@ export async function computeConfigContentHash(
   return sha256Hex(canonicalStringify(canonicalInput));
 }
 
+/**
+ * Hashes the config's SEMANTIC PROJECTION, not the raw scoring fields: labels
+ * and asset references are stripped first (see configSemantics.ts). A display
+ * label is not part of what a score means, and hashing it meant that fixing a
+ * typo mid-competition invalidated every score already recorded.
+ *
+ * `contentHash` still covers the config verbatim, so a cosmetic edit remains a
+ * detectable change — it just isn't a rescoring one.
+ */
 export async function computeScoringFingerprint(
   config: Pick<
     EventEvaluationConfigV2,
     (typeof SCORING_FINGERPRINT_FIELDS)[number]
   >
 ): Promise<string> {
-  const input = Object.fromEntries(
-    SCORING_FINGERPRINT_FIELDS.map((field) => [field, config[field]])
-  );
-  return sha256Hex(canonicalStringify(input));
+  return sha256Hex(canonicalStringify(semanticProjection(config)));
 }
 
 /** Recomputes the hash from a fully stamped config and compares it with the

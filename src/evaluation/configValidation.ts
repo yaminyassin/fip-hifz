@@ -175,6 +175,13 @@ function validateConfigShape(
   if (!isPlainRecord(categories)) {
     push("categories is required and must be an object");
   } else {
+    // An event with no categories cannot score anyone: every participant
+    // carries a category id, and the engine resolves question slots through
+    // it. Rejecting here keeps the in-app editor from publishing an
+    // unscoreable event that would only fail later, at the jury screen.
+    if (Object.keys(categories).length === 0) {
+      push("categories must define at least one category");
+    }
     for (const [key, category] of Object.entries(categories)) {
       const label = `categories.${key}`;
       if (!isPlainRecord(category)) {
@@ -230,6 +237,12 @@ function validateConfigShape(
   if (!isPlainRecord(questionTypes)) {
     push("questionTypes is required and must be an object");
   } else {
+    // With no question types there is nothing for a juror to score: the jury
+    // form renders one section per question type, so an empty map produces an
+    // empty form and a score of exactly baseScorePerQuestion for everyone.
+    if (Object.keys(questionTypes).length === 0) {
+      push("questionTypes must define at least one question type");
+    }
     for (const [key, questionType] of Object.entries(questionTypes)) {
       const label = `questionTypes.${key}`;
       if (!isPlainRecord(questionType)) {
