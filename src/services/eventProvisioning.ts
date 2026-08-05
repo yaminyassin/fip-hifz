@@ -12,6 +12,7 @@ import {
 import { firestore } from "@/main";
 import { getEventCollectionPath } from "@/utils/firebaseUtils";
 import { stampDraft, type ConfigDraft } from "@/evaluation/configDraft";
+import { normalizeGeneratedIds } from "@/evaluation/configIds";
 import { classifyConfigChange, type ConfigChangeKind } from "@/evaluation/configSemantics";
 import { validateEvaluationConfig } from "@/evaluation/configValidation";
 import { loadEvaluationConfig } from "@/evaluation/eventDescriptor";
@@ -147,7 +148,11 @@ export async function createEvent(
     );
   }
 
-  const checked = await preflight(params.eventId, params.draft, provisionedAt);
+  // Nothing is published yet, so every generated id is free to become a
+  // readable one derived from the label the organizer typed.
+  const { draft: named } = normalizeGeneratedIds(params.draft);
+
+  const checked = await preflight(params.eventId, named, provisionedAt);
   if (!checked.ok) {
     throw new Error(`${checked.reason}: ${checked.errors.join("; ")}`);
   }
@@ -295,9 +300,15 @@ export async function publishRevision(
   draft: ConfigDraft,
   expectedContentHash: string,
   db: Firestore = firestore,
-  provisionedAt: Timestamp = Timestamp.now()
+  provisionedAt: Timestamp = Timestamp.now(),
+  /** Ids in the currently published config. These are frozen: score documents
+   * reference categoryId and assignment hashes are computed over it, so a
+   * published id can never be renamed. Rows added since publication still
+   * carry generated ids and do get readable ones. */
+  publishedIds: ReadonlySet<string> = new Set()
 ): Promise<EventEvaluationConfigV2> {
-  const checked = await preflight(eventId, draft, provisionedAt);
+  const { draft: named } = normalizeGeneratedIds(draft, publishedIds);
+  const checked = await preflight(eventId, named, provisionedAt);
   if (!checked.ok) {
     throw new Error(`${checked.reason}: ${checked.errors.join("; ")}`);
   }

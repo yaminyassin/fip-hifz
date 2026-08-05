@@ -4,6 +4,7 @@ import { Button } from "@/components/shadcn/button";
 import { useEvent } from "@/contexts/EventContext";
 import { useParticipants } from "@/hooks/useParticipants";
 import { draftFromConfig, emptyDraft } from "@/evaluation/configDraft";
+import { collectConfigIds } from "@/evaluation/configIds";
 import {
   countEvaluationDocs,
   evaluateEditGuard,
@@ -146,7 +147,10 @@ export function ConfigEditor() {
       const config = await publishRevision(
         currentEvent,
         draft,
-        evaluationConfig.contentHash
+        evaluationConfig.contentHash,
+        undefined,
+        undefined,
+        collectConfigIds(evaluationConfig)
       );
       setGuard(null);
       setPublishedHash(config.contentHash);
