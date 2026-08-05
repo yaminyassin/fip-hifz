@@ -21,12 +21,13 @@ import { toast } from "@/components/shadcn/use-toast";
  *    is fine for "saved" and wrong for "your score was not saved" — an
  *    operator who looked away would never know. Errors stay until dismissed.
  *
- * 3. AUDIENCE ROUTES ARE SUPPRESSED. The toast viewport is `fixed top-1
- *    left-1/2` (toast.tsx:17) — horizontally centred at the top of the
- *    screen, which on /big-screen, /quran-page and /randomizer-audience is
- *    the middle of a projector in front of the whole hall. Those routes must
- *    surface problems in their own layout instead. Suppression is silent by
- *    design; the operator screens still report the same failure.
+ * 3. AUDIENCE ROUTES ARE SUPPRESSED. A floating toast has no business on
+ *    /big-screen, /quran-page or /randomizer-audience — those are projected in
+ *    front of the whole hall, and an operator-facing "reload the page" message
+ *    is something a room of spectators can neither act on nor should see.
+ *    Those routes surface problems in their own layout instead (see
+ *    LiveUpdatesBanner). Suppression is silent by design; the operator screens
+ *    still report the same failure.
  */
 
 /** Routes rendered for an audience, where a floating toast is unacceptable. */

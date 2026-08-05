@@ -89,9 +89,18 @@ service cloud.firestore {
 
     // configLocked is a one-way freeze. Absent means false, so every legacy
     // event document stays writable.
+    //
+    // The exists() guard is REQUIRED, not defensive. createEvent writes the
+    // event document and its config in ONE batch, and inside a batch both
+    // get() and exists() observe PRE-COMMIT state — so while the config
+    // document is being evaluated, the event document it belongs to does not
+    // exist yet. Without the guard, get() returns null, `.data` on null raises
+    // "Null value error", and the entire create is denied. A brand-new event
+    // is by definition not frozen, so absent correctly means unlocked.
     function lockedNow(eventId) {
-      return get(/databases/$(database)/documents/events/$(eventId))
-               .data.get('configLocked', false) == true;
+      return exists(/databases/$(database)/documents/events/$(eventId))
+        && get(/databases/$(database)/documents/events/$(eventId))
+             .data.get('configLocked', false) == true;
     }
 
     function eventShapeOk(eventId) {
