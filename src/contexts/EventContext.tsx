@@ -34,6 +34,10 @@ interface EventContextType {
   evaluationConfig: EventEvaluationConfigV2 | null;
   evaluationDescriptor: EventEvaluationDescriptorV2 | null;
   evaluationConfigError: string | null;
+  /** Re-reads the event's config from Firestore. The config is otherwise
+   * loaded once per event; the editor calls this after publishing so the rest
+   * of the app sees the new rules without a page reload. */
+  reloadEvaluationConfig: () => void;
 }
 
 /**
@@ -108,6 +112,10 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
   const [evaluationDescriptor, setEvaluationDescriptor] =
     useState<EventEvaluationDescriptorV2 | null>(null);
   const [evaluationConfigError, setEvaluationConfigError] = useState<string | null>(null);
+  // Bumped by reloadEvaluationConfig() so the config editor can republish and
+  // have the whole app pick up the new config without a page reload. The
+  // config is otherwise loaded exactly once per event, by design.
+  const [configReloadToken, setConfigReloadToken] = useState(0);
 
   // The event whose config/status the state above currently reflects.
   // Compared against `currentEvent` on every render (not in an effect) so
@@ -208,7 +216,7 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
     return () => {
       cancelled = true;
     };
-  }, [currentEvent]);
+  }, [currentEvent, configReloadToken]);
 
   const handleSetCurrentEvent = (event: string) => {
     setCurrentEvent(event);
@@ -229,6 +237,7 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
         evaluationConfig,
         evaluationDescriptor,
         evaluationConfigError,
+        reloadEvaluationConfig: () => setConfigReloadToken((token) => token + 1),
       }}
     >
       {children}

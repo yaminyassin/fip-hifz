@@ -6,6 +6,7 @@ import { FloatingAdminPanel } from "@/components/ui/FloatingAdminPanel";
 import { ParticipantStatusTable } from "@/components/ui/ParticipantStatusTable";
 import { PerformanceMonitor } from "@/components/ui/PerformanceMonitor";
 import { EventSelector } from "@/components/ui/EventSelector";
+import { ConfigEditor } from "@/components/config-editor/ConfigEditor";
 import { Card } from "@/components/shadcn/card";
 import { useTranslation } from "react-i18next";
 import { useState } from "react";
@@ -18,7 +19,7 @@ export const Route = createLazyFileRoute("/admin")({
 function AdminPanel() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<
-    "control" | "participants" | "jury" | "performance" | "events"
+    "control" | "participants" | "jury" | "performance" | "events" | "evaluation"
   >("control");
 
   return (
@@ -61,7 +62,17 @@ function AdminPanel() {
             onClick={() => setActiveTab("events")}
             className={`pb-2 ${activeTab === "events" ? "border-2 border-primary shadow-sm" : "border-2"}`}
           >
-            Event Management
+            {t("admin.tabs.events")}
+          </Button>
+          {/* The one admin surface that must work WITHOUT a valid config —
+              it is how a fail-closed event gets repaired. */}
+          <Button
+            variant={activeTab === "evaluation" ? "default" : "outline"}
+            onClick={() => setActiveTab("evaluation")}
+            className={`pb-2 ${activeTab === "evaluation" ? "border-2 border-primary shadow-sm" : "border-2"}`}
+            data-testid="admin-tab-evaluation"
+          >
+            {t("admin.tabs.evaluation")}
           </Button>
         </div>
       </div>
@@ -94,6 +105,10 @@ function AdminPanel() {
       ) : activeTab === "performance" ? (
         <Card className="p-6">
           <PerformanceMonitor />
+        </Card>
+      ) : activeTab === "evaluation" ? (
+        <Card className="p-6">
+          <ConfigEditor />
         </Card>
       ) : (
         <div className="max-w-2xl mx-auto">

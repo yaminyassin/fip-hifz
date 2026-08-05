@@ -1,0 +1,158 @@
+{
+  "configEditor": {
+    "title": "Configuração de avaliação",
+    "noEvent": "Seleccione um evento antes de editar a configuração de avaliação.",
+    "statusReady": "Publicada: {{version}}",
+    "statusLoading": "A carregar configuração…",
+    "statusFailClosed": "Este evento não tem uma configuração utilizável. {{reason}}",
+    "configVersion": "Versão da configuração",
+    "configVersionHint": "Um rótulo para esta revisão. Fica registado em cada pontuação atribuída ao seu abrigo.",
+    "size": "{{kb}} KB",
+    "discard": "Descartar alterações",
+    "publishing": "A publicar…",
+    "checking": "A verificar…",
+    "valid": "A configuração é válida.",
+    "validationTitle": "{{count}} problema(s) a corrigir antes de publicar",
+    "insecureContext": "Esta página não está num contexto seguro, pelo que não é possível calcular os hashes da configuração. Abra a aplicação em https ou em localhost.",
+    "steps": {
+      "identity": "Dados do evento",
+      "scoring": "Pontuação",
+      "questionTypes": "Tipos de pergunta",
+      "categories": "Categorias",
+      "rules": "Regras de excepção",
+      "adjustments": "Ajustes"
+    },
+    "common": {
+      "name": "Nome",
+      "remove": "Remover"
+    },
+    "scoring": {
+      "title": "Pontuação",
+      "description": "A aritmética dentro da qual cada pergunta é pontuada.",
+      "baseScore": "Pontuação base por pergunta",
+      "baseScoreHint": "Cada pergunta começa aqui, antes de aplicadas as secções.",
+      "questionMin": "Mínimo por pergunta",
+      "questionMax": "Máximo por pergunta",
+      "questionMaxHint": "A pontuação de uma pergunta é limitada a este intervalo.",
+      "finalMin": "Mínimo final",
+      "finalMax": "Máximo final",
+      "missingPolicy": "Política para perguntas em falta",
+      "missingPolicyHint": "O que fazer quando um júri não pontuou todas as perguntas.",
+      "policyIncomplete": "Considerar a avaliação incompleta",
+      "policyZeroPerfect": "Considerar as entradas não preenchidas como zero"
+    },
+    "questionTypes": {
+      "title": "Tipos de pergunta",
+      "description": "As secções que um jurado preenche em cada pergunta.",
+      "add": "Adicionar tipo de pergunta",
+      "empty": "Ainda não há tipos de pergunta. Um jurado não teria nada para preencher.",
+      "operation": "Operação",
+      "operationHint": "Se esta secção retira pontos ou os acrescenta.",
+      "subtract": "Retirar pontos",
+      "add": "Acrescentar pontos",
+      "cap": "Limite da secção",
+      "capHint": "O máximo que esta secção pode alterar a pontuação de uma pergunta."
+    },
+    "inputs": {
+      "title": "Campos",
+      "add": "Adicionar campo",
+      "role": "Função",
+      "roleHint": "Os campos informativos são registados mas nunca pontuados.",
+      "scored": "Pontuado",
+      "informational": "Informativo",
+      "weight": "Peso",
+      "weightHint": "Cada unidade introduzida altera a pontuação neste valor.",
+      "noWeight": "Os campos informativos não têm peso.",
+      "min": "Mínimo",
+      "max": "Máximo",
+      "control": "Controlo",
+      "counter": "Contador",
+      "slider": "Cursor",
+      "decimal": "Contador decimal"
+    },
+    "categories": {
+      "title": "Categorias",
+      "description": "Quem concorre e de que páginas é retirada cada pergunta.",
+      "add": "Adicionar categoria",
+      "empty": "Ainda não há categorias. Sem uma categoria não é possível pontuar participantes.",
+      "questionCount": "Perguntas",
+      "questionCountHint": "Acrescentar ou remover perguntas acrescenta ou remove intervalos de páginas abaixo.",
+      "assetRef": "Referência da imagem",
+      "assetRefHint": "Opcional. Apresentada no sorteio e no ecrã grande.",
+      "slots": "Intervalos de páginas",
+      "question": "Pergunta {{number}}",
+      "startPage": "Primeira página",
+      "endPage": "Última página",
+      "juzStart": "Juz de",
+      "juzEnd": "Juz até",
+      "juzHint": "Opcional. Apresentado no ecrã grande em vez dos números de página."
+    },
+    "rules": {
+      "title": "Regras de excepção",
+      "description": "Quando o que o jurado introduz faz com que a aritmética normal deixe de se aplicar.",
+      "add": "Adicionar regra",
+      "empty": "Sem regras de excepção. Cada pergunta é pontuada apenas pela aritmética das secções.",
+      "needsInputs": "Adicione um tipo de pergunta com pelo menos um campo antes de criar regras.",
+      "priority": "Prioridade",
+      "priorityHint": "Os números mais baixos são avaliados primeiro.",
+      "when": "Quando",
+      "operator": "For",
+      "threshold": "Valor",
+      "action": "Então",
+      "void": "Anular a pergunta",
+      "fixedScore": "Definir uma pontuação fixa",
+      "sectionImpact": "Substituir uma secção",
+      "score": "Pontuação",
+      "section": "Secção",
+      "impact": "Impacto"
+    },
+    "adjustments": {
+      "title": "Ajustes ao participante",
+      "description": "Aplicados uma vez por participante e por júri, não por pergunta.",
+      "add": "Adicionar ajuste",
+      "empty": "Sem ajustes ao participante.",
+      "cap": "Limite"
+    },
+    "publish": {
+      "action": "Publicar",
+      "success": "Configuração publicada",
+      "successDetail": "A versão {{version}} está agora em vigor.",
+      "failed": "Não foi possível publicar a configuração",
+      "blocked": "Esta alteração não pode ser publicada",
+      "noChanges": "Nada a publicar — a configuração não foi alterada."
+    },
+    "rescore": {
+      "title": "Esta alteração afecta pontuações já registadas",
+      "accept": "Publicar mesmo assim",
+      "cancel": "Continuar a editar"
+    },
+    "freeze": {
+      "title": "Congelar configuração",
+      "description": "Depois de congelada, a configuração deste evento nunca mais pode ser alterada — nem sequer aqui. Faça-o quando a competição estiver prestes a começar.",
+      "action": "Congelar configuração",
+      "done": "Configuração congelada",
+      "failed": "Não foi possível congelar a configuração"
+    },
+    "create": {
+      "title": "Criar evento",
+      "description": "Um evento e as suas regras de avaliação são criados em conjunto — um evento sem regras não pode ser pontuado.",
+      "name": "Nome do evento",
+      "nameHint": "Por exemplo: Porto 2027",
+      "idPreview": "Identificador: {{id}}",
+      "password": "Palavra-passe de administração",
+      "passwordHint": "Necessária para gerir este evento. Não pode ser alterada mais tarde.",
+      "descriptionField": "Descrição",
+      "action": "Criar evento",
+      "creating": "A criar…",
+      "cancel": "Cancelar",
+      "success": "{{name}} criado",
+      "failed": "Não foi possível criar o evento"
+    }
+  },
+  "admin": {
+    "tabs": {
+      "events": "Gestão de eventos",
+      "evaluation": "Regras de avaliação"
+    }
+  }
+}
