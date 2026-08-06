@@ -105,7 +105,11 @@ export function JuryPagePeek({
           // as little as the page allows.
           "h-[min(calc(100vh-9.5rem),46rem)]",
           "w-[min(30rem,calc(100vw-2.5rem))]",
-          "origin-bottom-right transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          // Arbitrary PROPERTY, not `ease-[...]`: Tailwind reads the commas in
+          // a bare cubic-bezier as an ambiguous arbitrary value and drops the
+          // class, which silently leaves the panel on the default easing.
+          "origin-bottom-right transition-all duration-200",
+          "[transition-timing-function:cubic-bezier(0.16,1,0.3,1)]",
           "motion-reduce:transition-opacity motion-reduce:duration-100",
           isOpen
             ? "visible scale-100 opacity-100"
