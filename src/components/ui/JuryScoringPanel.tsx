@@ -1,6 +1,7 @@
 import { useJuryScores } from "@/hooks/useJuryScores.tsx";
 import { useJuryNavigation } from "@/hooks/useJuryNavigation";
 import { ScoreForm } from "@/components/ui/ScoreForm";
+import { JuryPagePeek } from "@/components/ui/JuryPagePeek";
 import type { Jury, Participant } from "@/models/models";
 
 interface JuryScoringPanelProps {
@@ -62,31 +63,42 @@ export function JuryScoringPanel({ participant, juryMember, juryId }: JuryScorin
   });
 
   return (
-    <ScoreForm
-      participant={participant}
-      juryMember={juryMember}
-      selectedQuestion={selectedQuestion}
-      questionChangedExternally={questionChangedExternally}
-      isViewingActiveQuestion={isViewingActiveQuestion}
-      activeQuestionNumber={activeQuestionNumber}
-      currentScores={currentScores}
-      adjustmentValues={adjustmentValues}
-      allScores={allScores}
-      pendingSave={pendingSave}
-      onScoreChange={handleScoreChange}
-      onAdjustmentChange={handleAdjustmentChange}
-      onQuestionChange={handleQuestionChange}
-      onDone={handleDone}
-      onGoToActiveQuestion={handleGoToActiveQuestion}
-      isSaving={saveScoresMutation.isPending}
-      setCurrentScores={setCurrentScores}
-      defaultQuestionValues={defaultQuestionValues}
-      saveError={saveError}
-      loadError={loadError}
-      finishError={finishError}
-      onRetryLoad={retryLoad}
-      onDismissSaveError={dismissSaveError}
-      onDismissFinishError={dismissFinishError}
-    />
+    <>
+      <ScoreForm
+        participant={participant}
+        juryMember={juryMember}
+        selectedQuestion={selectedQuestion}
+        questionChangedExternally={questionChangedExternally}
+        isViewingActiveQuestion={isViewingActiveQuestion}
+        activeQuestionNumber={activeQuestionNumber}
+        currentScores={currentScores}
+        adjustmentValues={adjustmentValues}
+        allScores={allScores}
+        pendingSave={pendingSave}
+        onScoreChange={handleScoreChange}
+        onAdjustmentChange={handleAdjustmentChange}
+        onQuestionChange={handleQuestionChange}
+        onDone={handleDone}
+        onGoToActiveQuestion={handleGoToActiveQuestion}
+        isSaving={saveScoresMutation.isPending}
+        setCurrentScores={setCurrentScores}
+        defaultQuestionValues={defaultQuestionValues}
+        saveError={saveError}
+        loadError={loadError}
+        finishError={finishError}
+        onRetryLoad={retryLoad}
+        onDismissSaveError={dismissSaveError}
+        onDismissFinishError={dismissFinishError}
+      />
+
+      {/* Mounted here, not in the route, because the page it shows follows
+          `selectedQuestion` — the question the jury is scoring, which only
+          exists inside this panel. */}
+      <JuryPagePeek
+        participant={participant}
+        selectedQuestion={selectedQuestion}
+        activeQuestionNumber={activeQuestionNumber}
+      />
+    </>
   );
 }

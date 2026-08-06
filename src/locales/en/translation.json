@@ -28,6 +28,17 @@
     "getStarted": "Get Started"
   },
   "jury": {
+    "pagePeek": {
+      "open": "Show the Qur'an page",
+      "close": "Hide the Qur'an page",
+      "title": "Qur'an page",
+      "recitingNow": "Reciting now",
+      "reciterOn": "Reciter is on question {{number}}",
+      "noPageShort": "No page yet",
+      "noPage": "This question has no page assigned yet. It appears here as soon as the randomizer picks one.",
+      "loadFailed": "Page {{number}} did not load. Check the connection, then close and open this panel again.",
+      "imageAlt": "Qur'an page {{number}}"
+    },
     "title": "Jury Evaluation",
     "question": "Question",
     "page": "Page",

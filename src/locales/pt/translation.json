@@ -28,6 +28,17 @@
     "getStarted": "Começar"
   },
   "jury": {
+    "pagePeek": {
+      "open": "Mostrar a página do Alcorão",
+      "close": "Ocultar a página do Alcorão",
+      "title": "Página do Alcorão",
+      "recitingNow": "A recitar agora",
+      "reciterOn": "O recitador está na questão {{number}}",
+      "noPageShort": "Sem página ainda",
+      "noPage": "Esta questão ainda não tem página atribuída. Aparece aqui assim que o sorteio escolher uma.",
+      "loadFailed": "A página {{number}} não carregou. Verifique a ligação e feche e abra este painel novamente.",
+      "imageAlt": "Página {{number}} do Alcorão"
+    },
     "title": "Painel do Júri",
     "question": "Questão",
     "page": "Página",
