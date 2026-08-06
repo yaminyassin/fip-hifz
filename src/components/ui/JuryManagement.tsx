@@ -39,6 +39,7 @@ export const JuryManagement = () => {
   };
 
   const handleDeleteClick = async (id: string) => {
+    if (!currentEvent) return;
     if (
       window.confirm(
         getFallbackText(
@@ -50,7 +51,7 @@ export const JuryManagement = () => {
       try {
         // No need to manually update the cache first
         // Just perform the delete operation and let Firestore listener handle the update
-        await deleteJury(currentEvent || 'lisbon-2025', id);
+        await deleteJury(currentEvent, id);
       } catch (error) {
         console.error("Error deleting jury member:", error);
         // Could add error handling UI here

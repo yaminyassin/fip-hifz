@@ -1,0 +1,158 @@
+{
+  "configEditor": {
+    "title": "Evaluation configuration",
+    "noEvent": "Select an event before editing its evaluation configuration.",
+    "statusReady": "Published: {{version}}",
+    "statusLoading": "Loading configuration…",
+    "statusFailClosed": "This event has no usable configuration. {{reason}}",
+    "configVersion": "Configuration version",
+    "configVersionHint": "A label for this revision. Stored on every score recorded under it.",
+    "size": "{{kb}} KB",
+    "discard": "Discard changes",
+    "publishing": "Publishing…",
+    "checking": "Checking…",
+    "valid": "Configuration is valid.",
+    "validationTitle": "{{count}} problem(s) to fix before publishing",
+    "insecureContext": "This page is not running in a secure context, so configuration hashes cannot be computed. Open the app over https or on localhost.",
+    "steps": {
+      "identity": "Event details",
+      "scoring": "Scoring",
+      "questionTypes": "Question types",
+      "categories": "Categories",
+      "rules": "Override rules",
+      "adjustments": "Adjustments"
+    },
+    "common": {
+      "name": "Name",
+      "remove": "Remove"
+    },
+    "scoring": {
+      "title": "Scoring",
+      "description": "The arithmetic every question is scored inside.",
+      "baseScore": "Base score per question",
+      "baseScoreHint": "Each question starts here before sections are applied.",
+      "questionMin": "Question minimum",
+      "questionMax": "Question maximum",
+      "questionMaxHint": "A question score is clamped to this range.",
+      "finalMin": "Final minimum",
+      "finalMax": "Final maximum",
+      "missingPolicy": "Missing question policy",
+      "missingPolicyHint": "What to do when a jury has not scored every question.",
+      "policyIncomplete": "Treat the evaluation as incomplete",
+      "policyZeroPerfect": "Treat unscored inputs as zero"
+    },
+    "questionTypes": {
+      "title": "Question types",
+      "description": "The sections a juror fills in for every question.",
+      "add": "Add question type",
+      "empty": "No question types yet. A juror would have nothing to fill in.",
+      "operation": "Operation",
+      "operationHint": "Whether this section takes points away or adds them.",
+      "operationSubtract": "Subtract points",
+      "operationAdd": "Add points",
+      "cap": "Section cap",
+      "capHint": "The most this section can move a question score."
+    },
+    "inputs": {
+      "title": "Inputs",
+      "add": "Add input",
+      "role": "Role",
+      "roleHint": "Informational inputs are recorded but never scored.",
+      "scored": "Scored",
+      "informational": "Informational",
+      "weight": "Weight",
+      "weightHint": "Each unit entered moves the score by this much.",
+      "noWeight": "Informational inputs carry no weight.",
+      "min": "Minimum",
+      "max": "Maximum",
+      "control": "Control",
+      "counter": "Counter",
+      "slider": "Slider",
+      "decimal": "Decimal counter"
+    },
+    "categories": {
+      "title": "Categories",
+      "description": "Who competes, and which pages each question is drawn from.",
+      "add": "Add category",
+      "empty": "No categories yet. Participants cannot be scored without one.",
+      "questionCount": "Questions",
+      "questionCountHint": "Adding or removing questions adds or removes page ranges below.",
+      "assetRef": "Image reference",
+      "assetRefHint": "Optional. Shown on the randomizer and big screen.",
+      "slots": "Page ranges",
+      "question": "Question {{number}}",
+      "startPage": "First page",
+      "endPage": "Last page",
+      "juzStart": "Juz from",
+      "juzEnd": "Juz to",
+      "juzHint": "Optional. Shown on the big screen instead of page numbers."
+    },
+    "rules": {
+      "title": "Override rules",
+      "description": "When a juror's entry means the normal arithmetic no longer applies.",
+      "add": "Add rule",
+      "empty": "No override rules. Every question is scored by the section arithmetic alone.",
+      "needsInputs": "Add a question type with at least one input before creating rules.",
+      "priority": "Priority",
+      "priorityHint": "Lower numbers are evaluated first.",
+      "when": "When",
+      "operator": "Is",
+      "threshold": "Value",
+      "action": "Then",
+      "void": "Void the question",
+      "fixedScore": "Set a fixed score",
+      "sectionImpact": "Override a section",
+      "score": "Score",
+      "section": "Section",
+      "impact": "Impact"
+    },
+    "adjustments": {
+      "title": "Participant adjustments",
+      "description": "Applied once per participant per jury, not per question.",
+      "add": "Add adjustment",
+      "empty": "No participant adjustments.",
+      "cap": "Cap"
+    },
+    "publish": {
+      "action": "Publish",
+      "success": "Configuration published",
+      "successDetail": "Version {{version}} is now in use.",
+      "failed": "Could not publish the configuration",
+      "blocked": "This change cannot be published",
+      "noChanges": "Nothing to publish — the configuration is unchanged."
+    },
+    "rescore": {
+      "title": "This change affects recorded scores",
+      "accept": "Publish anyway",
+      "cancel": "Keep editing"
+    },
+    "freeze": {
+      "title": "Freeze configuration",
+      "description": "Once frozen, this event's configuration can never be changed again — not even from here. Do this when the competition is about to begin.",
+      "action": "Freeze configuration",
+      "done": "Configuration frozen",
+      "failed": "Could not freeze the configuration"
+    },
+    "create": {
+      "title": "Create event",
+      "description": "An event and its evaluation rules are created together — an event without rules cannot be scored.",
+      "name": "Event name",
+      "nameHint": "For example: Porto 2027",
+      "idPreview": "Identifier: {{id}}",
+      "password": "Admin password",
+      "passwordHint": "Required to manage this event. It cannot be changed later.",
+      "descriptionField": "Description",
+      "action": "Create event",
+      "creating": "Creating…",
+      "cancel": "Cancel",
+      "success": "Created {{name}}",
+      "failed": "Could not create the event"
+    }
+  },
+  "admin": {
+    "tabs": {
+      "events": "Event management",
+      "evaluation": "Evaluation rules"
+    }
+  }
+}

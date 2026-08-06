@@ -3,6 +3,7 @@ import { Participant } from "@/models/models";
 import { useTranslation } from "react-i18next";
 import { createParticipant, updateParticipant } from "@/services/participants";
 import { useEvent } from "@/contexts/EventContext";
+import { notifyError, notifySuccess, NOTIFY_KEYS } from "@/lib/notify";
 import { Input } from "@/components/shadcn/input";
 import { Button } from "@/components/shadcn/button";
 import { useQueryClient } from "@tanstack/react-query";
@@ -16,24 +17,14 @@ import {
 } from "@/components/shadcn/select";
 import { Upload, X } from "lucide-react";
 import { getAvailableCountries, getFlagForCountry } from "@/lib/countryUtils";
-
-// Available categories based on the files in the categories folder
-const AVAILABLE_CATEGORIES = [
-  "A1",
-  "A2",
-  "B1",
-  "B2",
-  "C1",
-  "C2",
-  "D1",
-  "D2",
-  "M1",
-  "M2",
-  "X",
-  "Y",
-  "W1",
-  "W2",
-];
+import {
+  generateParticipantId,
+  participantIdValidationError,
+} from "@/lib/participantId";
+import {
+  isParticipantCategoryValid,
+  participantCategoryOptions,
+} from "./participantFormCategories";
 
 // Available days and times for scheduling
 const AVAILABLE_DAYS = [
@@ -63,8 +54,13 @@ export const ParticipantForm = ({
   onCancel,
 }: ParticipantFormProps) => {
   const { t } = useTranslation();
-  const { currentEvent } = useEvent();
+  const {
+    currentEvent,
+    evaluationConfig,
+    evaluationConfigStatus,
+  } = useEvent();
   const queryClient = useQueryClient();
+  const categoryOptions = participantCategoryOptions(evaluationConfig);
   const isEditing = !!participant;
 
   // Form state
@@ -110,7 +106,7 @@ export const ParticipantForm = ({
           if (base64Regex.test(participant.photo.replace(/\s/g, ""))) {
             return `data:image/jpeg;base64,${participant.photo}`;
           }
-        } catch (e) {
+        } catch {
           console.warn("Invalid photo data for participant:", participant.name);
         }
       }
@@ -209,13 +205,19 @@ export const ParticipantForm = ({
     try {
       // Check if file is an image
       if (!file.type.startsWith("image/")) {
-        alert(t("admin.participants.errors.invalidImageType"));
+        setErrors((current) => ({
+          ...current,
+          photo: t("admin.participants.errors.invalidImageType"),
+        }));
         return;
       }
 
       // Check file size (limit to 2MB)
       if (file.size > 2 * 1024 * 1024) {
-        alert(t("admin.participants.errors.imageTooLarge"));
+        setErrors((current) => ({
+          ...current,
+          photo: t("admin.participants.errors.imageTooLarge"),
+        }));
         return;
       }
 
@@ -231,9 +233,17 @@ export const ParticipantForm = ({
       // Set photo preview with full data URL for display
       const dataURL = `data:${file.type};base64,${base64String}`;
       setPhotoPreview(dataURL);
+      setErrors((current) => {
+        const next = { ...current };
+        delete next.photo;
+        return next;
+      });
     } catch (error) {
       console.error("Error processing image:", error);
-      alert(t("admin.participants.errors.imageProcessingError"));
+      setErrors((current) => ({
+        ...current,
+        photo: t("admin.participants.errors.imageProcessingError"),
+      }));
     }
   };
 
@@ -288,6 +298,11 @@ export const ParticipantForm = ({
 
     if (!formData.name.trim()) {
       newErrors.name = t("admin.participants.errors.nameRequired");
+    } else if (!isEditing) {
+      // Editing keeps the existing document id (no rename), so only a new
+      // participant's name has to yield a valid id.
+      const idError = participantIdValidationError(generateParticipantId(formData.name));
+      if (idError) newErrors.name = idError;
     }
 
     if (formData.age <= 0) {
@@ -300,6 +315,13 @@ export const ParticipantForm = ({
 
     if (!formData.category.trim()) {
       newErrors.category = t("admin.participants.errors.categoryRequired");
+    } else if (
+      evaluationConfigStatus !== "ready" ||
+      !isParticipantCategoryValid(evaluationConfig, formData.category)
+    ) {
+      newErrors.category = t("admin.participants.errors.categoryInvalid", {
+        defaultValue: "Select a category from this event's evaluation config",
+      });
     }
 
     // Validate email if provided
@@ -314,27 +336,39 @@ export const ParticipantForm = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!validateForm()) {
+    if (!validateForm() || !currentEvent) {
       return;
     }
 
     try {
       if (isEditing && participant) {
-        await updateParticipant(
-          currentEvent || "lisbon-2025",
-          participant.id,
-          formData
-        );
+        await updateParticipant(currentEvent, participant.id, formData);
       } else {
-        await createParticipant(currentEvent || "lisbon-2025", formData);
+        await createParticipant(currentEvent, formData);
       }
 
       // Invalidate participants query to refresh data
       queryClient.invalidateQueries({ queryKey: ["participants"] });
+      notifySuccess({
+        key: NOTIFY_KEYS.participantSave,
+        title: isEditing
+          ? t("admin.participants.updatedTitle")
+          : t("admin.participants.createdTitle"),
+        description: t("admin.participants.savedDesc", { name: formData.name }),
+      });
       onSuccess();
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       console.error("Error saving participant:", error);
-      // Handle error (could add error state and display message)
+      setErrors((current) => ({ ...current, submit: message }));
+      notifyError({
+        key: NOTIFY_KEYS.participantSave,
+        title: t("admin.participants.saveFailedTitle"),
+        description: t("admin.participants.saveFailedDesc", {
+          name: formData.name,
+          reason: message,
+        }),
+      });
     }
   };
 
@@ -381,7 +415,7 @@ export const ParticipantForm = ({
             value={formData.age || ""}
             onChange={handleChange}
             className={errors.age ? "border-red-500" : ""}
-            placeholder="Enter age (e.g., 25)"
+            placeholder={t("admin.participants.form.agePlaceholder")}
           />
           {errors.age && <p className="text-red-500 text-sm">{errors.age}</p>}
         </div>
@@ -407,7 +441,7 @@ export const ParticipantForm = ({
           <Label>{t("admin.participants.form.country")}</Label>
           <Select value={formData.country} onValueChange={handleCountryChange}>
             <SelectTrigger className={errors.country ? "border-red-500" : ""}>
-              <SelectValue placeholder="Select a country">
+              <SelectValue placeholder={t("admin.participants.form.countryPlaceholder")}>
                 {formData.country ? (
                   <div className="flex items-center gap-2">
                     <span className="text-lg">
@@ -416,7 +450,7 @@ export const ParticipantForm = ({
                     <span>{formData.country}</span>
                   </div>
                 ) : (
-                  "Select a country"
+                  t("admin.participants.form.countryPlaceholder")
                 )}
               </SelectValue>
             </SelectTrigger>
@@ -444,14 +478,15 @@ export const ParticipantForm = ({
           <Select
             value={formData.category}
             onValueChange={handleCategoryChange}
+            disabled={evaluationConfigStatus !== "ready"}
           >
             <SelectTrigger className={errors.category ? "border-red-500" : ""}>
-              <SelectValue placeholder="Select a category" />
+              <SelectValue placeholder={t("admin.participants.form.categoryPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
-              {AVAILABLE_CATEGORIES.map((category) => (
-                <SelectItem key={category} value={category}>
-                  {category}
+              {categoryOptions.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -518,7 +553,7 @@ export const ParticipantForm = ({
                 <div className="w-24 h-24 border rounded overflow-hidden">
                   <img
                     src={photoPreview}
-                    alt="Photo preview"
+                    alt={t("admin.participants.form.photoAlt")}
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -557,6 +592,11 @@ export const ParticipantForm = ({
               </div>
             )}
           </div>
+          {errors.photo && (
+            <p className="text-red-500 text-sm" role="alert">
+              {errors.photo}
+            </p>
+          )}
         </div>
 
         {/* Scheduled Day */}
@@ -566,7 +606,7 @@ export const ParticipantForm = ({
           </Label>
           <Select value={selectedDay} onValueChange={handleDayChange}>
             <SelectTrigger>
-              <SelectValue placeholder="Select a day" />
+              <SelectValue placeholder={t("admin.participants.form.dayPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
               {AVAILABLE_DAYS.map((day) => (
@@ -585,7 +625,7 @@ export const ParticipantForm = ({
           </Label>
           <Select value={selectedTime} onValueChange={handleTimeChange}>
             <SelectTrigger>
-              <SelectValue placeholder="Select time" />
+              <SelectValue placeholder={t("admin.participants.form.timePlaceholder")} />
             </SelectTrigger>
             <SelectContent>
               {AVAILABLE_TIMES.map((time) => (
@@ -597,6 +637,8 @@ export const ParticipantForm = ({
           </Select>
         </div>
       </div>
+
+      {errors.submit && <p className="text-red-500 text-sm">{errors.submit}</p>}
 
       <div className="flex justify-end space-x-4 pt-4">
         <Button

@@ -24,6 +24,7 @@ export const useJuryAuth = () => {
   // Handle browser close/refresh to deactivate jury member
   useEffect(() => {
     const handleBeforeUnload = () => {
+      if (!currentEvent) return;
       const juryId = getAuthenticatedJury();
       if (juryId) {
         // Use sendBeacon for reliable request during page unload
@@ -32,7 +33,7 @@ export const useJuryAuth = () => {
         try {
           // For immediate deactivation, we'll trigger the logout
           // This might not always complete but it's better than nothing
-          logoutJury(currentEvent || 'lisbon-2025').catch(console.error);
+          logoutJury(currentEvent).catch(console.error);
         } catch (error) {
           console.error("Error deactivating jury on page unload:", error);
         }
@@ -99,8 +100,9 @@ export const useJuryAuth = () => {
   };
 
   const handleLogout = async () => {
+    if (!currentEvent) return;
     try {
-      await logoutJury(currentEvent || 'lisbon-2025');
+      await logoutJury(currentEvent);
       setIsAuthenticated(false);
 
       // Clean up all Firestore listeners to prevent memory leaks

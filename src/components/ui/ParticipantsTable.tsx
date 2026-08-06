@@ -1,4 +1,3 @@
-import { Participant, QuestionFields } from "@/models/models";
 import {
   Table,
   TableBody,
@@ -12,42 +11,32 @@ import { Button } from "@/components/shadcn/button";
 import { Eye, Loader2 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { ScoreDetailsDialog } from "@/components/ui/ScoreDetailsDialog";
-
-// This type will now include the calculated scores from the parent
-type ParticipantWithCalculatedScores = Participant & {
-  finalScore: number;
-  breakdown: {
-    hifdh: number;
-    tajweed: number;
-    waqf: number;
-    husn_al_ada: number;
-    overall_bonus: number;
-  };
-  questionScores?: {
-    byJury: Record<string, { [questionNumber: number]: QuestionFields }>;
-    average: { [questionNumber: number]: QuestionFields };
-    juryIds: string[];
-  };
-  overallBonuses?: Record<string, number>;
-};
+import type { ParticipantWithScores } from "@/hooks/useParticipants";
 
 interface ParticipantsTableProps {
-  participants: ParticipantWithCalculatedScores[];
+  participants: ParticipantWithScores[];
   isLoading?: boolean;
   isFetching?: boolean;
+  /**
+   * How many juries are expected to contribute to each participant (the
+   * active jury members for the event). 0 means "unknown", and the column
+   * falls back to the bare count.
+   */
+  expectedJuryCount?: number;
 }
 
 export const ParticipantsTable = ({
   participants,
   isLoading = false,
   isFetching = false,
+  expectedJuryCount = 0,
 }: ParticipantsTableProps) => {
   const { t } = useTranslation();
   const [selectedParticipant, setSelectedParticipant] =
-    useState<ParticipantWithCalculatedScores | null>(null);
+    useState<ParticipantWithScores | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-  const handleOpenDetails = (participant: ParticipantWithCalculatedScores) => {
+  const handleOpenDetails = (participant: ParticipantWithScores) => {
     setSelectedParticipant(participant);
     setIsDetailsOpen(true);
   };
@@ -59,7 +48,7 @@ export const ParticipantsTable = ({
 
   // Group participants by scheduled value (filtering is now done in parent)
   const groupedParticipants = useMemo(() => {
-    const groups = new Map<string, ParticipantWithCalculatedScores[]>();
+    const groups = new Map<string, ParticipantWithScores[]>();
 
     participants.forEach((participant) => {
       const scheduledValue = participant.scheduled || "Unscheduled";
@@ -85,15 +74,29 @@ export const ParticipantsTable = ({
   }, [participants]);
 
   // Render participant row
-  const renderParticipantRow = (participant: ParticipantWithCalculatedScores) => {
-    const juryCount = participant.questionScores?.juryIds?.length || 0;
+  const renderParticipantRow = (participant: ParticipantWithScores) => {
+    const juryCount = participant.juryIds?.length || 0;
+    // A jury that did not score every question is omitted from the average
+    // entirely (useParticipants.ts). Showing counted-of-expected is what makes
+    // that omission visible instead of silently shifting the ranking.
+    const juryCountIsShort = expectedJuryCount > 0 && juryCount < expectedJuryCount;
 
     return (
       <TableRow key={participant.id}>
         <TableCell>{participant.name}</TableCell>
         <TableCell>{participant.age}</TableCell>
         <TableCell>{participant.country}</TableCell>
-        <TableCell>{participant.category}</TableCell>
+        <TableCell>
+          {participant.category}
+          {participant.scoringError && (
+            <span
+              className="ml-2 text-xs font-semibold text-red-600"
+              title={participant.scoringError}
+            >
+              ⚠ {t("participants.table.categoryError", "config error")}
+            </span>
+          )}
+        </TableCell>
         <TableCell>{participant.school}</TableCell>
         <TableCell>{participant.scheduled}</TableCell>
         <TableCell>
@@ -106,7 +109,28 @@ export const ParticipantsTable = ({
             ? `${participant.finalScore.toFixed(2)} pts`
             : "-"}
         </TableCell>
-        <TableCell>{juryCount > 0 ? juryCount : "-"}</TableCell>
+        <TableCell>
+          {expectedJuryCount > 0 ? (
+            <span
+              className={juryCountIsShort ? "font-semibold text-amber-600" : ""}
+              title={
+                juryCountIsShort
+                  ? t("participants.table.juryCountShortTooltip")
+                  : undefined
+              }
+            >
+              {t("participants.table.juryCountOfExpected", {
+                counted: juryCount,
+                expected: expectedJuryCount,
+              })}
+              {juryCountIsShort && " \u26A0"}
+            </span>
+          ) : juryCount > 0 ? (
+            juryCount
+          ) : (
+            "-"
+          )}
+        </TableCell>
         <TableCell>
           <Button
             variant="outline"

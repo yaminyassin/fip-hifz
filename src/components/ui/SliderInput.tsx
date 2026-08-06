@@ -1,11 +1,9 @@
 import { Card } from "@/components/shadcn/card";
 import { Slider } from "@/components/shadcn/slider";
-import { QuestionFields } from "@/models/models";
 import { useTranslation } from "react-i18next";
 
 export interface SliderInputProps {
   label: string;
-  field?: keyof QuestionFields;
   value: number;
   onChange: (value: number) => void;
   disabled?: boolean;
@@ -14,6 +12,8 @@ export interface SliderInputProps {
   step?: number;
 }
 
+/** A generic bounded slider, driven entirely by the caller's
+ * `min`/`max`/`step` — no hardcoded field or range. */
 export const SliderInput = ({
   label,
   value,
@@ -30,7 +30,7 @@ export const SliderInput = ({
   };
 
   // Create markers for the slider stops
-  const markers = Array.from({ length: max - min + 1 }, (_, i) => i + min);
+  const markers = Array.from({ length: Math.floor((max - min) / step) + 1 }, (_, i) => min + i * step);
 
   return (
     <Card className={`w-full p-4 ${disabled ? "opacity-60" : ""}`}>

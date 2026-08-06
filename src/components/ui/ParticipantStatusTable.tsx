@@ -32,7 +32,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { doc, writeBatch, collection } from "firebase/firestore";
 import { firestore } from "@/main";
 import { Loader2, Filter, Search } from "lucide-react";
-import { categoryConfigs } from "@/lib/quranUtils";
 import { useEvent } from "@/contexts/EventContext";
 import { getEventCollectionPath } from "@/utils/firebaseUtils";
 
@@ -40,30 +39,21 @@ type DisplayStatus = "Active" | "Inactive" | "Completed";
 
 export function ParticipantStatusTable() {
   const { t } = useTranslation();
-  const { currentEvent } = useEvent();
+  const { currentEvent, evaluationConfig } = useEvent();
   const {
     data: participants = [],
     isLoading: isLoadingParticipants,
     isFetching: isFetchingParticipants,
   } = useParticipants();
 
+  // Category filter chips enumerate `config.categories` keys (design doc
+  // §4) — never a hardcoded category table.
   const allSubCategories = React.useMemo(
-    () =>
-      Object.values(categoryConfigs)
-        .flatMap((config) => config.questionRanges.map((range) => range.name))
-        .sort(),
-    []
+    () => (evaluationConfig ? Object.keys(evaluationConfig.categories).sort() : []),
+    [evaluationConfig]
   );
 
-  const nonMCategories = React.useMemo(
-    () =>
-      Object.entries(categoryConfigs)
-        .filter(([key]) => key !== "M")
-        .flatMap(([, config]) =>
-          config.questionRanges.map((range) => range.name)
-        ),
-    []
-  );
+  const nonMCategories = allSubCategories;
 
   const [selectedCategories, setSelectedCategories] = React.useState<string[]>([
     "all",

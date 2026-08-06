@@ -39,11 +39,9 @@ export const JuryHeader = ({
             {/* Participant Flag */}
             <div className="w-8 h-8 rounded-md overflow-hidden flex items-center justify-center bg-gray-100">
               {participant.flag ? (
-                <img
-                  src={participant.flag}
-                  alt={`${participant.name} flag`}
-                  className="w-full h-full object-cover"
-                />
+                <span className="text-2xl" aria-hidden="true">
+                  {participant.flag}
+                </span>
               ) : (
                 <span className="text-gray-400 text-xs">🏳️</span>
               )}

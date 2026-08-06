@@ -1,12 +1,10 @@
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/shadcn/button";
-import { createScoreIfNotExists } from "@/services/scores";
 import { useEvent } from "@/contexts/EventContext";
 
 interface Participant {
   id: string;
   name: string;
-  age: number;
   category: string;
   assignedQuestions?: number[];
   isActive?: boolean;
@@ -33,6 +31,13 @@ interface QuestionTabsProps {
   disabled?: boolean;
 }
 
+/**
+ * Tab count = `config.categories[participant.category].questionCount`
+ * (design doc §4) — never `participant.assignedQuestions.length` alone,
+ * so a category is always fully represented even before every page has
+ * been randomized. A participant whose category is missing from
+ * `config.categories` surfaces as an explicit error, never a silent drop.
+ */
 export const QuestionTabs = ({
   participant,
   juryMember,
@@ -47,105 +52,80 @@ export const QuestionTabs = ({
   disabled = false,
 }: QuestionTabsProps) => {
   const { t } = useTranslation();
-  const { currentEvent } = useEvent();
+  const { evaluationConfig } = useEvent();
 
-  if (
-    !participant?.assignedQuestions ||
-    participant.assignedQuestions.length === 0
-  ) {
+  if (!participant) {
     return (
       <div className="flex justify-between items-center py-8">
         <div className="text-center text-gray-500 flex-grow">
           {t("jury.noQuestionsAssigned")}
         </div>
-        <Button
-          className="bg-gray-400 text-white font-bold cursor-not-allowed"
-          onClick={onDone}
-          disabled={true}
-        >
-          Finish
-        </Button>
       </div>
     );
   }
 
+  const category = evaluationConfig?.categories[participant.category];
+  if (!category) {
+    return (
+      <div className="flex justify-between items-center py-8">
+        <div className="text-center text-red-600 font-medium flex-grow">
+          {t(
+            "jury.messages.unknownCategory",
+            'Participant category "{{category}}" is not defined in this event\'s config.',
+            { category: participant.category }
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const questionCount = category.questionCount;
+
   const handleTabClick = (questionNumber: number) => {
     if (disabled) return;
-
-    // Only disable navigation when jury has finished evaluating
     const isDisabled = juryMember?.hasFinishedEvaluating === true;
     if (isDisabled) return;
-
-    // Check if score document exists for this question, create if not
-    const checkAndCreateScore = async () => {
-      if (participant?.id && juryMember?.id && participant.assignedQuestions) {
-        const pageNumber = participant.assignedQuestions[questionNumber - 1];
-        if (pageNumber) {
-          try {
-            await createScoreIfNotExists(
-              currentEvent || 'lisbon-2025',
-              participant.id,
-              juryMember.id,
-              questionNumber,
-              pageNumber
-            );
-          } catch (error) {
-            console.error("Error creating score document:", error);
-          }
-        }
-      }
-    };
-
-    // Create score document in background and navigate to question
-    checkAndCreateScore();
     onQuestionChange(questionNumber);
   };
 
-  // Determine if the evaluation is complete
   const isEvaluationComplete = juryMember?.hasFinishedEvaluating === true;
-
-  // Determine if button should be disabled
+  // `disabled` carries the load-failure lock from ScoreForm. It MUST gate
+  // Finish, not just the tabs: Finish writes `currentScores` to Firestore
+  // (useJuryNavigation.handleDone), and while the stored scores are unreadable
+  // `currentScores` holds the config defaults (zeros) rather than the juror's
+  // real marks — concluding would overwrite the persisted score with zeros.
   const isButtonDisabled =
-    !participant?.id ||
-    !participant?.assignedQuestions ||
-    participant.assignedQuestions.length === 0 ||
-    isSaving ||
-    isEvaluationComplete;
+    disabled || !participant?.id || questionCount === 0 || isSaving || isEvaluationComplete;
 
   return (
     <div className="w-full">
       <div className="flex justify-between items-center">
         {/* Question Tabs */}
         <div className="flex flex-wrap gap-2">
-          {Array.from(
-            { length: participant.assignedQuestions.length },
-            (_, i) => {
-              const questionNumber = i + 1;
-              const pageNumber = participant.assignedQuestions![i];
-              const isSelected = selectedQuestion === questionNumber;
+          {Array.from({ length: questionCount }, (_, i) => {
+            const questionNumber = i + 1;
+            const pageNumber = participant.assignedQuestions?.[i];
+            const isSelected = selectedQuestion === questionNumber;
+            const isDisabled = juryMember?.hasFinishedEvaluating === true;
 
-              // Only disable when jury has finished evaluating
-              const isDisabled = juryMember?.hasFinishedEvaluating === true;
-
-              return (
-                <Button
-                  key={questionNumber}
-                  variant={isSelected ? "default" : "outline"}
-                  size="sm"
-                  className="min-w-[80px]"
-                  onClick={() => handleTabClick(questionNumber)}
-                  disabled={disabled || isDisabled}
-                >
-                  <div className="flex flex-col items-center">
-                    <span className="text-xs">Q{questionNumber}</span>
-                    <span className="text-xs opacity-75">
-                      {t("jury.page")} {pageNumber}
-                    </span>
-                  </div>
-                </Button>
-              );
-            }
-          )}
+            return (
+              <Button
+                key={questionNumber}
+                variant={isSelected ? "default" : "outline"}
+                size="sm"
+                className="min-w-[80px]"
+                onClick={() => handleTabClick(questionNumber)}
+                disabled={disabled || isDisabled}
+              >
+                <div className="flex flex-col items-center">
+                  <span className="text-xs">Q{questionNumber}</span>
+                  <span className="text-xs opacity-75">
+                    {pageNumber ? `${t("jury.page")} ${pageNumber}` : "..."}
+                  </span>
+                </div>
+              </Button>
+            );
+          })}
         </div>
 
         {/* Question Change Notification or Active Question Indicator */}
@@ -159,10 +139,10 @@ export const QuestionTabs = ({
             </div>
           </div>
         )}
-        
+
         {/* Active Question Indicator - Show when not viewing active question and no external change notification */}
         {!questionChangedExternally && !isViewingActiveQuestion && activeQuestionNumber && (
-          <div 
+          <div
             className="flex items-center bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg px-4 py-2 mx-4 shadow-sm cursor-pointer hover:bg-gradient-to-r hover:from-amber-100 hover:to-orange-100 transition-colors"
             onClick={onGoToActiveQuestion}
             role="button"

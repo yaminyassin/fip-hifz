@@ -9,6 +9,7 @@ import {
   resetAllParticipantStatuses,
 } from "@/services/participants";
 import { useEvent } from "@/contexts/EventContext";
+import { notifyError, notifySuccess, NOTIFY_KEYS } from "@/lib/notify";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PlusCircle, Upload, Edit, Trash, X, RefreshCcw } from "lucide-react";
 import { Card } from "@/components/shadcn/card";
@@ -33,12 +34,26 @@ export const ParticipantManagement = () => {
     useState(false);
 
   const resetStatusesMutation = useMutation({
-    mutationFn: () => resetAllParticipantStatuses(currentEvent || 'lisbon-2025'),
+    mutationFn: () => {
+      if (!currentEvent) throw new Error('No event selected');
+      return resetAllParticipantStatuses(currentEvent);
+    },
     onSuccess: () => {
-      console.log("Participant statuses reset successfully.");
+      notifySuccess({
+        key: NOTIFY_KEYS.participantSave,
+        title: t("admin.participants.resetStatusesDoneTitle"),
+        description: t("admin.participants.resetStatusesDoneDesc"),
+      });
     },
     onError: (error) => {
       console.error("Failed to reset participant statuses:", error);
+      notifyError({
+        key: NOTIFY_KEYS.participantSave,
+        title: t("admin.participants.resetStatusesFailedTitle"),
+        description: t("admin.participants.resetStatusesFailedDesc", {
+          reason: error instanceof Error ? error.message : String(error),
+        }),
+      });
     },
   });
 
@@ -68,14 +83,27 @@ export const ParticipantManagement = () => {
     setShowAddForm(true);
   };
 
-  const handleDeleteClick = async (id: string) => {
+  const handleDeleteClick = async (id: string, name: string) => {
+    if (!currentEvent) return;
     if (window.confirm(t("admin.participants.confirmDelete"))) {
       try {
-        await deleteParticipant(currentEvent || 'lisbon-2025', id);
+        await deleteParticipant(currentEvent, id);
         queryClient.invalidateQueries({ queryKey: ["participants"] });
+        notifySuccess({
+          key: NOTIFY_KEYS.participantDelete,
+          title: t("admin.participants.deletedTitle"),
+          description: t("admin.participants.deletedDesc", { name }),
+        });
       } catch (error) {
         console.error("Error deleting participant:", error);
-        // Could add error handling UI here
+        notifyError({
+          key: NOTIFY_KEYS.participantDelete,
+          title: t("admin.participants.deleteFailedTitle"),
+          description: t("admin.participants.deleteFailedDesc", {
+            name,
+            reason: error instanceof Error ? error.message : String(error),
+          }),
+        });
       }
     }
   };
@@ -183,7 +211,9 @@ export const ParticipantManagement = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleDeleteClick(participant.id)}
+              onClick={() =>
+                handleDeleteClick(participant.id, participant.name)
+              }
               className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 border-2 border-red-200 hover:border-red-500 dark:hover:bg-red-900/50"
               aria-label={t("common.delete")}
             >

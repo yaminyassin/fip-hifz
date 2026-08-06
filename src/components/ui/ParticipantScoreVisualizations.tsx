@@ -1,8 +1,3 @@
-import { Participant, QuestionFields } from "@/models/models";
-import { calculateFinalScore } from "@/utils/scoreUtils";
-import {
-  fillMissingQuestionsAndCalculateAverage,
-} from "@/lib/quranUtils";
 import { useTranslation } from "react-i18next";
 import {
   Card,
@@ -31,242 +26,159 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/shadcn/select";
-
-// Updated to include the new score format
-type ParticipantWithScores = Participant & {
-  questionScores?: {
-    byJury: Record<string, { [questionNumber: number]: QuestionFields }>;
-    average: { [questionNumber: number]: QuestionFields };
-    juryIds: string[];
-  };
-  overallBonuses?: Record<string, number>; // juryId -> overallBonus value
-};
+import { useEvent } from "@/contexts/EventContext";
+import { orderedEntries } from "@/evaluation/configHelpers";
+import type { ParticipantWithScores } from "@/hooks/useParticipants";
 
 interface ParticipantScoreVisualizationsProps {
   participants: ParticipantWithScores[];
 }
 
-
-
+/**
+ * Config-driven leaderboard/statistics view (design doc §4, "Consumer
+ * wiring"): every section shown here (retention bars, averages) is derived
+ * from `config.questionTypes`/`participantAdjustments` and each
+ * participant's `juryResults` (engine output) — never a hardcoded
+ * hifdh/tajweed/waqf shape. Category filter chips enumerate
+ * `config.categories` keys, not a hardcoded category table.
+ */
 export const ParticipantScoreVisualizations = ({
   participants,
 }: ParticipantScoreVisualizationsProps) => {
   const { t } = useTranslation();
+  const { evaluationConfig } = useEvent();
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
-  // Filter participants by category if filter is active
+  const categoryIds = useMemo(
+    () => (evaluationConfig ? Object.keys(evaluationConfig.categories).sort() : []),
+    [evaluationConfig]
+  );
+
   const filteredParticipants = useMemo(() => {
-    if (categoryFilter === "all") {
-      // Exclude category 'M' from the "all" view
-      return participants.filter(
-        (participant) => !participant.category.toUpperCase().startsWith("M")
-      );
-    }
-    // Filter for a specific category (A, B, C, D, or M)
-    return participants.filter((participant) => {
-      const mainCategory = participant.category.charAt(0).toUpperCase();
-      return mainCategory === categoryFilter;
-    });
+    if (categoryFilter === "all") return participants;
+    return participants.filter((p) => p.category === categoryFilter);
   }, [participants, categoryFilter]);
 
-  // Calculate final scores for all participants that have scores
   const participantsWithScores = useMemo(() => {
     return filteredParticipants
-      .filter(
-        (p) =>
-          p.isDone &&
-          p.questionScores?.juryIds &&
-          p.questionScores.juryIds.length > 0
-      )
-      .map((participant) => {
-        // Fill missing questions with perfect scores and calculate proper average
-        const filledAverageScores = fillMissingQuestionsAndCalculateAverage(
-          participant.questionScores!,
-          participant.category
-        );
-
-        // Calculate average overall bonus across all juries
-        let averageOverallBonus = 0;
-        if (
-          participant.overallBonuses &&
-          participant.questionScores?.juryIds.length
-        ) {
-          const totalBonus = participant.questionScores.juryIds.reduce(
-            (sum, juryId) => {
-              return sum + (participant.overallBonuses?.[juryId] || 0);
-            },
-            0
-          );
-          averageOverallBonus =
-            totalBonus / participant.questionScores.juryIds.length;
-        }
-
-        const scoreResult = calculateFinalScore(
-          filledAverageScores,
-          averageOverallBonus
-        );
-
-        return {
-          ...participant,
-          finalScore: scoreResult.percentage, // Use base percentage for ranking
-          breakdown: scoreResult.breakdownBySection, // Keep breakdown for bonus info
-          juryCount: participant.questionScores?.juryIds?.length || 0,
-        };
-      })
+      .filter((p) => p.isDone && p.juryIds.length > 0 && p.finalScore >= 0)
       .sort((a, b) => b.finalScore - a.finalScore);
   }, [filteredParticipants]);
 
-  // Calculate the strongest category overall
-  const strongestCategory = useMemo(() => {
-    if (participantsWithScores.length === 0)
-      return { category: "hifdh", percentage: 0 };
-
-    // Calculate the average retention percentage for each category
-    let totalHifdhRetention = 0;
-    let totalTajweedRetention = 0;
-    let totalWaqfRetention = 0;
-
-    participantsWithScores.forEach((p) => {
-      // p.breakdown contains points ACHIEVED, not deductions.
-      // Convert achieved points to a retention percentage for that category.
-      totalHifdhRetention += (p.breakdown.hifdh / 50) * 100; // Hifdh is out of 50
-      totalTajweedRetention += (p.breakdown.tajweed / 30) * 100; // Tajweed is out of 30
-      totalWaqfRetention += (p.breakdown.waqf / 10) * 100; // Waqf is out of 10
-    });
-
-    const count = participantsWithScores.length;
-    const avgHifdh = totalHifdhRetention / count;
-    const avgTajweed = totalTajweedRetention / count;
-    const avgWaqf = totalWaqfRetention / count;
-
-    // Find the maximum retention percentage
-    if (avgHifdh >= avgTajweed && avgHifdh >= avgWaqf) {
-      return { category: "hifdh", percentage: avgHifdh };
-    } else if (avgTajweed >= avgHifdh && avgTajweed >= avgWaqf) {
-      return { category: "tajweed", percentage: avgTajweed };
-    } else {
-      return { category: "waqf", percentage: avgWaqf };
-    }
-  }, [participantsWithScores]);
-
-  // Calculate category averages for visualization
-  const categoryAverages = useMemo(() => {
-    if (participantsWithScores.length === 0) {
-      return {
-        hifdh: 0,
-        tajweed: 0,
-        waqf: 0,
-        husn_al_ada: 0,
-        overall_bonus: 0,
-        total: 0,
-      };
-    }
-
-    const totals = participantsWithScores.reduce(
-      (acc, p) => {
-        // Convert points achieved into retention percentages
-        acc.hifdh += (p.breakdown.hifdh / 50) * 100;
-        acc.tajweed += (p.breakdown.tajweed / 30) * 100;
-        acc.waqf += (p.breakdown.waqf / 10) * 100;
-        acc.husn_al_ada += p.breakdown.husn_al_ada; // This is a deduction (0-10 pts)
-        acc.overall_bonus += p.breakdown.overall_bonus; // This is a bonus (0-5 pts)
-        acc.total += p.finalScore;
-        return acc;
-      },
-      {
-        hifdh: 0,
-        tajweed: 0,
-        waqf: 0,
-        husn_al_ada: 0,
-        overall_bonus: 0,
-        total: 0,
+  // Average per-section impact across every ranking-eligible participant's
+  // every jury's every question — a generic "how well did the field do in
+  // section X" statistic.
+  const sectionAverages = useMemo(() => {
+    if (!evaluationConfig) return {} as Record<string, number>;
+    const sectionIds = Object.keys(evaluationConfig.questionTypes);
+    const totals: Record<string, number> = Object.fromEntries(sectionIds.map((id) => [id, 0]));
+    let count = 0;
+    for (const p of participantsWithScores) {
+      for (const juryId of p.juryIds) {
+        const result = p.juryResults[juryId];
+        if (!result) continue;
+        for (const q of result.questionResults) {
+          for (const sectionId of sectionIds) {
+            totals[sectionId] += q.sectionImpacts[sectionId] ?? 0;
+          }
+          count++;
+        }
       }
-    );
+    }
+    const averages: Record<string, number> = {};
+    for (const sectionId of sectionIds) {
+      averages[sectionId] = count > 0 ? totals[sectionId] / count : 0;
+    }
+    return averages;
+  }, [evaluationConfig, participantsWithScores]);
 
-    const count = participantsWithScores.length;
-    return {
-      hifdh: totals.hifdh / count,
-      tajweed: totals.tajweed / count,
-      waqf: totals.waqf / count,
-      husn_al_ada: totals.husn_al_ada / count, // Average deduction points
-      overall_bonus: totals.overall_bonus / count, // Average bonus points
-      total: totals.total / count,
-    };
+  const orderedSections = useMemo(
+    () => (evaluationConfig ? orderedEntries(evaluationConfig.questionTypes) : []),
+    [evaluationConfig]
+  );
+
+  const strongestSection = useMemo(() => {
+    if (orderedSections.length === 0) return null;
+    let best: { id: string; label: string; retention: number } | null = null;
+    for (const [id, section] of orderedSections) {
+      const cap = section.operation === "subtract" ? section.perSectionDeductionCap : section.perSectionAdditionCap;
+      const impact = sectionAverages[id] ?? 0;
+      const achieved = section.operation === "subtract" ? cap - impact : impact;
+      const retention = cap > 0 ? (achieved / cap) * 100 : 100;
+      if (!best || retention > best.retention) {
+        best = { id, label: section.label.default, retention };
+      }
+    }
+    return best;
+  }, [orderedSections, sectionAverages]);
+
+  const averageAdjustmentTotal = useMemo(() => {
+    if (participantsWithScores.length === 0) return 0;
+    const total = participantsWithScores.reduce((sum, p) => {
+      const perJury = p.juryIds
+        .map((id) => p.juryResults[id]?.signedAdjustmentTotal ?? 0)
+        .reduce((s, v) => s + v, 0);
+      return sum + (p.juryIds.length > 0 ? perJury / p.juryIds.length : 0);
+    }, 0);
+    return total / participantsWithScores.length;
   }, [participantsWithScores]);
 
-  // Calculate score distribution for visualization
   const scoreDistribution = useMemo(() => {
     return {
-      excellent: participantsWithScores.filter((p) => p.finalScore >= 90)
-        .length,
-      veryGood: participantsWithScores.filter(
-        (p) => p.finalScore >= 80 && p.finalScore < 90
-      ).length,
-      good: participantsWithScores.filter(
-        (p) => p.finalScore >= 70 && p.finalScore < 80
-      ).length,
-      average: participantsWithScores.filter(
-        (p) => p.finalScore >= 60 && p.finalScore < 70
-      ).length,
-      belowAverage: participantsWithScores.filter((p) => p.finalScore < 60)
-        .length,
+      excellent: participantsWithScores.filter((p) => p.finalScore >= 90).length,
+      veryGood: participantsWithScores.filter((p) => p.finalScore >= 80 && p.finalScore < 90).length,
+      good: participantsWithScores.filter((p) => p.finalScore >= 70 && p.finalScore < 80).length,
+      average: participantsWithScores.filter((p) => p.finalScore >= 60 && p.finalScore < 70).length,
+      belowAverage: participantsWithScores.filter((p) => p.finalScore < 60).length,
     };
   }, [participantsWithScores]);
 
-  // Check if we have enough data to show visualizations
   const hasParticipantsWithScores = participantsWithScores.length > 0;
-
-  // Get top 5 participants for display
   const topParticipants = participantsWithScores.slice(0, 5);
 
-  // Get top 5 participants by bonus score, filtering out those with zero bonus
   const topBonusParticipants = useMemo(() => {
     return [...participantsWithScores]
-      .filter((p) => p.breakdown.overall_bonus > 0)
-      .sort((a, b) => b.breakdown.overall_bonus - a.breakdown.overall_bonus)
+      .map((p) => {
+        const bonus =
+          p.juryIds.length > 0
+            ? p.juryIds.reduce((sum, id) => sum + (p.juryResults[id]?.signedAdjustmentTotal ?? 0), 0) /
+              p.juryIds.length
+            : 0;
+        return { participant: p, bonus };
+      })
+      .filter(({ bonus }) => bonus > 0)
+      .sort((a, b) => b.bonus - a.bonus)
       .slice(0, 5);
   }, [participantsWithScores]);
 
-  // Always render the component, but conditionally render the visualizations
+  const averageFinalScore = useMemo(() => {
+    if (participantsWithScores.length === 0) return 0;
+    return (
+      participantsWithScores.reduce((sum, p) => sum + p.finalScore, 0) / participantsWithScores.length
+    );
+  }, [participantsWithScores]);
+
   return (
     <div className="mt-8">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl font-bold">
-          {t("participants.visualizations.title")}
-        </h2>
+        <h2 className="text-2xl font-bold">{t("participants.visualizations.title")}</h2>
 
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">
-            {t("participants.filter.by_category")}
-          </span>
+          <span className="text-sm text-muted-foreground">{t("participants.filter.by_category")}</span>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
             <SelectTrigger className="w-[180px]">
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4" />
-                <SelectValue
-                  placeholder={t("participants.filter.all_categories")}
-                />
+                <SelectValue placeholder={t("participants.filter.all_categories")} />
               </div>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">
-                {t("participants.filter.all_categories")}
-              </SelectItem>
-              <SelectItem value="A">
-                {t("participants.filter.category_a")}
-              </SelectItem>
-              <SelectItem value="B">
-                {t("participants.filter.category_b")}
-              </SelectItem>
-              <SelectItem value="C">
-                {t("participants.filter.category_c")}
-              </SelectItem>
-              <SelectItem value="D">
-                {t("participants.filter.category_d")}
-              </SelectItem>
-              <SelectItem value="M">
-                {t("participants.filter.category_m")}
-              </SelectItem>
+              <SelectItem value="all">{t("participants.filter.all_categories")}</SelectItem>
+              {categoryIds.map((id) => (
+                <SelectItem key={id} value={id}>
+                  {id}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -275,33 +187,25 @@ export const ParticipantScoreVisualizations = ({
       {hasParticipantsWithScores ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            {/* Top Performers Card */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2">
                   <Award className="h-5 w-5 text-amber-500" />
                   {t("participants.visualizations.topPerformers")}
                 </CardTitle>
-                <CardDescription>
-                  {t("participants.visualizations.topPerformersDesc")}
-                </CardDescription>
+                <CardDescription>{t("participants.visualizations.topPerformersDesc")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {topParticipants.map((participant, i) => (
-                    <div
-                      key={participant.id}
-                      className="flex items-center gap-3"
-                    >
+                    <div key={participant.id} className="flex items-center gap-3">
                       <div className="flex-none w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
                         {i + 1}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-baseline mb-1 gap-2">
                           <div className="truncate">
-                            <span className="text-sm font-medium">
-                              {participant.name}
-                            </span>
+                            <span className="text-sm font-medium">{participant.name}</span>
                             <span className="ml-2 text-xs font-mono text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
                               {participant.category}
                             </span>
@@ -310,10 +214,7 @@ export const ParticipantScoreVisualizations = ({
                             {participant.finalScore.toFixed(2)} pts
                           </p>
                         </div>
-                        <Progress
-                          value={participant.finalScore}
-                          className="h-2"
-                        />
+                        <Progress value={participant.finalScore} className="h-2" />
                       </div>
                     </div>
                   ))}
@@ -321,7 +222,6 @@ export const ParticipantScoreVisualizations = ({
               </CardContent>
             </Card>
 
-            {/* Top Bonus Scorers Card */}
             {topBonusParticipants.length > 0 && (
               <Card>
                 <CardHeader className="pb-2">
@@ -329,41 +229,26 @@ export const ParticipantScoreVisualizations = ({
                     <Sparkles className="h-5 w-5 text-cyan-500" />
                     {t("participants.visualizations.topBonuses")}
                   </CardTitle>
-                  <CardDescription>
-                    {t("participants.visualizations.topBonusesDesc")}
-                  </CardDescription>
+                  <CardDescription>{t("participants.visualizations.topBonusesDesc")}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {topBonusParticipants.map((participant, i) => (
-                      <div
-                        key={participant.id}
-                        className="flex items-center gap-3"
-                      >
+                    {topBonusParticipants.map(({ participant, bonus }, i) => (
+                      <div key={participant.id} className="flex items-center gap-3">
                         <div className="flex-none w-6 h-6 rounded-full bg-cyan-500/10 text-cyan-500 flex items-center justify-center font-bold">
                           {i + 1}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex justify-between items-baseline mb-1 gap-2">
                             <div className="truncate">
-                              <span className="text-sm font-medium">
-                                {participant.name}
-                              </span>
+                              <span className="text-sm font-medium">{participant.name}</span>
                               <span className="ml-2 text-xs font-mono text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
                                 {participant.category}
                               </span>
                             </div>
-                            <p className="text-sm font-bold flex-shrink-0">
-                              +{participant.breakdown.overall_bonus.toFixed(1)}{" "}
-                              pts
-                            </p>
+                            <p className="text-sm font-bold flex-shrink-0">+{bonus.toFixed(1)} pts</p>
                           </div>
-                          <Progress
-                            value={
-                              (participant.breakdown.overall_bonus / 5) * 100
-                            } // Bonus is out of 5
-                            className="h-2 [&>*]:bg-cyan-500"
-                          />
+                          <Progress value={Math.min(100, (bonus / 5) * 100)} className="h-2 [&>*]:bg-cyan-500" />
                         </div>
                       </div>
                     ))}
@@ -372,195 +257,82 @@ export const ParticipantScoreVisualizations = ({
               </Card>
             )}
 
-            {/* Category Performance Card */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2">
                   <BookOpenCheck className="h-5 w-5 text-blue-500" />
                   {t("participants.visualizations.categoryPerformance")}
                 </CardTitle>
-                <CardDescription>
-                  {t("participants.visualizations.categoryPerformanceDesc")}
-                </CardDescription>
+                <CardDescription>{t("participants.visualizations.categoryPerformanceDesc")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between items-baseline mb-1">
-                      <p className="text-sm font-medium">
-                        {t("jury.categories.hifdh")}
-                      </p>
-                      <p className="text-sm font-bold">
-                        {categoryAverages.hifdh.toFixed(1)}%
-                      </p>
-                    </div>
-                    <Progress value={categoryAverages.hifdh} className="h-2" />
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-baseline mb-1">
-                      <p className="text-sm font-medium">
-                        {t("jury.categories.tajweed")}
-                      </p>
-                      <p className="text-sm font-bold">
-                        {categoryAverages.tajweed.toFixed(1)}%
-                      </p>
-                    </div>
-                    <Progress
-                      value={categoryAverages.tajweed}
-                      className="h-2"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-baseline mb-1">
-                      <p className="text-sm font-medium">
-                        {t("jury.categories.waqf")}
-                      </p>
-                      <p className="text-sm font-bold">
-                        {categoryAverages.waqf.toFixed(1)}%
-                      </p>
-                    </div>
-                    <Progress value={categoryAverages.waqf} className="h-2" />
-                  </div>
+                  {orderedSections.map(([sectionId, section]) => {
+                    const cap =
+                      section.operation === "subtract" ? section.perSectionDeductionCap : section.perSectionAdditionCap;
+                    const impact = sectionAverages[sectionId] ?? 0;
+                    const achieved = section.operation === "subtract" ? cap - impact : impact;
+                    const retention = cap > 0 ? (achieved / cap) * 100 : 100;
+                    return (
+                      <div key={sectionId}>
+                        <div className="flex justify-between items-baseline mb-1">
+                          <p className="text-sm font-medium">{section.label.default}</p>
+                          <p className="text-sm font-bold">{retention.toFixed(1)}%</p>
+                        </div>
+                        <Progress value={retention} className="h-2" />
+                      </div>
+                    );
+                  })}
                   <div className="border-t pt-4">
                     <div className="flex justify-between items-baseline">
-                      <p className="text-sm font-medium text-red-600">
-                        {t("jury.categories.husn_al_ada_deduction")}
-                      </p>
-                      <p className="text-sm font-bold text-red-600">
-                        -{categoryAverages.husn_al_ada.toFixed(1)} pts
-                      </p>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {t("participants.visualizations.avgDeduction")}
-                    </p>
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-baseline">
                       <p className="text-sm font-medium text-green-600">
-                        {t("jury.categories.overall_bonus")}
+                        {t("participants.visualizations.avgBonus")}
                       </p>
                       <p className="text-sm font-bold text-green-600">
-                        +{categoryAverages.overall_bonus.toFixed(1)} pts
+                        {averageAdjustmentTotal >= 0 ? "+" : ""}
+                        {averageAdjustmentTotal.toFixed(1)} pts
                       </p>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {t("participants.visualizations.avgBonus")}
-                    </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Score Distribution Card */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2">
                   <Medal className="h-5 w-5 text-indigo-500" />
                   {t("participants.visualizations.scoreDistribution")}
                 </CardTitle>
-                <CardDescription>
-                  {t("participants.visualizations.scoreDistributionDesc")}
-                </CardDescription>
+                <CardDescription>{t("participants.visualizations.scoreDistributionDesc")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between items-baseline mb-1">
-                      <p className="text-sm font-medium">
-                        {t("participants.visualizations.excellent")} (90-100%)
-                      </p>
-                      <p className="text-sm font-bold">
-                        {scoreDistribution.excellent}
-                      </p>
+                  {(
+                    [
+                      ["excellent", t("participants.visualizations.excellent") + " (90-100%)", "bg-emerald-100"],
+                      ["veryGood", t("participants.visualizations.veryGood") + " (80-89%)", "bg-blue-100"],
+                      ["good", t("participants.visualizations.good") + " (70-79%)", "bg-sky-100"],
+                      ["average", t("participants.visualizations.average") + " (60-69%)", "bg-orange-100"],
+                      ["belowAverage", t("participants.visualizations.belowAverage") + " (<60%)", "bg-red-100"],
+                    ] as const
+                  ).map(([key, label, barClass]) => (
+                    <div key={key}>
+                      <div className="flex justify-between items-baseline mb-1">
+                        <p className="text-sm font-medium">{label}</p>
+                        <p className="text-sm font-bold">{scoreDistribution[key]}</p>
+                      </div>
+                      <Progress
+                        value={(scoreDistribution[key] / participantsWithScores.length) * 100}
+                        className={`h-2 ${barClass}`}
+                      />
                     </div>
-                    <Progress
-                      value={
-                        (scoreDistribution.excellent /
-                          participantsWithScores.length) *
-                        100
-                      }
-                      className="h-2 bg-emerald-100"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-baseline mb-1">
-                      <p className="text-sm font-medium">
-                        {t("participants.visualizations.veryGood")} (80-89%)
-                      </p>
-                      <p className="text-sm font-bold">
-                        {scoreDistribution.veryGood}
-                      </p>
-                    </div>
-                    <Progress
-                      value={
-                        (scoreDistribution.veryGood /
-                          participantsWithScores.length) *
-                        100
-                      }
-                      className="h-2 bg-blue-100"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-baseline mb-1">
-                      <p className="text-sm font-medium">
-                        {t("participants.visualizations.good")} (70-79%)
-                      </p>
-                      <p className="text-sm font-bold">
-                        {scoreDistribution.good}
-                      </p>
-                    </div>
-                    <Progress
-                      value={
-                        (scoreDistribution.good /
-                          participantsWithScores.length) *
-                        100
-                      }
-                      className="h-2 bg-sky-100"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-baseline mb-1">
-                      <p className="text-sm font-medium">
-                        {t("participants.visualizations.average")} (60-69%)
-                      </p>
-                      <p className="text-sm font-bold">
-                        {scoreDistribution.average}
-                      </p>
-                    </div>
-                    <Progress
-                      value={
-                        (scoreDistribution.average /
-                          participantsWithScores.length) *
-                        100
-                      }
-                      className="h-2 bg-orange-100"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex justify-between items-baseline mb-1">
-                      <p className="text-sm font-medium">
-                        {t("participants.visualizations.belowAverage")}{" "}
-                        (&lt;60%)
-                      </p>
-                      <p className="text-sm font-bold">
-                        {scoreDistribution.belowAverage}
-                      </p>
-                    </div>
-                    <Progress
-                      value={
-                        (scoreDistribution.belowAverage /
-                          participantsWithScores.length) *
-                        100
-                      }
-                      className="h-2 bg-red-100"
-                    />
-                  </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Performance Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <Card>
               <CardContent className="p-6">
@@ -569,9 +341,7 @@ export const ParticipantScoreVisualizations = ({
                     <p className="text-sm text-muted-foreground">
                       {t("participants.visualizations.averageScore")}
                     </p>
-                    <p className="text-3xl font-bold mt-1">
-                      {categoryAverages.total.toFixed(1)}%
-                    </p>
+                    <p className="text-3xl font-bold mt-1">{averageFinalScore.toFixed(1)}</p>
                   </div>
                   <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
                     <Star className="h-6 w-6 text-blue-500 dark:text-blue-300" />
@@ -605,9 +375,7 @@ export const ParticipantScoreVisualizations = ({
                     <p className="text-sm text-muted-foreground">
                       {t("participants.visualizations.evaluatedParticipants")}
                     </p>
-                    <p className="text-3xl font-bold mt-1">
-                      {participantsWithScores.length}
-                    </p>
+                    <p className="text-3xl font-bold mt-1">{participantsWithScores.length}</p>
                   </div>
                   <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
                     <Users className="h-6 w-6 text-purple-500 dark:text-purple-300" />
@@ -616,149 +384,27 @@ export const ParticipantScoreVisualizations = ({
               </CardContent>
             </Card>
 
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      {t("participants.visualizations.strongestCategory")}
-                    </p>
-                    <p className="text-3xl font-bold mt-1">
-                      {t(`jury.categories.${strongestCategory.category}`)}
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {strongestCategory.percentage.toFixed(1)}%{" "}
-                      {t("participants.visualizations.retentionRate")}
-                    </p>
-                  </div>
-                  <div className="h-12 w-12 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
-                    <BookOpenCheck className="h-6 w-6 text-amber-500 dark:text-amber-300" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Category Strength Comparison (Top 3 Participants) */}
-          {topParticipants.length > 2 && (
-            <Card className="mb-4">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-blue-500" />
-                  {t("participants.visualizations.topThreeComparison")}
-                </CardTitle>
-                <CardDescription>
-                  {t("participants.visualizations.topThreeComparisonDesc")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col space-y-6">
-                  <div className="grid grid-cols-5 gap-2 text-sm font-medium text-center">
-                    <div className="col-span-1"></div>
-                    <div>{t("jury.categories.hifdh")}</div>
-                    <div>{t("jury.categories.tajweed")}</div>
-                    <div>{t("jury.categories.waqf")}</div>
-                    <div>{t("jury.categories.husn_al_ada_deduction")}</div>
-                  </div>
-
-                  {topParticipants.slice(0, 3).map((participant, index) => (
-                    <div
-                      key={participant.id}
-                      className="grid grid-cols-5 gap-2"
-                    >
-                      <div className="col-span-1 flex items-center gap-2">
-                        <div
-                          className={
-                            index === 0
-                              ? "w-3 h-3 rounded-full bg-amber-500"
-                              : index === 1
-                                ? "w-3 h-3 rounded-full bg-gray-500"
-                                : "w-3 h-3 rounded-full bg-orange-800"
-                          }
-                        ></div>
-                        <span className="font-medium truncate">
-                          {participant.name}
-                        </span>
-                      </div>
-
-                      <div className="relative pt-1">
-                        <div className="h-2 bg-gray-200 rounded-full">
-                          <div
-                            className={
-                              index === 0
-                                ? "h-full rounded-full bg-amber-500"
-                                : index === 1
-                                  ? "h-full rounded-full bg-gray-500"
-                                  : "h-full rounded-full bg-orange-800"
-                            }
-                            style={{
-                              width: `${(participant.breakdown.hifdh / 50) * 100}%`,
-                            }}
-                          ></div>
-                        </div>
-                        <span className="text-xs font-semibold">
-                          {((participant.breakdown.hifdh / 50) * 100).toFixed(
-                            1
-                          )}
-                          %
-                        </span>
-                      </div>
-
-                      <div className="relative pt-1">
-                        <div className="h-2 bg-gray-200 rounded-full">
-                          <div
-                            className={
-                              index === 0
-                                ? "h-full rounded-full bg-amber-500"
-                                : index === 1
-                                  ? "h-full rounded-full bg-gray-500"
-                                  : "h-full rounded-full bg-orange-800"
-                            }
-                            style={{
-                              width: `${(participant.breakdown.tajweed / 30) * 100}%`,
-                            }}
-                          ></div>
-                        </div>
-                        <span className="text-xs font-semibold">
-                          {((participant.breakdown.tajweed / 30) * 100).toFixed(
-                            1
-                          )}
-                          %
-                        </span>
-                      </div>
-
-                      <div className="relative pt-1">
-                        <div className="h-2 bg-gray-200 rounded-full">
-                          <div
-                            className={
-                              index === 0
-                                ? "h-full rounded-full bg-amber-500"
-                                : index === 1
-                                  ? "h-full rounded-full bg-gray-500"
-                                  : "h-full rounded-full bg-orange-800"
-                            }
-                            style={{
-                              width: `${(participant.breakdown.waqf / 10) * 100}%`,
-                            }}
-                          ></div>
-                        </div>
-                        <span className="text-xs font-semibold">
-                          {((participant.breakdown.waqf / 10) * 100).toFixed(1)}
-                          %
-                        </span>
-                      </div>
-
-                      <div className="relative pt-1 text-center">
-                        <span className="text-xs font-semibold text-red-600">
-                          -{participant.breakdown.husn_al_ada.toFixed(1)} pts
-                        </span>
-                      </div>
+            {strongestSection && (
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        {t("participants.visualizations.strongestCategory")}
+                      </p>
+                      <p className="text-3xl font-bold mt-1">{strongestSection.label}</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {strongestSection.retention.toFixed(1)}% {t("participants.visualizations.retentionRate")}
+                      </p>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                    <div className="h-12 w-12 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
+                      <BookOpenCheck className="h-6 w-6 text-amber-500 dark:text-amber-300" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </>
       ) : (
         <Card className="mb-8">
@@ -771,9 +417,7 @@ export const ParticipantScoreVisualizations = ({
               <p className="text-muted-foreground">
                 {categoryFilter === "all"
                   ? t("participants.visualizations.noParticipantsWithScores")
-                  : t("participants.visualizations.noParticipantsInCategory", {
-                    category: categoryFilter,
-                  })}
+                  : t("participants.visualizations.noParticipantsInCategory", { category: categoryFilter })}
               </p>
             </div>
           </CardContent>

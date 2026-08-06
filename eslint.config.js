@@ -7,7 +7,7 @@ import pluginRouter from "@tanstack/eslint-plugin-router";
 
 export default tseslint.config(
   ...pluginRouter.configs["flat/recommended"],
-  { ignores: ["dist"] },
+  { ignores: ["dist", ".claude"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],
@@ -25,6 +25,14 @@ export default tseslint.config(
         "warn",
         { allowConstantExport: true },
       ],
+    },
+  },
+  {
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    files: ["scripts/**/*.mts", "e2e/**/*.ts", "*.config.ts"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: globals.node,
     },
   }
 );

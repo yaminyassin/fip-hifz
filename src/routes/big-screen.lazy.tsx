@@ -4,9 +4,35 @@ import { QuranViewer } from "@/components/ui/QuranViewer";
 import { useActiveParticipant } from "@/hooks/useActiveParticipant";
 import { User } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { EvaluationConfigGate } from "@/components/EvaluationConfigGate";
+import { LiveUpdatesBanner } from "@/components/ui/LiveUpdatesBanner";
+import { useEvent } from "@/contexts/EventContext";
+import type { EventEvaluationConfigV2 } from "@/evaluation/types";
+
+/**
+ * The category's overall range for the big-screen info box: a Juz range when
+ * the config's question slots carry `sourceJuzRange`, otherwise the page span.
+ * Returns null when the participant's category is absent from the config.
+ */
+function categoryRangeDisplay(
+  config: EventEvaluationConfigV2 | null,
+  categoryId: string
+): { kind: "juz" | "pages"; value: string } | null {
+  const slots = config?.categories[categoryId]?.questionSlots;
+  if (!slots || slots.length === 0) return null;
+  if (slots.every((s) => s.sourceJuzRange)) {
+    const start = Math.min(...slots.map((s) => s.sourceJuzRange!.start));
+    const end = Math.max(...slots.map((s) => s.sourceJuzRange!.end));
+    return { kind: "juz", value: `${start} - ${end}` };
+  }
+  const start = Math.min(...slots.map((s) => s.pageRange.startPage));
+  const end = Math.max(...slots.map((s) => s.pageRange.endPage));
+  return { kind: "pages", value: `${start} - ${end}` };
+}
 
 const BigScreen = () => {
   const { t } = useTranslation();
+  const { evaluationConfig } = useEvent();
   const { data: participant, isLoading: isLoadingParticipant } =
     useActiveParticipant();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -71,6 +97,13 @@ const BigScreen = () => {
       style={{ height: `${containerHeight}px` }}
     >
       <div className="max-w-[1800px] mx-auto h-full">
+        {/* Toasts are suppressed on this route (projector), so a dead listener
+            has to be reported on the page itself. The audience variant is
+            fixed-position and takes no layout space, which matters here: this
+            container is sized to `innerHeight - 48` with `overflow-hidden` and
+            the grid below claims `h-full`, so a flow element would push the
+            bottom of the Quran viewer off the screen. */}
+        <LiveUpdatesBanner variant="audience" />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
           {/* Left side - Participant info */}
           <div className="flex flex-col gap-6 h-full overflow-hidden">
@@ -175,14 +208,24 @@ const BigScreen = () => {
                           {participant.name.split(" ")[0]}
                         </div>
                       </div>
-                      <div className="text-center">
-                        <div className="text-sm text-slate-500 font-medium">
-                          Juz
-                        </div>
-                        <div className="font-bold text-base md:text-lg">
-                          1 - 20
-                        </div>
-                      </div>
+                      {(() => {
+                        const range = categoryRangeDisplay(
+                          evaluationConfig,
+                          participant.category
+                        );
+                        return (
+                          <div className="text-center">
+                            <div className="text-sm text-slate-500 font-medium">
+                              {range?.kind === "pages"
+                                ? t("bigScreen.pages", "Pages")
+                                : t("bigScreen.juz", "Juz")}
+                            </div>
+                            <div className="font-bold text-base md:text-lg">
+                              {range?.value ?? "-"}
+                            </div>
+                          </div>
+                        );
+                      })()}
                       <div className="text-center">
                         <div className="text-sm text-slate-500 font-medium">
                           Age
@@ -221,6 +264,12 @@ const BigScreen = () => {
   );
 };
 
+const RouteComponent = () => (
+  <EvaluationConfigGate>
+    <BigScreen />
+  </EvaluationConfigGate>
+);
+
 export const Route = createLazyFileRoute("/big-screen")({
-  component: BigScreen,
+  component: RouteComponent,
 });

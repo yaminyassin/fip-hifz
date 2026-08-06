@@ -14,7 +14,13 @@ const ToastViewport = React.forwardRef<
     <ToastPrimitives.Viewport
         ref={ref}
         className={cn(
-            "fixed top-1 left-1/2 -translate-x-1/2 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:max-w-[420px]",
+            // Bottom-right, not top-centre. Error toasts are persistent by
+            // design (src/lib/notify.ts), and a top-centre toast sits directly
+            // over the action buttons of a centred form — during the Porto 2027
+            // run the "Could not create the event" toast covered the "Create
+            // event" button, so the operator could not retry the very thing
+            // that failed without dismissing the message first.
+            "fixed bottom-0 right-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:max-w-[420px]",
             className
         )}
         {...props}
@@ -30,6 +36,10 @@ const toastVariants = cva(
                 default: "border bg-background text-foreground",
                 destructive:
                     "destructive group border-destructive bg-destructive text-destructive-foreground",
+                warning:
+                    "border-amber-500 bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100",
+                success:
+                    "border-emerald-500 bg-emerald-50 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100",
             },
         },
         defaultVariants: {

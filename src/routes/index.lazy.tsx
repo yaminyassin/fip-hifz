@@ -157,7 +157,7 @@ const Home = () => {
                   "group/bento transform transition-all duration-300 hover:scale-[1.02]",
                   item.className
                 )}
-                onClick={() => item.route && navigate({ to: `${item.route}?event=${eventId}` as any })}
+                onClick={() => item.route && navigate({ to: `${item.route}?event=${eventId}` as never })}
               >
                 <MagicCard
                   className="h-full cursor-pointer shadow-none transition-shadow duration-300 group-hover/bento:shadow-xl"

@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/shadcn/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/shadcn/select';
 import { Card } from '@/components/shadcn/card';
+import { CreateEventWizard } from '@/components/config-editor/CreateEventWizard';
 import { Plus, Calendar, Users } from 'lucide-react';
-import { collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { firestore } from '@/main';
 
 interface EventInfo {
   id: string;
   name: string;
-  createdAt?: any;
+  createdAt?: Timestamp;
   participantCount?: number;
   description?: string;
 }
@@ -22,9 +23,6 @@ export const EventSelector: React.FC<EventSelectorProps> = ({ showAddEvent = fal
   const [availableEvents, setAvailableEvents] = useState<EventInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newEventName, setNewEventName] = useState('');
-  const [newEventPassword, setNewEventPassword] = useState('');
-  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     loadAvailableEvents();
@@ -60,8 +58,8 @@ export const EventSelector: React.FC<EventSelectorProps> = ({ showAddEvent = fal
     try {
       setLoading(true);
       
-      // First, ensure the lisbon-2025 event document exists
-      await ensureEventDocumentExists('lisbon-2025');
+      // First, ensure the demo-2026 event document exists
+      await ensureEventDocumentExists('demo-2026');
       
       const eventsRef = collection(firestore, 'events');
       const eventsSnapshot = await getDocs(eventsRef);
@@ -119,50 +117,14 @@ export const EventSelector: React.FC<EventSelectorProps> = ({ showAddEvent = fal
     }
   };
 
-  const handleCreateEvent = async () => {
-    if (newEventName.trim() && newEventPassword.trim()) {
-      setCreating(true);
-      try {
-        const eventId = newEventName.toLowerCase()
-          .replace(/\s+/g, '-')
-          .replace(/[^a-z0-9-]/g, '');
-        
-        // Create the event document
-        const eventDocRef = doc(firestore, 'events', eventId);
-        await setDoc(eventDocRef, {
-          name: newEventName.trim(),
-          createdAt: new Date(),
-          status: 'active',
-          description: `Competition event created by admin`
-        });
-
-        // Create the app_config for the new event with the password
-        const appConfigRef = doc(firestore, 'events', eventId, 'app_config', 'auth_settings');
-        await setDoc(appConfigRef, {
-          eventPassword: newEventPassword.trim(),
-          createdAt: new Date()
-        });
-
-        console.log(`Created new event: ${eventId} with password`);
-        
-        // Reset form
-        setShowCreateForm(false);
-        setNewEventName('');
-        setNewEventPassword('');
-        
-        // Reload events list to show the new event
-        await loadAvailableEvents();
-        
-        // Redirect to login for the new event
-        window.location.href = `/login?event=${eventId}`;
-      } catch (error) {
-        console.error('Error creating event:', error);
-        alert('Failed to create event. Please try again.');
-      } finally {
-        setCreating(false);
-      }
-    }
-  };
+  /**
+   * Creating an event is now the config wizard's job, not this component's.
+   *
+   * The previous implementation here wrote only events/{id} and its
+   * auth_settings — no evaluation descriptor — which produced an event that
+   * failed closed forever with no way to repair it from inside the app.
+   * There is deliberately no "create now, configure later" path.
+   */
 
   if (loading) {
     return (
@@ -197,53 +159,14 @@ export const EventSelector: React.FC<EventSelectorProps> = ({ showAddEvent = fal
         </div>
 
         {showCreateForm && showAddEvent && (
-          <div className="border rounded-lg p-4 bg-gray-50">
-            <h3 className="font-medium mb-3">Create New Event</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium mb-1">Event Name</label>
-                <input
-                  type="text"
-                  value={newEventName}
-                  onChange={(e) => setNewEventName(e.target.value)}
-                  placeholder="e.g., Porto 2025, Madrid 2026"
-                  className="w-full px-3 py-2 border rounded-md"
-                  disabled={creating}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Admin Password</label>
-                <input
-                  type="password"
-                  value={newEventPassword}
-                  onChange={(e) => setNewEventPassword(e.target.value)}
-                  placeholder="Set a password for this event"
-                  className="w-full px-3 py-2 border rounded-md"
-                  disabled={creating}
-                  onKeyDown={(e) => e.key === 'Enter' && handleCreateEvent()}
-                />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <Button 
-                  onClick={handleCreateEvent} 
-                  disabled={!newEventName.trim() || !newEventPassword.trim() || creating}
-                  className="flex-1"
-                >
-                  {creating ? 'Creating...' : 'Create Event'}
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setShowCreateForm(false);
-                    setNewEventName('');
-                    setNewEventPassword('');
-                  }}
-                  disabled={creating}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
+          <div className="border rounded-lg p-4">
+            <CreateEventWizard
+              onCreated={(eventId) => {
+                setShowCreateForm(false);
+                window.location.href = `/login?event=${eventId}`;
+              }}
+              onCancel={() => setShowCreateForm(false)}
+            />
           </div>
         )}
 

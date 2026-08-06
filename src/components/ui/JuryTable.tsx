@@ -15,7 +15,12 @@ import {
   updateJuryEvaluationStatus,
 } from "@/services/jury";
 import { useEvent } from "@/contexts/EventContext";
+import { notifyError, notifySuccess, NOTIFY_KEYS } from "@/lib/notify";
 import { useState } from "react";
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 export const JuryTable = () => {
   const { t } = useTranslation();
@@ -27,14 +32,32 @@ export const JuryTable = () => {
     string | null
   >(null);
 
-  const handleToggleActive = async (juryId: string, currentStatus: boolean) => {
+  const handleToggleActive = async (
+    juryId: string,
+    currentStatus: boolean,
+    juryName: string
+  ) => {
+    if (!currentEvent) return;
     setIsUpdating(juryId);
     try {
-      await updateJuryActiveStatus(currentEvent || 'lisbon-2025', juryId, !currentStatus);
-      // TODO: Add success toast notification
+      await updateJuryActiveStatus(currentEvent, juryId, !currentStatus);
+      notifySuccess({
+        key: NOTIFY_KEYS.juryManage,
+        title: t("admin.jury.activeStatusUpdatedTitle"),
+        description: currentStatus
+          ? t("admin.jury.deactivatedDesc", { name: juryName })
+          : t("admin.jury.activatedDesc", { name: juryName }),
+      });
     } catch (error) {
       console.error("Error updating jury active status:", error);
-      // TODO: Add error toast notification
+      notifyError({
+        key: NOTIFY_KEYS.juryManage,
+        title: t("admin.jury.activeStatusFailedTitle"),
+        description: t("admin.jury.actionFailedDesc", {
+          name: juryName,
+          reason: errorMessage(error),
+        }),
+      });
     } finally {
       setIsUpdating(null);
     }
@@ -42,28 +65,50 @@ export const JuryTable = () => {
 
   const handleToggleEvaluationStatus = async (
     juryId: string,
-    currentStatus: boolean
+    currentStatus: boolean,
+    juryName: string
   ) => {
+    if (!currentEvent) return;
     setIsUpdatingEvaluation(juryId);
     try {
-      await updateJuryEvaluationStatus(currentEvent || 'lisbon-2025', juryId, !currentStatus);
-      // TODO: Add success toast notification
+      await updateJuryEvaluationStatus(currentEvent, juryId, !currentStatus);
+      notifySuccess({
+        key: NOTIFY_KEYS.juryManage,
+        title: t("admin.jury.evaluationStatusUpdatedTitle"),
+        description: t("admin.jury.evaluationStatusUpdatedDesc", { name: juryName }),
+      });
     } catch (error) {
       console.error("Error updating jury evaluation status:", error);
-      // TODO: Add error toast notification
+      notifyError({
+        key: NOTIFY_KEYS.juryManage,
+        title: t("admin.jury.evaluationStatusFailedTitle"),
+        description: t("admin.jury.actionFailedDesc", {
+          name: juryName,
+          reason: errorMessage(error),
+        }),
+      });
     } finally {
       setIsUpdatingEvaluation(null);
     }
   };
 
   const handleSetAllActive = async () => {
+    if (!currentEvent) return;
     setIsBulkUpdating(true);
     try {
-      await setAllJuryActive(currentEvent || 'lisbon-2025', true);
-      // TODO: Add success toast notification
+      await setAllJuryActive(currentEvent, true);
+      notifySuccess({
+        key: NOTIFY_KEYS.juryManage,
+        title: t("admin.jury.allActivatedTitle"),
+        description: t("admin.jury.allActivatedDesc"),
+      });
     } catch (error) {
       console.error("Error setting all jury active:", error);
-      // TODO: Add error toast notification
+      notifyError({
+        key: NOTIFY_KEYS.juryManage,
+        title: t("admin.jury.allActivatedFailedTitle"),
+        description: t("admin.jury.bulkFailedDesc", { reason: errorMessage(error) }),
+      });
     } finally {
       setIsBulkUpdating(false);
     }
@@ -72,11 +117,12 @@ export const JuryTable = () => {
   const handleKeyDown = (
     event: React.KeyboardEvent,
     juryId: string,
-    currentStatus: boolean
+    currentStatus: boolean,
+    juryName: string
   ) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      handleToggleEvaluationStatus(juryId, currentStatus);
+      handleToggleEvaluationStatus(juryId, currentStatus, juryName);
     }
   };
 
@@ -132,11 +178,17 @@ export const JuryTable = () => {
                     onClick={() =>
                       handleToggleEvaluationStatus(
                         jury.id,
-                        jury.hasFinishedEvaluating
+                        jury.hasFinishedEvaluating,
+                        jury.name
                       )
                     }
                     onKeyDown={(event) =>
-                      handleKeyDown(event, jury.id, jury.hasFinishedEvaluating)
+                      handleKeyDown(
+                        event,
+                        jury.id,
+                        jury.hasFinishedEvaluating,
+                        jury.name
+                      )
                     }
                     tabIndex={0}
                     role="button"
@@ -153,7 +205,9 @@ export const JuryTable = () => {
                 </TableCell>
                 <TableCell>
                   <Button
-                    onClick={() => handleToggleActive(jury.id, jury.isActive)}
+                    onClick={() =>
+                      handleToggleActive(jury.id, jury.isActive, jury.name)
+                    }
                     disabled={isUpdating === jury.id}
                     variant={jury.isActive ? "destructive" : "default"}
                     size="sm"

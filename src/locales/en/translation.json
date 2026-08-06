@@ -39,6 +39,7 @@
       "subtitle": "Enter your jury ID to continue",
       "placeholder": "Enter Jury ID",
       "button": "Login",
+      "loggingIn": "Logging in...",
       "error": {
         "invalid": "Authentication Failed",
         "invalidDesc": "Invalid jury ID",
@@ -91,7 +92,8 @@
       "completed": "Completed",
       "decrease": "Decrease score",
       "increase": "Increase score",
-      "anull_question": "Anull Question"
+      "anull_question": "Anull Question",
+      "retryLoad": "Retry"
     },
     "selectQuestion": "Select Question",
     "currentQuestion": "Current Question",
@@ -103,21 +105,34 @@
       "inProgress": "In Progress",
       "scoreReset": "Scores Reset",
       "scoreResetDesc": "Previous scores have been cleared for this participant's new questions.",
-      "scoreCappedTitle": "[MISSING] jury.messages.scoreCappedTitle",
-      "scoreCappedDesc": "[MISSING] jury.messages.scoreCappedDesc",
+      "scoreCappedTitle": "Score Capped",
+      "scoreCappedDesc": "The score has been capped at the maximum points allowed for this question.",
       "evaluationCompleteDescDone": "You have completed scoring all questions for this participant. You can review and modify your scores if needed.",
       "questionScoresSavedTitle": "Question Scores Saved",
       "questionScoresSavedDesc": "Scores for question {{number}} have been saved successfully.",
       "errorUpdatingProgress": "There was an error updating your progress. Please try again.",
-      "scoresSavedTitle": "[MISSING] jury.messages.scoresSavedTitle",
-      "scoresSavedNavDesc": "[MISSING] jury.messages.scoresSavedNavDesc",
+      "scoresSavedTitle": "Scores Saved",
+      "scoresSavedNavDesc": "Your scores have been saved successfully.",
       "errorSavingScoresNav": "Error saving scores for question {{number}}. Please try again.",
       "noData": "No data to display for the current selection.",
       "inactiveTitle": "Evaluation Access Disabled",
       "inactiveDesc": "Your evaluation access has been temporarily disabled. Please contact the administrator.",
       "contactAdmin": "Contact Administrator",
       "questionChangedTo": "Question changed to {{question}}",
-      "goToActiveQuestion": "Go to active question {{question}}"
+      "goToActiveQuestion": "Go to active question {{question}}",
+      "saveFailedTitle": "Score not saved",
+      "saveFailedDesc": "Question {{number}} was not saved to the server. Your score is not recorded. ({{reason}})",
+      "adjustmentSaveFailedDesc": "The participant-level marks were not saved to the server. ({{reason}})",
+      "loadFailedTitle": "Scores could not be loaded",
+      "loadFailedDesc": "The scores already stored for this participant could not be read, so scoring is locked to avoid overwriting them. Retry before continuing.",
+      "clearFailedTitle": "Previous scores not cleared",
+      "clearFailedDesc": "The scores from the previous question assignment could not be removed, so old scores may still be stored. ({{reason}})",
+      "finishBlockedTitle": "Evaluation not concluded",
+      "finishBlockedDesc": "Question {{questions}} has no saved score. Score it before concluding, or your evaluation will be left out of this participant's average.",
+      "finishBlockedDesc_other": "Questions {{questions}} have no saved score. Score them before concluding, or your evaluation will be left out of this participant's average.",
+      "finishFailedDesc": "The evaluation could not be concluded. ({{reason}})",
+      "finishBlockedDesc_one": "Question {{questions}} has no saved score. Score it before concluding, or your evaluation will be left out of this participant's average.",
+      "unknownCategory": "Category \"{{category}}\" is not defined in this event's evaluation rules."
     },
     "questionBreakdown": "Per-Question Breakdown"
   },
@@ -140,7 +155,17 @@
       "error": "Error",
       "errorDesc": "Failed to update question",
       "scoresInitialized": "Scores initialized for all active jury members",
-      "scoresInitializationError": "Error initializing scores for jury members"
+      "scoresInitializationError": "Error initializing scores for jury members",
+      "generationFailedTitle": "Problems during this draw",
+      "noQuestionsToGenerate": "Category {{category}} has no questions configured, so nothing can be drawn.",
+      "questionsNotSaved": "Question {{questions}} is shown on screen but was not saved. Draw again before the recitation starts.",
+      "questionsNotSaved_other": "Questions {{questions}} are shown on screen but were not saved. Draw again before the recitation starts.",
+      "activeQuestionNotSet": "The first page was drawn but the audience screens were not told about it — they are still showing the previous page.",
+      "previousQuestionsUnreadable": "The list of pages already used could not be read, so a page may be repeated from an earlier participant.",
+      "previousQuestionsNotRecorded": "The pages drawn now were not recorded, so a later draw may repeat them.",
+      "retryGeneration": "Draw again",
+      "questionsNotSaved_one": "Question {{questions}} is shown on screen but was not saved. Draw again before the recitation starts.",
+      "unknownCategory": "Category \"{{category}}\" is not defined in this event's evaluation rules."
     }
   },
   "participants": {
@@ -197,7 +222,10 @@
       "juryCount": "Jury Evaluations",
       "statusComplete": "Complete",
       "statusPending": "Pending",
-      "questions": "Questions"
+      "questions": "Questions",
+      "juryCountLabel": "Jury evaluations",
+      "juryCountOfExpected": "{{counted}} of {{expected}}",
+      "juryCountShortTooltip": "Fewer evaluations than expected — this total is incomplete."
     },
     "visualizations": {
       "title": "Score Visualizations",
@@ -239,13 +267,23 @@
       "juryFilterDescription": "Select which jury members to include in the export. Only participants evaluated by ALL selected juries will show scores.",
       "selectedJuries": "Selected: {{count}} jury member{{plural}}",
       "cancel": "Cancel",
-      "export": "Export Excel"
-    }
+      "export": "Export Excel",
+      "doneTitle": "Export complete",
+      "doneDesc": "{{file}} was downloaded.",
+      "failedTitle": "Export failed",
+      "failedDesc": "The file was not created and nothing was downloaded. ({{reason}})"
+    },
+    "listenerError": "Live updates disconnected — scores may be out of date. Please reload the page.",
+    "listenerErrorAudience": "Live updates disconnected"
   },
   "admin": {
     "title": "Admin Panel",
     "juryStatus": "Jury Status",
-    "activeParticipant": "Active Participant",
+    "activeParticipant": {
+      "current": "Current Participant",
+      "setInstruction": "Select a participant to begin",
+      "noneSet": "No participant selected"
+    },
     "participantStatus": "Participant Status",
     "sceneControl": "Scene Control",
     "question": "Question",
@@ -273,8 +311,8 @@
     },
     "actions": {
       "save": "Save Changes",
-      "prevQuestion": "[MISSING] admin.actions.prevQuestion",
-      "nextQuestion": "[MISSING] admin.actions.nextQuestion",
+      "prevQuestion": "Previous Question",
+      "nextQuestion": "Next Question",
       "setAllActive": "Set All Active",
       "activate": "Activate",
       "deactivate": "Deactivate",
@@ -289,7 +327,9 @@
       "control": "Control Panel",
       "participants": "Participants Management",
       "jury": "Jury Management",
-      "performance": "Performance Monitor"
+      "performance": "Performance Monitor",
+      "events": "Event Management",
+      "evaluation": "Evaluation Rules"
     },
     "participants": {
       "title": "Participants Management",
@@ -328,7 +368,13 @@
         "photoUpload": "Upload participant photo",
         "photoSizeLimit": "Maximum file size: 2MB. Supported formats: JPEG, PNG, GIF.",
         "photoPreview": "Photo Preview",
-        "participantPhoto": "Participant Photo"
+        "participantPhoto": "Participant Photo",
+        "agePlaceholder": "Enter age (e.g., 25)",
+        "countryPlaceholder": "Select a country",
+        "categoryPlaceholder": "Select a category",
+        "photoAlt": "Photo preview",
+        "dayPlaceholder": "Select a day",
+        "timePlaceholder": "Select time"
       },
       "errors": {
         "nameRequired": "Name is required",
@@ -340,11 +386,11 @@
         "imageTooLarge": "Image is too large. Maximum size is 2MB",
         "imageProcessingError": "Error processing the image. Please try again"
       },
-      "confirmReset": "[MISSING] admin.participants.confirmReset",
-      "resetStatusesAria": "[MISSING] admin.participants.resetStatusesAria",
-      "resettingStatuses": "[MISSING] admin.participants.resettingStatuses",
-      "resetStatuses": "[MISSING] admin.participants.resetStatuses",
-      "noSearchResults": "[MISSING] admin.participants.noSearchResults",
+      "confirmReset": "Are you sure you want to reset the status of all participants? This action cannot be undone.",
+      "resetStatusesAria": "Reset the status of all participants",
+      "resettingStatuses": "Resetting Statuses...",
+      "resetStatuses": "Reset Statuses",
+      "noSearchResults": "No participants match your search",
       "progress": "Progress",
       "questions": "Questions",
       "setActive": "Set as Active",
@@ -358,7 +404,20 @@
       "actions": "Actions",
       "scheduledGroup": "Schedule Group {{scheduled}}",
       "participant": "participant",
-      "participants": "participants"
+      "participants": "participants",
+      "updatedTitle": "Participant updated",
+      "createdTitle": "Participant created",
+      "savedDesc": "{{name}} was saved.",
+      "saveFailedTitle": "Participant not saved",
+      "saveFailedDesc": "{{name}} was not saved to the server. ({{reason}})",
+      "deletedTitle": "Participant deleted",
+      "deletedDesc": "{{name}} was deleted.",
+      "deleteFailedTitle": "Participant not deleted",
+      "deleteFailedDesc": "{{name}} was not deleted from the server. ({{reason}})",
+      "resetStatusesDoneTitle": "Statuses reset",
+      "resetStatusesDoneDesc": "Every participant status was reset.",
+      "resetStatusesFailedTitle": "Statuses not reset",
+      "resetStatusesFailedDesc": "The participant statuses were not reset on the server. ({{reason}})"
     },
     "jury": {
       "title": "Jury Management",
@@ -379,16 +438,23 @@
       "form": {
         "name": "Name",
         "namePlaceholder": "Enter jury member name"
-      }
+      },
+      "activeStatusUpdatedTitle": "Active status updated",
+      "activatedDesc": "{{name}} is now active.",
+      "deactivatedDesc": "{{name}} is now inactive.",
+      "activeStatusFailedTitle": "Active status not changed",
+      "actionFailedDesc": "{{name}} was not updated on the server. ({{reason}})",
+      "evaluationStatusUpdatedTitle": "Evaluation status updated",
+      "evaluationStatusUpdatedDesc": "The evaluation status for {{name}} was changed.",
+      "evaluationStatusFailedTitle": "Evaluation status not changed",
+      "allActivatedTitle": "All jury members activated",
+      "allActivatedDesc": "Every jury member is now active.",
+      "allActivatedFailedTitle": "Jury members not activated",
+      "bulkFailedDesc": "The jury members were not updated on the server. ({{reason}})"
     },
     "activeQuestion": {
       "label": "Active Question",
       "page": "Page"
-    },
-    "activeParticipant": {
-      "current": "Current Participant",
-      "setInstruction": "Select a participant to begin",
-      "noneSet": "No participant selected"
     }
   },
   "performance": {
@@ -440,7 +506,8 @@
     "unnamed": "Unnamed",
     "markingDone": "Marking as complete...",
     "markDone": "Mark as Complete",
-    "settingActive": "Setting as active..."
+    "settingActive": "Setting as active...",
+    "dismiss": "Dismiss"
   },
   "validation": {
     "required": "This field is required."
@@ -487,8 +554,8 @@
     "completed": "Completed",
     "decrease": "Decrease score",
     "increase": "Increase score",
-    "prevQuestion": "[MISSING] actions.prevQuestion",
-    "nextQuestion": "[MISSING] actions.nextQuestion"
+    "prevQuestion": "Previous Question",
+    "nextQuestion": "Next Question"
   },
   "quranPage": {
     "noParticipant": {
@@ -509,6 +576,7 @@
     "password": "Password",
     "button": "Enter",
     "loggingIn": "Verifying...",
-    "error": "Invalid password. Please try again."
+    "error": "Invalid password. Please try again.",
+    "noEvent": "No event selected. Choose an event before entering the access code."
   }
 }

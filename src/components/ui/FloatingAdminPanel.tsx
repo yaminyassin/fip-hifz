@@ -50,13 +50,17 @@ export function FloatingAdminPanel() {
     }: {
       participantId: string;
       pageNumber: number;
-    }) => updateActiveQuestion(currentEvent || 'lisbon-2025', participantId, pageNumber),
+    }) => {
+      if (!currentEvent) throw new Error('No event selected');
+      return updateActiveQuestion(currentEvent, participantId, pageNumber);
+    },
   });
 
   const markParticipantDoneMutation = useMutation({
     mutationFn: async (participantId: string) => {
+      if (!currentEvent) throw new Error('No event selected');
       if (!participantId) return;
-      const participantRef = doc(firestore, "events", currentEvent || 'lisbon-2025', "participants", participantId);
+      const participantRef = doc(firestore, "events", currentEvent, "participants", participantId);
       await updateDoc(participantRef, {
         isActive: false,
         isDone: true,

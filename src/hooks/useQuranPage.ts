@@ -1,20 +1,18 @@
-import { doc, getDoc } from "firebase/firestore";
-import { useQuery } from "@tanstack/react-query";
-import { firestore } from "@/main";
+export const QURAN_EDITION = "mushaf-v1";
 
-async function fetchQuranPage(pageNumber: number) {
-  // Use the page number directly as the document ID without padding
-  const pageDoc = await getDoc(doc(firestore, "quran", pageNumber.toString()));
-  if (!pageDoc.exists()) {
-    return null;
-  }
-  return { page: pageDoc.data().page };
+/**
+ * Static URL for a Quran page image. Pages moved off base64-in-Firestore to
+ * immutable WebP assets served from the Hosting public dir
+ * (`public/quran/{edition}/{page}.webp`), so this is a pure URL builder.
+ */
+export function buildQuranPageUrl(pageNumber: number): string {
+  return `/quran/${QURAN_EDITION}/${pageNumber}.webp`;
 }
 
-export function useQuranPage(pageNumber?: number) {
-  return useQuery({
-    queryKey: ["quranPage", pageNumber],
-    queryFn: () => fetchQuranPage(pageNumber!),
-    enabled: !!pageNumber,
-  });
+/**
+ * Resolves a page number to its static image URL. Kept as a hook for call-site
+ * compatibility with `QuranViewer`; there is no async fetch anymore.
+ */
+export function useQuranPage(pageNumber?: number): { url: string | null } {
+  return { url: pageNumber ? buildQuranPageUrl(pageNumber) : null };
 }

@@ -32,7 +32,7 @@ export function Login() {
     e.preventDefault();
 
     if (!eventId) {
-      setError("No event specified");
+      setError(t("login.noEvent"));
       return;
     }
 
@@ -43,8 +43,13 @@ export function Login() {
       await auth.login(eventId, password);
       // Redirect to main page with event context
       navigate({ to: `/?event=${eventId}` });
-    } catch (err: any) {
-      setError(err.message || t("login.error"));
+    } catch (err) {
+      // The raw message here is a Firestore/auth internal ("Missing or
+      // insufficient permissions", a document path, ...). It tells the person
+      // at the login screen nothing and leaks the backend shape, so it goes to
+      // the console and the user gets the generic failure.
+      console.error("Event login failed:", err);
+      setError(t("login.error"));
     } finally {
       setIsLoading(false);
     }

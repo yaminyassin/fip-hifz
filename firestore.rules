@@ -1,19 +1,364 @@
 rules_version = '2';
 
+// fip-hifz Firestore security rules — shape-validated open access.
+//
+// POSTURE. Real authentication is deferred (Phase 1b). These rules therefore
+// make NO identity assertions: any client may read and write. What they do
+// enforce is STRUCTURE — only known collection paths are writable, documents
+// must match the shape the app actually produces, and the evaluation config
+// can be frozen. This is a large improvement over the expired allow-all
+// default it replaces (which denied every request from 2024-12-24 onward and
+// made the deployed app non-functional), but it is NOT an access control
+// system. Do not describe any clause here as a security control against a
+// motivated attacker. It stops malformed data and accidental destruction,
+// not vandalism.
+//
+// LIMITS OF THE RULES LANGUAGE. Rules cannot iterate lists or maps, so nested
+// structures (config.categories, config.questionTypes, score `values`) are
+// validated only at the top level: right type, present, non-empty where that
+// is checkable. Deep semantic validation lives in
+// src/evaluation/configValidation.ts and runs fail-closed in the client
+// loader (src/evaluation/eventDescriptor.ts) — a config that satisfies these
+// rules can still be rejected there, which is the intended layering.
+//
+// get() SEMANTICS. A get() inside a batched write or transaction observes
+// PRE-COMMIT state. Cross-checking the config document against a descriptor
+// written in the same batch would therefore always deny, so publish is a
+// single atomic batch validated per-document. Score writes DO cross-check the
+// event descriptor: a different document, not written in the same commit, and
+// the check turns a stale-provenance score from a silently-discarded document
+// into a visible permission-denied.
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
+    // ---------- generic helpers ----------
+
+    function isNonEmptyString(v) {
+      return v is string && v.size() > 0;
+    }
+
+    function isBool(v) {
+      return v is bool;
+    }
+
+    function isInt(v) {
+      return v is int;
+    }
+
+    function isTimestamp(v) {
+      return v is timestamp;
+    }
+
+    function isMap(v) {
+      return v is map;
+    }
+
+    function isList(v) {
+      return v is list;
+    }
+
+    // The incoming document. For an update this is the FULL merged result,
+    // not just the changed fields.
+    function inc() {
+      return request.resource.data;
+    }
+
+    // ---------- event descriptor ----------
+
+    // Mirrors parseDescriptor() in src/evaluation/eventDescriptor.ts. Kept in
+    // sync deliberately: the client re-verifies all of this and fails closed,
+    // so drift here degrades to a fail-closed event rather than a bad score.
+    function isValidDescriptor(d, eventId) {
+      return isMap(d)
+        && d.schemaVersion == 2
+        && d.mode == 'jury-first-v2'
+        && isNonEmptyString(d.configVersion)
+        && d.configPath == 'events/' + eventId + '/app_config/evaluation'
+        && isNonEmptyString(d.contentHash)
+        && isNonEmptyString(d.scoringFingerprint)
+        && (d.provisionedBy == 'offline-admin-sdk' || d.provisionedBy == 'in-app-editor')
+        && isTimestamp(d.provisionedAt)
+        && d.keys().hasOnly([
+             'schemaVersion', 'mode', 'configVersion', 'configPath',
+             'contentHash', 'scoringFingerprint', 'provisionedBy', 'provisionedAt'
+           ]);
+    }
+
+    // ---------- events/{eventId} ----------
+
+    // configLocked is a one-way freeze. Absent means false, so every legacy
+    // event document stays writable.
     //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
+    // The exists() guard is REQUIRED, not defensive. createEvent writes the
+    // event document and its config in ONE batch, and inside a batch both
+    // get() and exists() observe PRE-COMMIT state — so while the config
+    // document is being evaluated, the event document it belongs to does not
+    // exist yet. Without the guard, get() returns null, `.data` on null raises
+    // "Null value error", and the entire create is denied. A brand-new event
+    // is by definition not frozen, so absent correctly means unlocked.
+    function lockedNow(eventId) {
+      return exists(/databases/$(database)/documents/events/$(eventId))
+        && get(/databases/$(database)/documents/events/$(eventId))
+             .data.get('configLocked', false) == true;
+    }
+
+    function eventShapeOk(eventId) {
+      return isNonEmptyString(inc().name)
+        && isNonEmptyString(inc().status)
+        && (!('description' in inc()) || inc().description is string)
+        && (!('createdAt' in inc()) || isTimestamp(inc().createdAt))
+        && (!('updatedAt' in inc()) || isTimestamp(inc().updatedAt))
+        && (!('configLocked' in inc()) || isBool(inc().configLocked))
+        && (!('evaluation' in inc()) || isValidDescriptor(inc().evaluation, eventId))
+        && inc().keys().hasOnly([
+             'name', 'status', 'description', 'createdAt', 'updatedAt',
+             'evaluation', 'configLocked'
+           ]);
+    }
+
+    match /events/{eventId} {
+      // Read must include list: EventSelector enumerates /events on the very
+      // first screen, and a denied list renders an empty, unexplained picker.
+      allow read: if true;
+
+      allow create: if eventShapeOk(eventId)
+        // A new event may not be born frozen — unfreezing is denied below, so
+        // that state would be unrecoverable in-app.
+        && inc().get('configLocked', false) == false;
+
+      allow update: if eventShapeOk(eventId)
+        // Monotonic freeze: false -> true allowed, true -> false denied.
+        && (resource.data.get('configLocked', false) == false
+            || inc().get('configLocked', false) == true)
+        // While frozen, the descriptor is immutable.
+        && (resource.data.get('configLocked', false) == false
+            || inc().get('evaluation', null) == resource.data.get('evaluation', null));
+
+      // Deleting an event would orphan every subcollection under it (rules
+      // cannot cascade). Archival is a status change, not a delete.
+      allow delete: if false;
+    }
+
+    // ---------- events/{eventId}/app_config/{doc} ----------
+
+    // Top-level shape only — see LIMITS above.
+    function evaluationConfigShapeOk() {
+      return inc().schemaVersion == 2
+        && isNonEmptyString(inc().configVersion)
+        && inc().algorithmVersion == 'jury-first-v2'
+        && isNonEmptyString(inc().contentHash)
+        && isNonEmptyString(inc().scoringFingerprint)
+        && isTimestamp(inc().provisionedAt)
+        && isMap(inc().scoring)
+        && isMap(inc().categories) && inc().categories.keys().size() > 0
+        && isMap(inc().questionTypes) && inc().questionTypes.keys().size() > 0
+        && isList(inc().overrideRules)
+        && isMap(inc().participantAdjustments)
+        && inc().keys().hasOnly([
+             'schemaVersion', 'configVersion', 'algorithmVersion', 'contentHash',
+             'scoringFingerprint', 'provisionedAt', 'scoring', 'categories',
+             'questionTypes', 'overrideRules', 'participantAdjustments'
+           ]);
+    }
+
+    match /events/{eventId}/app_config/evaluation {
+      allow read: if true;
+      // Client-writable BY DESIGN: the in-app config editor is a browser
+      // client and this is the document it publishes. With auth deferred,
+      // "client read-only" and "in-app editor" cannot both hold. The freeze
+      // flag is what protects a live competition.
+      allow create, update: if evaluationConfigShapeOk() && !lockedNow(eventId);
+      allow delete: if false;
+    }
+
+    match /events/{eventId}/app_config/evaluation_draft {
+      // Editor autosave. Deliberately unvalidated — a draft is work in
+      // progress and is never read by the scoring path.
+      allow read, write: if !lockedNow(eventId);
+    }
+
+    match /events/{eventId}/app_config/auth_settings {
+      // Readable because the client-side login compares against it. That is
+      // exactly as weak as it sounds; it is the deferred-auth tradeoff, not
+      // something these rules can fix.
+      allow read: if true;
+      allow create: if isNonEmptyString(inc().eventPassword)
+        && inc().keys().hasOnly(['eventPassword', 'createdAt', 'updatedAt']);
+      // Denying update/delete closes the password-takeover path: today
+      // useAuth self-issues "${eventId}-admin" for any event missing this
+      // document, and nothing stops a second caller overwriting it.
+      allow update, delete: if false;
+    }
+
+    match /events/{eventId}/app_config/previous_questions {
+      allow read: if true;
+      allow create, update: if isList(inc().previous_questions)
+        && inc().keys().hasOnly(['previous_questions', 'createdAt', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    match /events/{eventId}/app_config/legacy_results {
+      // Written by the offline migration (Admin SDK bypasses rules) and only
+      // ever displayed. Archived competition results must not be
+      // client-editable.
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Any other app_config document is unknown to the app.
+    match /events/{eventId}/app_config/{other} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ---------- events/{eventId}/participants/{participantId} ----------
+
+    // For an update, request.resource.data is the FULL merged document, so the
+    // checks below run against the merged result. The required set is
+    // restricted to the 13 fields present on all 206 real participant
+    // documents in the production backup — requiring evaluationStarted or
+    // createdAt would make every migrated participant permanently unwritable.
+    function participantShapeOk() {
+      return isNonEmptyString(inc().name)
+        && isInt(inc().age)
+        && inc().country is string
+        && isNonEmptyString(inc().category)
+        && inc().school is string
+        && inc().scheduled is string
+        && isBool(inc().isDone)
+        && isBool(inc().isActive)
+        && inc().flag is string
+        && inc().parentsName is string
+        && inc().phoneNum is string
+        && isList(inc().assignedQuestions)
+        && isInt(inc().activeQuestion)
+        && (!('email' in inc()) || inc().email is string)
+        && (!('photo' in inc()) || inc().photo is string)
+        && (!('evaluationStarted' in inc()) || isBool(inc().evaluationStarted))
+        && (!('createdAt' in inc()) || isTimestamp(inc().createdAt))
+        && (!('updatedAt' in inc()) || isTimestamp(inc().updatedAt))
+        && (!('id' in inc()) || inc().id is string)
+        && inc().keys().hasOnly([
+             'name', 'age', 'country', 'category', 'school', 'scheduled',
+             'isDone', 'isActive', 'flag', 'parentsName', 'phoneNum',
+             'assignedQuestions', 'activeQuestion', 'email', 'photo',
+             'evaluationStarted', 'createdAt', 'updatedAt', 'id'
+           ]);
+    }
+
+    match /events/{eventId}/participants/{participantId} {
+      allow read: if true;
+      allow create, update: if participantShapeOk();
+      // deleteParticipant() cascades to score documents first and removes the
+      // participant last.
+      allow delete: if true;
+    }
+
+    // ---------- events/{eventId}/jury/{juryId} ----------
+
+    // addJury() uses addDoc() and only then writes back `id`, so `id` must be
+    // optional on create. When present it must equal the document id.
+    function juryShapeOk(juryId) {
+      return isNonEmptyString(inc().name)
+        && isInt(inc().currentQuestion)
+        && isBool(inc().hasFinishedEvaluating)
+        && isBool(inc().isActive)
+        && (!('id' in inc()) || inc().id == juryId)
+        && inc().keys().hasOnly([
+             'id', 'name', 'currentQuestion', 'hasFinishedEvaluating', 'isActive'
+           ]);
+    }
+
+    match /events/{eventId}/jury/{juryId} {
+      allow read: if true;
+      allow create, update: if juryShapeOk(juryId);
+      allow delete: if true;
+    }
+
+    // ---------- evaluation documents ----------
+
+    // The event descriptor is the single source of provenance truth. A score
+    // stamped with a stale fingerprint (a juror who left a tab open across a
+    // config republish) is rejected HERE and surfaces as permission-denied,
+    // instead of being written and then silently discarded by useParticipants'
+    // provenance filter at read time.
+    function matchesDescriptor(eventId) {
+      let d = get(/databases/$(database)/documents/events/$(eventId)).data.evaluation;
+      return inc().configVersion == d.configVersion
+        && inc().scoringFingerprint == d.scoringFingerprint
+        && inc().algorithmVersion == d.mode;
+    }
+
+    // source.kind == 'nativeV2' is what the app writes. Migrated archive
+    // documents carry a different source and are written by the Admin SDK,
+    // which bypasses rules entirely.
+    function evaluationCommonOk(eventId) {
+      return inc().schemaVersion == 2
+        && isNonEmptyString(inc().participantId)
+        && isNonEmptyString(inc().juryId)
+        && isNonEmptyString(inc().categoryId)
+        && isNonEmptyString(inc().configVersion)
+        && isNonEmptyString(inc().scoringFingerprint)
+        && isNonEmptyString(inc().algorithmVersion)
+        && isNonEmptyString(inc().assignmentHash)
+        && isMap(inc().values)
+        && isMap(inc().source) && inc().source.kind == 'nativeV2'
+        && (!('createdAt' in inc()) || isTimestamp(inc().createdAt))
+        && (!('updatedAt' in inc()) || isTimestamp(inc().updatedAt))
+        && matchesDescriptor(eventId);
+    }
+
+    match /events/{eventId}/evaluationScores/{scoreId} {
+      allow read: if true;
+      allow create, update: if evaluationCommonOk(eventId)
+        && isInt(inc().questionNumber) && inc().questionNumber > 0
+        && isInt(inc().pageNumber) && inc().pageNumber > 0
+        && inc().keys().hasOnly([
+             'schemaVersion', 'participantId', 'juryId', 'questionNumber',
+             'pageNumber', 'categoryId', 'configVersion', 'scoringFingerprint',
+             'algorithmVersion', 'assignmentHash', 'values', 'source',
+             'createdAt', 'updatedAt'
+           ]);
+      // clearEvaluationScores() on reassignment, and the participant cascade.
+      allow delete: if true;
+    }
+
+    match /events/{eventId}/juryEvaluationInputs/{inputsId} {
+      allow read: if true;
+      allow create, update: if evaluationCommonOk(eventId)
+        && inc().keys().hasOnly([
+             'schemaVersion', 'participantId', 'juryId', 'categoryId',
+             'configVersion', 'scoringFingerprint', 'algorithmVersion',
+             'assignmentHash', 'values', 'source', 'createdAt', 'updatedAt'
+           ]);
+      allow delete: if true;
+    }
+
+    // ---------- retired collections ----------
+
+    // Legacy V1 scoring. The app no longer reads or writes these; the offline
+    // migration reads them via the Admin SDK. Denied outright so no client can
+    // resurrect the old model.
+    match /events/{eventId}/scores/{doc=**} {
+      allow read, write: if false;
+    }
+
+    match /events/{eventId}/overallBonuses/{doc=**} {
+      allow read, write: if false;
+    }
+
+    // Quran page images moved to Firebase Hosting static assets
+    // (public/quran/mushaf-v1/). This collection is dead weight pending
+    // post-deploy archival and deletion.
+    match /quran/{doc=**} {
+      allow read, write: if false;
+    }
+
+    // ---------- default deny ----------
+
     match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2024, 12, 24);
+      allow read, write: if false;
     }
   }
 }

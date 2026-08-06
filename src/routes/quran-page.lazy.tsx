@@ -4,8 +4,9 @@ import { QuranViewer } from "@/components/ui/QuranViewer";
 import { useActiveParticipant } from "@/hooks/useActiveParticipant";
 import { useTranslation } from "react-i18next";
 import { Loader2, BookOpen, User } from "lucide-react";
+import { LiveUpdatesBanner } from "@/components/ui/LiveUpdatesBanner";
 
-const QuranPage = () => {
+const QuranPageContent = () => {
   const { t } = useTranslation();
   const { data: participant, isLoading: isLoadingParticipant } =
     useActiveParticipant();
@@ -163,6 +164,21 @@ const QuranPage = () => {
     </div>
   );
 };
+
+/**
+ * The disconnect badge sits ABOVE the content, not inside it. `QuranPageContent`
+ * returns early for loading / no participant / no active question, and a
+ * listener that dies before its first snapshot produces exactly those states —
+ * the calm "No Active Participant" screen would otherwise be the only thing on
+ * the projector while the connection is dead. Toasts are suppressed on this
+ * route, so this is the sole surface.
+ */
+const QuranPage = () => (
+  <>
+    <LiveUpdatesBanner variant="audience" />
+    <QuranPageContent />
+  </>
+);
 
 export const Route = createLazyFileRoute("/quran-page")({
   component: QuranPage,

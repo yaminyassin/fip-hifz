@@ -1,6 +1,8 @@
 import { Button } from "@/components/shadcn/button";
 import { Label } from "@/components/shadcn/label";
 import { ParticipantBanner } from "@/components/ui/ParticipantBanner";
+import { LiveUpdatesBanner } from "@/components/ui/LiveUpdatesBanner";
+import { EvaluationConfigGate } from "@/components/EvaluationConfigGate";
 import { createLazyFileRoute } from "@tanstack/react-router";
 import React, {
   useState,
@@ -15,37 +17,16 @@ import { useActiveParticipant } from "@/hooks/useActiveParticipant";
 import { useEvent } from "@/contexts/EventContext";
 import { useTranslation } from "react-i18next";
 import { TFunction } from "i18next";
-import { getCategoryConfig, generateRandomPage } from "@/lib/quranUtils";
+import { pickRandomPageFromSlot } from "@/evaluation/configHelpers";
+import type { EventEvaluationConfigV2 } from "@/evaluation/types";
 import { Participant } from "@/models/models";
 import {
-  // setPreviousQuestions,
   getPreviousQuestions,
   addToPreviousQuestions,
 } from "@/services/appConfig";
 
 // Import assets
 import backgroundImage from "@/assets/randomizer/background.png";
-import A1 from "@/assets/categories/A1.png";
-import A2 from "@/assets/categories/A2.png";
-import B1 from "@/assets/categories/B1.png";
-import B2 from "@/assets/categories/B2.png";
-import C1 from "@/assets/categories/C1.png";
-import C2 from "@/assets/categories/C2.png";
-import D1 from "@/assets/categories/D1.png";
-import D2 from "@/assets/categories/D2.png";
-import M from "@/assets/categories/M.png";
-
-const categoryImageMap: Record<string, string> = {
-  A1,
-  A2,
-  B1,
-  B2,
-  C1,
-  C2,
-  D1,
-  D2,
-  M,
-};
 
 // Memoize the RandomNumber component to prevent unnecessary re-renders
 const RandomNumber = React.memo(
@@ -94,6 +75,7 @@ RandomNumber.displayName = "RandomNumber";
 const RandomizerContentView = React.memo(
   ({
     participant,
+    categoryAssetRef,
     questionNumbers,
     isGeneratingAll,
     isLoadingButton, // Renamed for clarity in button context
@@ -101,9 +83,9 @@ const RandomizerContentView = React.memo(
     layoutClass,
     randomNumberComponents,
     t,
-    categoryImageMap,
   }: {
     participant: Participant;
+    categoryAssetRef: string | undefined;
     questionNumbers: number[];
     isGeneratingAll: boolean;
     isLoadingButton: boolean;
@@ -111,22 +93,20 @@ const RandomizerContentView = React.memo(
     layoutClass: string;
     randomNumberComponents: JSX.Element[];
     t: TFunction;
-    categoryImageMap: Record<string, string>;
   }) => {
     return (
       <>
         <div className="flex flex-col items-center gap-6 md:gap-8 flex-grow bg-[#FFFEFA] p-8">
-          {categoryImageMap[participant.category] && (
+          {categoryAssetRef && (
             <img
-              src={
-                categoryImageMap[
-                  participant.category as keyof typeof categoryImageMap
-                ]
-              }
+              src={categoryAssetRef}
               alt={t("randomizer.categoryAltText", {
                 category: participant.category,
               })}
               className="w-[260px] object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
             />
           )}
 
@@ -187,13 +167,50 @@ const RandomizerContentView = React.memo(
 );
 RandomizerContentView.displayName = "RandomizerContentView";
 
-const RouteComponent = () => {
+/**
+ * Everything that went wrong during one generation run, collected rather than
+ * reported item by item. TOAST_LIMIT is 1, so N per-question toasts would
+ * collapse into whichever fired last and the operator would never learn the
+ * full list — hence one blocking in-page panel naming every failure.
+ */
+interface GenerationFailure {
+  /** The category has no question slots configured — nothing to generate. */
+  noSlots?: boolean;
+  /** The previously-issued page list could not be read, so pages may repeat. */
+  previousQuestionsUnreadable?: string;
+  /** 1-based question numbers whose page never reached the participant doc. */
+  failedQuestions: number[];
+  /**
+   * The first drawn page was never written to `activeQuestion`, so the
+   * audience screens are still showing the previous page. This write has its
+   * own field because it can fail on its own: every per-question write can
+   * succeed while this one does not, and the operator would otherwise see a
+   * clean draw next to a projector that never advanced.
+   */
+  activeQuestionNotSet?: string;
+  /** The newly issued pages were not recorded, so a later run may repeat them. */
+  previousQuestionsNotRecorded?: string;
+}
+
+function hasFailure(failure: GenerationFailure | null): failure is GenerationFailure {
+  if (!failure) return false;
+  return Boolean(
+    failure.noSlots ||
+      failure.previousQuestionsUnreadable ||
+      failure.previousQuestionsNotRecorded ||
+      failure.activeQuestionNotSet ||
+      failure.failedQuestions.length > 0
+  );
+}
+
+function RandomizerRoute() {
   const [questionNumbers, setQuestionNumbers] = useState<number[]>([]);
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
   const [isLoading, setIsLoading] = useState(true); // True for initial component mount loading
+  const [generationFailure, setGenerationFailure] = useState<GenerationFailure | null>(null);
   const lastActiveParticipantRef = useRef<Participant | null>(null);
 
-  const { currentEvent } = useEvent();
+  const { currentEvent, evaluationConfig } = useEvent();
   const updateQuestion = useUpdateParticipantQuestion();
   const updateActiveQuestion = useUpdateActiveQuestion();
   const { data: activeParticipant, isLoading: isParticipantLoading } =
@@ -213,11 +230,17 @@ const RouteComponent = () => {
     // until activeParticipant is resolved or isParticipantLoading becomes false.
   }, [activeParticipant, isParticipantLoading, setIsLoading]);
 
-  const getNumQuestions = useCallback((participant: Participant | null) => {
-    if (!participant) return 0;
-    const config = getCategoryConfig(participant.category);
-    return config.numQuestions;
-  }, []);
+  // Config-driven question count (design doc §4, randomizer row): read
+  // straight from `config.categories[participant.category].questionCount`.
+  // A category absent from the config is an explicit error, never a
+  // fallback to 0/category 'A'.
+  const getCategory = useCallback(
+    (participant: Participant | null, config: EventEvaluationConfigV2 | null) => {
+      if (!participant || !config) return null;
+      return config.categories[participant.category] ?? null;
+    },
+    []
+  );
 
   useEffect(() => {
     // If generation is in progress, handleStartAllQuestions is managing questionNumbers.
@@ -228,9 +251,10 @@ const RouteComponent = () => {
 
     const participantToUse =
       activeParticipant || lastActiveParticipantRef.current;
+    const category = getCategory(participantToUse, evaluationConfig);
 
-    if (participantToUse) {
-      const numQuestions = getNumQuestions(participantToUse);
+    if (participantToUse && category) {
+      const numQuestions = category.questionCount;
       let newQuestionsDerivedFromServer = [
         ...(participantToUse.assignedQuestions || []),
       ];
@@ -255,124 +279,156 @@ const RouteComponent = () => {
         setQuestionNumbers(newQuestionsDerivedFromServer);
       }
     } else {
-      // No participant, ensure questions are cleared if not already
+      // No participant (or no matching category config), ensure questions are cleared.
       if (questionNumbers.length !== 0) {
         setQuestionNumbers([]);
       }
     }
-  }, [activeParticipant, getNumQuestions, isGeneratingAll, questionNumbers]); // Added isGeneratingAll and questionNumbers
+  }, [activeParticipant, evaluationConfig, getCategory, isGeneratingAll, questionNumbers]);
 
   const participant = useMemo(
     () => activeParticipant || lastActiveParticipantRef.current,
     [activeParticipant]
   );
 
-  const handleStartAllQuestions = useCallback(async () => {
-    if (!participant || isGeneratingAll) return;
+  const category = getCategory(participant, evaluationConfig);
 
-    const numQuestions = getNumQuestions(participant);
+  const handleStartAllQuestions = useCallback(async () => {
+    if (!currentEvent) return;
+    if (!participant || isGeneratingAll || !category) return;
+
+    setGenerationFailure(null);
+
+    const orderedSlots = category.questionSlots
+      .slice()
+      .sort((a, b) => a.questionNumber - b.questionNumber);
+    const numQuestions = orderedSlots.length;
     if (numQuestions === 0) {
-      console.error(t("randomizer.messages.noQuestionsToGenerate"));
+      console.error(
+        `Category "${participant.category}" has no question slots configured.`
+      );
+      setGenerationFailure({ noSlots: true, failedQuestions: [] });
       return;
     }
 
     setIsGeneratingAll(true);
-    console.log(t("randomizer.messages.generationStartingTitle"));
+    const failure: GenerationFailure = { failedQuestions: [] };
 
-    // Fetch previous questions to avoid duplicates
-    const previousQuestions = await getPreviousQuestions(currentEvent || 'lisbon-2025');
-    console.log(
-      `Fetched ${previousQuestions.length} previous questions to avoid`
-    );
-
-    setQuestionNumbers(Array(numQuestions).fill(0));
-
-    const generatedPages: number[] = [];
-
-    for (let i = 0; i < numQuestions; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Time for rolling animation per card
-
-      // Pass all previously generated questions (from database + current session) to avoid duplicates
-      const allExcludedPages = [...previousQuestions, ...generatedPages];
-      const randomPage = generateRandomPage(
-        participant.category,
-        i,
-        allExcludedPages
-      );
-      generatedPages.push(randomPage);
-
-      setQuestionNumbers((prev) => {
-        const updated = [...prev];
-        updated[i] = randomPage;
-        return updated;
-      });
-
-      // Update the active question immediately when the first question is generated
-      if (i === 0) {
-        updateActiveQuestion.mutate({
-          participantId: participant.id,
-          activeQuestionPage: randomPage,
-        });
-      }
-    }
-
-    for (let i = 0; i < numQuestions; i++) {
-      try {
-        await new Promise<void>((resolve, reject) => {
-          updateQuestion.mutate(
-            {
-              participantId: participant.id,
-              questionIndex: i,
-              pageNumber: generatedPages[i],
-            },
-            {
-              onSuccess: () => resolve(),
-              onError: (error) => {
-                console.error(`Error updating question ${i + 1}:`, error);
-                reject(error); // Reject to mark this specific mutation as failed
-              },
-            }
-          );
-        });
-      } catch (error) {
-        // Error handling for individual mutation already done in onError
-        // This catch is for the Promise.reject if a mutation fails
-        console.log(`Mutation for question ${i + 1} was rejected.`, error);
-      }
-    }
-
-    // Replace all previous questions with the newly generated ones in the app_config collection
+    // Everything below runs inside try/finally: an unexpected throw anywhere
+    // (the previous-questions read now rejects, and pickRandomPageFromSlot can
+    // throw on an exhausted slot) must not leave the button spinning forever.
     try {
-      //await setPreviousQuestions(currentEvent || 'lisbon-2025', generatedPages);
-      await addToPreviousQuestions(currentEvent || 'lisbon-2025', generatedPages);
-      console.log(
-        "Successfully replaced previous questions with newly generated questions in app_config"
-      );
-    } catch (error) {
-      console.error("Error storing questions in app_config:", error);
-      // Don't throw here as the main functionality (participant questions) has succeeded
-    }
+      // Pages already issued in this event, so the same page is not recited
+      // twice. If this read fails we still generate — but the panel says the
+      // run had no exclusion list, because a repeat is now possible.
+      let previousQuestions: number[] = [];
+      try {
+        previousQuestions = await getPreviousQuestions(currentEvent);
+      } catch (error) {
+        console.error("Error reading previously issued questions:", error);
+        failure.previousQuestionsUnreadable =
+          error instanceof Error ? error.message : String(error);
+      }
 
-    setIsGeneratingAll(false);
+      setQuestionNumbers(Array(numQuestions).fill(0));
+
+      const generatedPages: number[] = [];
+
+      for (let i = 0; i < numQuestions; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // Time for rolling animation per card
+
+        // Pass all previously generated questions (from database + current session) to avoid duplicates
+        const allExcludedPages = [...previousQuestions, ...generatedPages];
+        const randomPage = pickRandomPageFromSlot(orderedSlots[i], allExcludedPages);
+        generatedPages.push(randomPage);
+
+        setQuestionNumbers((prev) => {
+          const updated = [...prev];
+          updated[i] = randomPage;
+          return updated;
+        });
+
+        // Update the active question immediately when the first question is
+        // generated. Awaited, not fire-and-forget: this is the value the
+        // audience routes read, and its own hook only console.errors on
+        // failure, so an unwatched rejection here leaves the hall looking at
+        // the previous participant's page with nothing on the operator screen.
+        if (i === 0) {
+          try {
+            await new Promise<void>((resolve, reject) => {
+              updateActiveQuestion.mutate(
+                {
+                  participantId: participant.id,
+                  activeQuestionPage: randomPage,
+                },
+                {
+                  onSuccess: () => resolve(),
+                  onError: (error) => reject(error),
+                }
+              );
+            });
+          } catch (error) {
+            console.error("Error setting the active question:", error);
+            failure.activeQuestionNotSet =
+              error instanceof Error ? error.message : String(error);
+          }
+        }
+      }
+
+      for (let i = 0; i < numQuestions; i++) {
+        try {
+          await new Promise<void>((resolve, reject) => {
+            updateQuestion.mutate(
+              {
+                participantId: participant.id,
+                questionIndex: i,
+                pageNumber: generatedPages[i],
+              },
+              {
+                onSuccess: () => resolve(),
+                onError: (error) => reject(error),
+              }
+            );
+          });
+        } catch (error) {
+          // Collected, not reported here: the card on screen already shows
+          // this page number as if it were assigned, so the panel below has
+          // to name every question that never actually persisted.
+          console.error(`Error updating question ${i + 1}:`, error);
+          failure.failedQuestions.push(i + 1);
+        }
+      }
+
+      // Record the newly generated pages so a later run excludes them.
+      try {
+        await addToPreviousQuestions(currentEvent, generatedPages);
+      } catch (error) {
+        console.error("Error storing questions in app_config:", error);
+        failure.previousQuestionsNotRecorded =
+          error instanceof Error ? error.message : String(error);
+      }
+    } catch (error) {
+      console.error("Unexpected error while generating questions:", error);
+      failure.failedQuestions = Array.from({ length: numQuestions }, (_, i) => i + 1);
+    } finally {
+      setIsGeneratingAll(false);
+      setGenerationFailure(hasFailure(failure) ? failure : null);
+    }
 
     // Note: Active question is now updated immediately when first question is generated (above)
     // instead of waiting for all questions to be processed
   }, [
     participant,
+    category,
     isGeneratingAll,
-    getNumQuestions,
+    currentEvent,
     updateQuestion,
     updateActiveQuestion,
-    t,
     setQuestionNumbers,
     setIsGeneratingAll,
-    // generateRandomPage is stable as it's an import
   ]);
 
-  const layoutClass = useMemo(() => {
-    // Use flexbox for horizontal flow instead of grid
-    return "flex flex-wrap justify-center";
-  }, []);
+  const layoutClass = "flex flex-wrap justify-center";
 
   const randomNumberComponents = useMemo(() => {
     return questionNumbers.map((number, index) => (
@@ -405,22 +461,89 @@ const RouteComponent = () => {
       className="min-h-screen bg-cover bg-center flex items-center justify-center pt-10 pl-16 pr-20 "
     >
       <div className="bg-[#414361]  rounded-xl shadow-2xl p-6 sm:p-8 md:p-10 w-full flex flex-col">
-        <div className="mb-6 md:mb-8">
+        <div className="mb-6 md:mb-8 space-y-4">
+          <LiveUpdatesBanner />
           <ParticipantBanner />
         </div>
 
+        {hasFailure(generationFailure) && (
+          <div
+            role="alert"
+            data-testid="randomizer-generation-error"
+            className="mb-6 rounded-lg border-2 border-red-400 bg-red-50 p-4 text-red-900"
+          >
+            <p className="text-lg font-semibold">
+              {t("randomizer.messages.generationFailedTitle")}
+            </p>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-base">
+              {generationFailure.noSlots && (
+                <li>
+                  {t("randomizer.messages.noQuestionsToGenerate", {
+                    category: participant?.category ?? "",
+                  })}
+                </li>
+              )}
+              {generationFailure.failedQuestions.length > 0 && (
+                <li>
+                  {t("randomizer.messages.questionsNotSaved", {
+                    questions: generationFailure.failedQuestions.join(", "),
+                    count: generationFailure.failedQuestions.length,
+                  })}
+                </li>
+              )}
+              {generationFailure.activeQuestionNotSet && (
+                <li>{t("randomizer.messages.activeQuestionNotSet")}</li>
+              )}
+              {generationFailure.previousQuestionsUnreadable && (
+                <li>{t("randomizer.messages.previousQuestionsUnreadable")}</li>
+              )}
+              {generationFailure.previousQuestionsNotRecorded && (
+                <li>{t("randomizer.messages.previousQuestionsNotRecorded")}</li>
+              )}
+            </ul>
+            <div className="mt-4 flex gap-3">
+              <Button
+                onClick={handleStartAllQuestions}
+                disabled={isGeneratingAll || !participant || !category}
+                className="bg-[#61A8BB] text-[#FFFEFA] hover:bg-[#00838F]"
+              >
+                {t("randomizer.messages.retryGeneration")}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setGenerationFailure(null)}
+                className="text-red-900"
+              >
+                {t("common.dismiss")}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {participant ? (
-          <RandomizerContentView
-            participant={participant}
-            questionNumbers={questionNumbers}
-            isGeneratingAll={isGeneratingAll}
-            isLoadingButton={isLoading || isParticipantLoading} // Pass combined loading state for button
-            handleStartAllQuestions={handleStartAllQuestions}
-            layoutClass={layoutClass}
-            randomNumberComponents={randomNumberComponents}
-            t={t}
-            categoryImageMap={categoryImageMap}
-          />
+          category ? (
+            <RandomizerContentView
+              participant={participant}
+              categoryAssetRef={category.assetRef}
+              questionNumbers={questionNumbers}
+              isGeneratingAll={isGeneratingAll}
+              isLoadingButton={isLoading || isParticipantLoading} // Pass combined loading state for button
+              handleStartAllQuestions={handleStartAllQuestions}
+              layoutClass={layoutClass}
+              randomNumberComponents={randomNumberComponents}
+              t={t}
+            />
+          ) : (
+            <div className="flex flex-col items-center gap-6 md:gap-8 flex-grow">
+              <div className="text-xl text-center text-red-300 py-10">
+                {t(
+                  "randomizer.messages.unknownCategory",
+                  'Participant category "{{category}}" is not defined in this event\'s config.',
+                  { category: participant.category }
+                )}
+              </div>
+            </div>
+          )
         ) : (
           <div className="flex flex-col items-center gap-6 md:gap-8 flex-grow">
             <div className="text-xl text-center text-gray-300 py-10">
@@ -431,7 +554,13 @@ const RouteComponent = () => {
       </div>
     </div>
   );
-};
+}
+
+const RouteComponent = () => (
+  <EvaluationConfigGate>
+    <RandomizerRoute />
+  </EvaluationConfigGate>
+);
 
 export const Route = createLazyFileRoute("/randomizer")({
   component: RouteComponent,
