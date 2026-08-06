@@ -73,3 +73,13 @@ journey-vite.log
 firestore-debug.log
 ui-debug.log
 journey-up.out
+
+# Participant rosters. These list children by name, age, home province and
+# school; this repository is public. The committed
+# `*.example.ts` template documents the shape — see
+# docs/ahlul-quran-mozambique-event.md.
+scripts/data/*-participants.ts
+!scripts/data/*-participants.example.ts
+docs/*.local.md
+SEMIFINALISTAS.docx
+EVENT.md

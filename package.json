@@ -13,6 +13,8 @@
     "preview": "vite preview",
     "seed:emulator": "tsx scripts/seed-firestore-emulator.mts",
     "provision-event": "tsx scripts/provision-event.mts",
+    "provision-mozambique": "tsx scripts/provision-ahlul-quran-mozambique.mts",
+    "dump-live-event": "tsx scripts/dump-live-event.mts",
     "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:ci": "npm run seed:emulator && playwright test",
