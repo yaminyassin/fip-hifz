@@ -81,10 +81,12 @@ test.describe("/jury: config-driven evaluation flow (demo-2026, CAT_A)", () => {
     // Tab count = config.categories.CAT_A.questionCount (2), with pages
     // straight from participant.assignedQuestions — never a hardcoded
     // category shape.
-    await expect(page.getByText("Q1")).toBeVisible();
-    await expect(page.getByText("Page 27")).toBeVisible();
-    await expect(page.getByText("Q2")).toBeVisible();
-    await expect(page.getByText("Page 76")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Q1 Page 27" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Q2 Page 76" })
+    ).toBeVisible();
 
     // Section labels come straight from config.questionTypes (ordered),
     // never a hardcoded hifdh/tajweed/bonus block.
@@ -224,8 +226,7 @@ test.describe("/jury: config-driven evaluation flow (demo-2026, CAT_A)", () => {
     // clearTimeout it) before the tab switch takes effect.
     const fluencyIncrease = page.getByRole("button", { name: "Fluency Increase score" });
     await fluencyIncrease.click();
-    await page.getByText("Q2").click();
-    await expect(page.getByText("Page 76")).toBeVisible();
+    await page.getByRole("button", { name: "Q2 Page 76" }).click();
 
     // The Q1 edit must still land in Firestore even though the tab switch
     // happened before the debounce timer would have fired.
@@ -239,8 +240,7 @@ test.describe("/jury: config-driven evaluation flow (demo-2026, CAT_A)", () => {
     // Switching back to Q1 must show the flushed value (1), not a stale
     // pre-edit default (0) -- proving allScores was updated (not
     // clobbered) by the time ScoreForm reloads the question.
-    await page.getByText("Q1").click();
-    await expect(page.getByText("Page 27")).toBeVisible();
+    await page.getByRole("button", { name: "Q1 Page 27" }).click();
     await expect(page.getByTestId("score-input-Fluency")).toContainText("1");
 
     // Restore Q1's fluency back to its default (0) and let that save land,
@@ -272,8 +272,7 @@ test.describe("/jury: config-driven evaluation flow (demo-2026, CAT_A)", () => {
       .toBe(1);
 
     // Move to Q2 (page 76) and leave it at defaults (all zero).
-    await page.getByText("Q2").click();
-    await expect(page.getByText("Page 76")).toBeVisible();
+    await page.getByRole("button", { name: "Q2 Page 76" }).click();
 
     // Finish the evaluation.
     await page.getByRole("button", { name: /finish/i }).click();
