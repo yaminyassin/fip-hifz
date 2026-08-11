@@ -128,6 +128,61 @@ test.describe("/jury: config-driven evaluation flow (demo-2026, CAT_A)", () => {
     await expect(sheet).toHaveAttribute("aria-hidden", "true");
   });
 
+  test("packs scoring inputs into compact cells at narrow widths", async ({
+    page,
+  }) => {
+    const groupGrid = page.getByTestId("score-form-group-grid");
+    const groups = groupGrid.getByTestId("score-category");
+    await expect(groups).toHaveCount(4);
+
+    const hifdhGroup = await groups.nth(0).boundingBox();
+    const tajweedGroup = await groups.nth(1).boundingBox();
+    const presentationGroup = await groups.nth(2).boundingBox();
+    const adjustmentGroup = await groups.nth(3).boundingBox();
+    const groupGridBox = await groupGrid.boundingBox();
+    if (
+      !hifdhGroup ||
+      !tajweedGroup ||
+      !presentationGroup ||
+      !adjustmentGroup ||
+      !groupGridBox
+    ) {
+      throw new Error("The scoring groups are not visible");
+    }
+
+    expect(Math.abs(hifdhGroup.y - tajweedGroup.y)).toBeLessThan(2);
+    expect(Math.abs(hifdhGroup.y - presentationGroup.y)).toBeLessThan(2);
+    expect(hifdhGroup.width).toBeGreaterThan(tajweedGroup.width);
+    expect(tajweedGroup.width).toBeGreaterThan(presentationGroup.width);
+    expect(adjustmentGroup.y).toBeGreaterThan(hifdhGroup.y);
+    expect(adjustmentGroup.width).toBeGreaterThan(groupGridBox.width * 0.95);
+
+    await page.setViewportSize({ width: 620, height: 900 });
+
+    const inputGrids = page.getByTestId("score-category-input-grid");
+    const firstSectionInputs = inputGrids.first().locator(":scope > div");
+    await expect(firstSectionInputs).toHaveCount(3);
+
+    const firstInputBox = await firstSectionInputs.nth(0).boundingBox();
+    const secondInputBox = await firstSectionInputs.nth(1).boundingBox();
+    const thirdInputBox = await firstSectionInputs.nth(2).boundingBox();
+    if (!firstInputBox || !secondInputBox || !thirdInputBox) {
+      throw new Error("The first scoring inputs are not visible");
+    }
+    expect(Math.abs(firstInputBox.y - secondInputBox.y)).toBeLessThan(2);
+    expect(thirdInputBox.y).toBeGreaterThan(firstInputBox.y);
+
+    const bonusGrid = inputGrids.last();
+    const bonusGridBox = await bonusGrid.boundingBox();
+    const sliderBox = await bonusGrid
+      .getByTestId("slider-input-Overall Bonus")
+      .boundingBox();
+    if (!bonusGridBox || !sliderBox) {
+      throw new Error("The bonus slider is not visible");
+    }
+    expect(sliderBox.width).toBeGreaterThan(bonusGridBox.width * 0.9);
+  });
+
   test("the void-warning highlight fires generically from config.overrideRules, not a hardcoded threshold", async ({
     page,
   }) => {

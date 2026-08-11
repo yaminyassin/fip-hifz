@@ -10,15 +10,22 @@ export async function seedAuthenticatedSession(
   { eventId, juryId }: { eventId: string; juryId?: string | null }
 ) {
   await page.addInitScript(
-    ({ eventId, juryId }) => {
+    ({ eventId, juryId, shouldSetJury }) => {
       sessionStorage.setItem("authenticatedEvents", JSON.stringify([eventId]));
 
-      if (juryId) {
-        sessionStorage.setItem("authenticatedJuryId", juryId);
-      } else {
-        sessionStorage.removeItem("authenticatedJuryId");
+      const juryStorageKey = `authenticatedJuryId:${eventId}`;
+      if (shouldSetJury) {
+        if (juryId) {
+          sessionStorage.setItem(juryStorageKey, juryId);
+        } else {
+          sessionStorage.removeItem(juryStorageKey);
+        }
       }
     },
-    { eventId, juryId: juryId ?? null }
+    {
+      eventId,
+      juryId: juryId ?? null,
+      shouldSetJury: juryId !== undefined,
+    }
   );
 }

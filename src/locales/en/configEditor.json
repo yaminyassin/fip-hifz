@@ -67,6 +67,7 @@
       "max": "Maximum",
       "control": "Control",
       "counter": "Counter",
+      "incrementButton": "Increment only",
       "slider": "Slider",
       "decimal": "Decimal counter"
     },

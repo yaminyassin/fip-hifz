@@ -1,132 +1,175 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { doc, DocumentSnapshot, collection } from "firebase/firestore";
-import { firestore } from "@/main";
-import { getAuthenticatedJury, logoutJury } from "../services/juryAuth";
-import { Jury } from "../models/models";
-import { cleanupAllListeners, useFirestoreListener } from "./useFirestoreListener";
+import { collection, doc, type DocumentSnapshot } from "firebase/firestore";
+
 import { useEvent } from "@/contexts/EventContext";
+import { firestore } from "@/main";
+import type { Jury } from "@/models/models";
+import {
+  clearAuthenticatedJury,
+  getAuthenticatedJury,
+  logoutJury,
+} from "@/services/juryAuth";
 import { getEventCollectionPath } from "@/utils/firebaseUtils";
+import {
+  cleanupAllListeners,
+  useFirestoreListener,
+} from "./useFirestoreListener";
+
+type JuryAuthState =
+  | { kind: "anonymous"; eventId: string | null }
+  | { kind: "checking"; eventId: string; juryId: string }
+  | { kind: "authenticated"; eventId: string; juryId: string };
+
+type StoredJury = Omit<Jury, "id"> & { id?: string };
+
+function isStoredJury(value: unknown): value is StoredJury {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "name" in value &&
+    typeof value.name === "string" &&
+    "currentQuestion" in value &&
+    typeof value.currentQuestion === "number" &&
+    Number.isInteger(value.currentQuestion) &&
+    "hasFinishedEvaluating" in value &&
+    typeof value.hasFinishedEvaluating === "boolean" &&
+    "isActive" in value &&
+    typeof value.isActive === "boolean" &&
+    (!("id" in value) || typeof value.id === "string")
+  );
+}
+
+function storedJuryState(eventId: string | null): JuryAuthState {
+  if (!eventId) return { kind: "anonymous", eventId: null };
+
+  const juryId = getAuthenticatedJury(eventId);
+  return juryId
+    ? { kind: "checking", eventId, juryId }
+    : { kind: "anonymous", eventId };
+}
 
 export const useJuryAuth = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { currentEvent } = useEvent();
+  const [authState, setAuthState] = useState<JuryAuthState>(() =>
+    storedJuryState(currentEvent)
+  );
 
-  // Check authentication on mount
   useEffect(() => {
-    const juryId = getAuthenticatedJury();
-    setIsAuthenticated(!!juryId);
-  }, []);
+    setAuthState(storedJuryState(currentEvent));
+  }, [currentEvent]);
 
-  // Handle browser close/refresh to deactivate jury member
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (!currentEvent) return;
-      const juryId = getAuthenticatedJury();
-      if (juryId) {
-        // Use sendBeacon for reliable request during page unload
-        // Note: This would require a server endpoint, so for now we'll use the simple approach
-        // and accept that some cases might not deactivate properly
-        try {
-          // For immediate deactivation, we'll trigger the logout
-          // This might not always complete but it's better than nothing
-          logoutJury(currentEvent).catch(console.error);
-        } catch (error) {
-          console.error("Error deactivating jury on page unload:", error);
-        }
-      }
-    };
+  const stateMatchesEvent = authState.eventId === currentEvent;
+  const juryId =
+    stateMatchesEvent && authState.kind !== "anonymous"
+      ? authState.juryId
+      : null;
+  const isAuthenticated =
+    stateMatchesEvent && authState.kind === "authenticated";
+  const isChecking =
+    !!currentEvent && (!stateMatchesEvent || authState.kind === "checking");
 
-    // Handle browser close/refresh
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, []);
-
-  const juryId = getAuthenticatedJury();
-
-  // Memoize the query to prevent recreation on every render
   const juryQuery = useMemo(() => {
     if (!juryId || !currentEvent) return null;
-    const juryCollection = collection(firestore, getEventCollectionPath(currentEvent, "jury"));
+    const juryCollection = collection(
+      firestore,
+      getEventCollectionPath(currentEvent, "jury")
+    );
     return doc(juryCollection, juryId);
   }, [juryId, currentEvent]);
 
-  // Use centralized listener for jury member data
   useFirestoreListener<DocumentSnapshot>({
     query: juryQuery,
-    key: `jury-member-${currentEvent}-${juryId}`, // Use same key as useJuryMember for consistency
+    key: `jury-member-${currentEvent}-${juryId}`,
     onData: (docSnapshot) => {
-      if (docSnapshot.exists()) {
-        const juryMember = {
-          id: docSnapshot.id,
-          ...docSnapshot.data(),
-        } as Jury;
-        // console.log(`[useJuryAuth] Setting jury data:`, juryMember);
-        queryClient.setQueryData(["jury", currentEvent, juryId], juryMember);
-      } else {
-        // console.log(`[useJuryAuth] Setting jury data to null`);
+      if (!currentEvent || !juryId) return;
+
+      if (!docSnapshot.exists()) {
+        clearAuthenticatedJury(currentEvent);
         queryClient.setQueryData(["jury", currentEvent, juryId], null);
+        setAuthState({ kind: "anonymous", eventId: currentEvent });
+        return;
       }
+
+      const storedJury = docSnapshot.data();
+      if (!isStoredJury(storedJury)) {
+        console.error("Stored jury document has an invalid shape");
+        clearAuthenticatedJury(currentEvent);
+        queryClient.setQueryData(["jury", currentEvent, juryId], null);
+        setAuthState({ kind: "anonymous", eventId: currentEvent });
+        return;
+      }
+
+      const juryMember: Jury = {
+        ...storedJury,
+        id: docSnapshot.id,
+      };
+      queryClient.setQueryData(
+        ["jury", currentEvent, juryId],
+        juryMember
+      );
+      setAuthState({
+        kind: "authenticated",
+        eventId: currentEvent,
+        juryId,
+      });
     },
     onError: (error) => {
-      console.error("Error fetching jury member:", error);
+      console.error("Error validating jury session:", error);
+      if (!currentEvent) return;
+      clearAuthenticatedJury(currentEvent);
+      setAuthState({ kind: "anonymous", eventId: currentEvent });
     },
-    enabled: !!juryQuery
+    enabled: !!juryQuery,
   });
 
   const { data: juryMember } = useQuery<Jury | null>({
     queryKey: ["jury", currentEvent, juryId],
-    queryFn: () => {
-      // Return cached data if available, otherwise null
-      const cachedData = queryClient.getQueryData<Jury | null>(["jury", currentEvent, juryId]);
-      return cachedData || null;
-    },
+    queryFn: () =>
+      queryClient.getQueryData<Jury | null>([
+        "jury",
+        currentEvent,
+        juryId,
+      ]) ?? null,
     enabled: !!juryId && !!currentEvent,
-    staleTime: Infinity, // Never mark as stale since we're using real-time updates
-    refetchOnMount: false, // Don't refetch on mount
-    refetchOnWindowFocus: false, // Don't refetch on window focus
-    refetchOnReconnect: false, // Don't refetch on reconnect
-    retry: false, // Don't retry failed requests
+    staleTime: Infinity,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: false,
   });
 
-  const handleLoginSuccess = () => {
-    setIsAuthenticated(true);
+  const handleLoginSuccess = (jury: Jury) => {
+    if (!currentEvent) return;
+    queryClient.setQueryData(["jury", currentEvent, jury.id], jury);
+    setAuthState({
+      kind: "authenticated",
+      eventId: currentEvent,
+      juryId: jury.id,
+    });
   };
 
   const handleLogout = async () => {
     if (!currentEvent) return;
+
     try {
       await logoutJury(currentEvent);
-      setIsAuthenticated(false);
-
-      // Clean up all Firestore listeners to prevent memory leaks
-      cleanupAllListeners();
-
-      // Clear React Query cache
-      queryClient.clear();
-
-      navigate({ to: "/" });
     } catch (error) {
       console.error("Error during logout:", error);
-      // Still proceed with logout even if deactivation fails
-      setIsAuthenticated(false);
-
-      // Clean up resources even on error
+    } finally {
+      setAuthState({ kind: "anonymous", eventId: currentEvent });
       cleanupAllListeners();
       queryClient.clear();
-
       navigate({ to: "/" });
     }
   };
 
   return {
     isAuthenticated,
+    isChecking,
     juryId,
     juryMember,
     handleLoginSuccess,

@@ -2,8 +2,15 @@ import { Button } from "@/components/shadcn/button";
 import { Label } from "@/components/shadcn/label";
 import { Card } from "@/components/shadcn/card";
 import { useTranslation } from "react-i18next";
+import type { InputControl } from "@/evaluation/types";
+
+type CounterControl = Extract<
+  InputControl,
+  "integerCounter" | "decimalCounter" | "incrementButton"
+>;
 
 export interface ScoreInputProps {
+  control: CounterControl;
   label: string;
   value: number;
   onChange: (value: number) => void;
@@ -13,9 +20,10 @@ export interface ScoreInputProps {
   step?: number;
 }
 
-/** A generic bounded integer/decimal counter (+/- buttons), driven entirely
- * by the caller's `min`/`max`/`step` — no hardcoded field or range. */
+/** A bounded counter driven by the caller's `min`, `max`, and `step`.
+ * `incrementButton` omits the decrement action. */
 export const ScoreInput = ({
+  control,
   label,
   value,
   onChange,
@@ -41,31 +49,36 @@ export const ScoreInput = ({
   const resolvedLabel = t(label);
 
   return (
-    <Card className={`w-36 p-2 ${disabled ? "opacity-60" : ""}`} data-testid={`score-input-${resolvedLabel}`}>
-      <div className="flex flex-col gap-y-4 justify-center">
-        <div className="flex text-center justify-center w-full">
-          <Label className="flex items-center justify-center px-1 text-muted-foreground">
-            {resolvedLabel}
-          </Label>
-        </div>
-        <div className="flex justify-center flex-row gap-2">
-          <Button
-            size="default"
-            onClick={handleDecrement}
-            disabled={value <= min || disabled}
-            aria-label={`${resolvedLabel} ${t("jury.actions.decrease")}`}
-          >
-            -
-          </Button>
+    <Card
+      className={`w-full min-w-0 p-3 ${disabled ? "opacity-60" : ""}`}
+      data-testid={`score-input-${resolvedLabel}`}
+    >
+      <div className="flex h-full min-h-9 min-w-0 items-center justify-between gap-3">
+        <Label className="min-w-0 flex-1 text-xs leading-tight text-muted-foreground">
+          {resolvedLabel}
+        </Label>
+        <div className="flex shrink-0 items-center gap-1">
+          {control !== "incrementButton" ? (
+            <Button
+              size="icon"
+              className="h-9 w-9"
+              onClick={handleDecrement}
+              disabled={value <= min || disabled}
+              aria-label={`${resolvedLabel} ${t("jury.actions.decrease")}`}
+            >
+              -
+            </Button>
+          ) : null}
 
-          <div className="flex text-center justify-center align-center border border-gray-700 rounded-sm">
-            <Label className="flex items-center justify-center w-8 max-w-8">
+          <div className="flex h-9 w-9 items-center justify-center rounded-sm border border-gray-700 bg-background text-center">
+            <Label className="flex items-center justify-center">
               {value}
             </Label>
           </div>
 
           <Button
-            size="default"
+            size="icon"
+            className="h-9 w-9"
             onClick={handleIncrement}
             disabled={value >= max || disabled}
             aria-label={`${resolvedLabel} ${t("jury.actions.increase")}`}

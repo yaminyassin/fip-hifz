@@ -40,24 +40,21 @@ test.describe("Event identity: no silent demo-2026 fallback", () => {
       .toBe("demo-2026");
   });
 
-  test("the jury login form does not native-submit / reload when there is no event", async ({
+  test("the jury roster stays on the same route when there is no event", async ({
     page,
   }) => {
-    // With no event selected, /jury renders the login form OUTSIDE the config
-    // gate. Submitting must be intercepted (preventDefault) even though the
-    // no-event guard bails early, or the browser performs a native GET submit
-    // and reloads the page, and the juror can never log in.
+    // With no event selected, /jury renders the jury selector outside the
+    // config gate. Searching remains a local interaction and must not change
+    // the route or invent a fallback event.
     await page.goto(`/jury`);
 
-    const form = page.locator("form").first();
-    await expect(form).toBeVisible();
-    const urlBeforeSubmit = page.url();
+    const search = page.getByRole("searchbox");
+    await expect(search).toBeVisible();
+    const urlBeforeSearch = page.url();
 
-    await form.evaluate((f: HTMLFormElement) => f.requestSubmit());
-    await page.waitForTimeout(300);
+    await search.fill("Nazim");
 
-    // A native submit would append query params and reload; preventDefault
-    // keeps the URL exactly as it was.
-    expect(page.url()).toBe(urlBeforeSubmit);
+    expect(page.url()).toBe(urlBeforeSearch);
+    expect(new URL(page.url()).searchParams.get("event")).toBeNull();
   });
 });

@@ -379,7 +379,7 @@ interface InputDefinitionCommon {
   id: InputId;
   label: LocalizedText;
   order: number;
-  control: "integerCounter" | "decimalCounter" | "slider";
+  control: "integerCounter" | "decimalCounter" | "incrementButton" | "slider";
   min: number;
   max: number;
   step: number;

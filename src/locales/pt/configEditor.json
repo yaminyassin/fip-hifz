@@ -67,6 +67,7 @@
       "max": "Máximo",
       "control": "Controlo",
       "counter": "Contador",
+      "incrementButton": "Apenas incrementar",
       "slider": "Cursor",
       "decimal": "Contador decimal"
     },

@@ -415,6 +415,10 @@ export function AdjustmentsSection({ draft, dispatch, disabled }: SectionProps) 
                         testId={`adj-${adj.id}-input-${input.id}-control`}
                         options={[
                           { value: "integerCounter", label: t("configEditor.inputs.counter") },
+                          {
+                            value: "incrementButton",
+                            label: t("configEditor.inputs.incrementButton"),
+                          },
                           { value: "slider", label: t("configEditor.inputs.slider") },
                           { value: "decimalCounter", label: t("configEditor.inputs.decimal") },
                         ]}

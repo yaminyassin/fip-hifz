@@ -1,4 +1,5 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
+import { useTranslation } from "react-i18next";
 
 import { useActiveParticipant } from "../hooks/useActiveParticipant";
 import { useJuryAuth } from "../hooks/useJuryAuth";
@@ -10,15 +11,28 @@ import { LiveUpdatesBanner } from "@/components/ui/LiveUpdatesBanner";
 import { JuryQuranSheet } from "@/components/ui/JuryQuranSheet";
 
 function RouteComponent() {
+  const { t } = useTranslation();
   const { data: participant } = useActiveParticipant();
 
   const {
     isAuthenticated,
+    isChecking,
     juryId,
     juryMember,
     handleLoginSuccess,
     handleLogout,
   } = useJuryAuth();
+
+  if (isChecking) {
+    return (
+      <div
+        role="status"
+        className="flex min-h-screen items-center justify-center bg-muted/40 text-sm text-muted-foreground"
+      >
+        {t("jury.login.checking")}
+      </div>
+    );
+  }
 
   // Show login if not authenticated
   if (!isAuthenticated) {

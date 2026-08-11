@@ -3,10 +3,12 @@ import type {
   EvaluationInputDefinition,
   EventCategoryDefinition,
   EventEvaluationConfigV2,
+  InputControl,
   ParticipantAdjustmentDefinition,
   QuestionOverrideRule,
   QuestionTypeDefinition,
 } from "./types";
+import { INPUT_CONTROL_VALUES } from "./types";
 
 export interface ConfigValidationResult {
   ok: boolean;
@@ -21,6 +23,10 @@ const isFiniteNumber = (value: unknown): value is number =>
 
 const isFiniteInteger = (value: unknown): value is number =>
   isFiniteNumber(value) && Number.isInteger(value);
+
+const isInputControl = (value: unknown): value is InputControl =>
+  typeof value === "string" &&
+  INPUT_CONTROL_VALUES.some((control) => control === value);
 
 const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -107,7 +113,7 @@ function validateInputShape(
   if (typeof value.id !== "string" || value.id === "") push(`${label}.id must be a non-empty string`);
   validateLocalizedText(value.label, `${label}.label`, push);
   if (!isFiniteInteger(value.order)) push(`${label}.order must be a finite integer`);
-  if (!["integerCounter", "decimalCounter", "slider"].includes(String(value.control))) {
+  if (!isInputControl(value.control)) {
     push(`${label}.control must be a known control`);
   }
   if (value.role !== "scored" && value.role !== "informational") {

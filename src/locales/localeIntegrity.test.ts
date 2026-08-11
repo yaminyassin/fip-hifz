@@ -1,6 +1,9 @@
 import { readFileSync } from "fs";
 import path from "path";
+import { createInstance } from "i18next";
 import { describe, expect, it } from "vitest";
+import translationEN from "./en/translation.json";
+import translationPT from "./pt/translation.json";
 
 /**
  * Structural guards on the translation files.
@@ -117,5 +120,36 @@ describe("translation files are structurally sound", () => {
       expect(json).not.toContain("[MISSING]");
       expect(json).not.toContain("[FALTA]");
     }
+  });
+
+  it.each([
+    {
+      language: "en",
+      translation: translationEN,
+      deduction: "Max 50 pts deduction",
+      addition: "Max +5 pts",
+    },
+    {
+      language: "pt",
+      translation: translationPT,
+      deduction: "Máx. 50 pts de dedução",
+      addition: "Máx. +5 pts",
+    },
+  ])("$language scoring caps include the configured amount", async ({
+    language,
+    translation,
+    deduction,
+    addition,
+  }) => {
+    const i18n = createInstance();
+    await i18n.init({
+      lng: language,
+      resources: { [language]: { translation } },
+    });
+
+    expect(i18n.t("jury.categories.maxDeduction", { cap: 50 })).toBe(
+      deduction
+    );
+    expect(i18n.t("jury.categories.maxAddition", { cap: 5 })).toBe(addition);
   });
 });

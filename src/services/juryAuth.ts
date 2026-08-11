@@ -21,7 +21,6 @@ export const authenticateJury = async (eventId: string, juryId: string): Promise
 
     // Automatically activate the jury member upon successful login
     await updateJuryActiveStatus(eventId, juryId, true);
-    console.log(`Jury member ${juryId} (${jury.name}) has been automatically activated`);
 
     return jury;
   } catch (error) {
@@ -30,38 +29,39 @@ export const authenticateJury = async (eventId: string, juryId: string): Promise
   }
 };
 
-// Store the authenticated jury ID in session storage
-export const setAuthenticatedJury = (juryId: string) => {
-  sessionStorage.setItem("authenticatedJuryId", juryId);
+const authenticatedJuryStorageKey = (eventId: string): string =>
+  `authenticatedJuryId:${eventId}`;
+
+// Jury identity is event-scoped so switching events cannot reuse another
+// event's jury document ID.
+export const setAuthenticatedJury = (eventId: string, juryId: string): void => {
+  sessionStorage.setItem(authenticatedJuryStorageKey(eventId), juryId);
 };
 
-// Get the authenticated jury ID from session storage
-export const getAuthenticatedJury = (): string | null => {
-  return sessionStorage.getItem("authenticatedJuryId");
+export const getAuthenticatedJury = (eventId: string): string | null => {
+  return sessionStorage.getItem(authenticatedJuryStorageKey(eventId));
 };
 
-// Remove the authenticated jury ID from session storage
-export const clearAuthenticatedJury = () => {
-  sessionStorage.removeItem("authenticatedJuryId");
+export const clearAuthenticatedJury = (eventId: string): void => {
+  sessionStorage.removeItem(authenticatedJuryStorageKey(eventId));
 };
 
 // Logout jury member and automatically deactivate them
 export const logoutJury = async (eventId: string): Promise<void> => {
   try {
-    const juryId = getAuthenticatedJury();
+    const juryId = getAuthenticatedJury(eventId);
 
     if (juryId) {
       // Automatically deactivate the jury member upon logout
       await updateJuryActiveStatus(eventId, juryId, false);
-      console.log(`Jury member ${juryId} has been automatically deactivated`);
     }
 
     // Clear the authenticated jury from session storage
-    clearAuthenticatedJury();
+    clearAuthenticatedJury(eventId);
   } catch (error) {
     console.error("Error during jury logout:", error);
     // Still clear session storage even if deactivation fails
-    clearAuthenticatedJury();
+    clearAuthenticatedJury(eventId);
     throw error;
   }
-}; 
+};

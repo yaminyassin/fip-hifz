@@ -43,16 +43,29 @@
       "questionWithPage": "Question {{question}}, page {{page}}"
     },
     "login": {
-      "title": "Jury Login",
-      "subtitle": "Enter your jury ID to continue",
-      "placeholder": "Enter Jury ID",
-      "button": "Login",
+      "title": "Find your name",
+      "subtitle": "Search or choose from the jury members.",
+      "station": "Hifz jury",
+      "event": "Jury access",
+      "searchLabel": "Jury member",
+      "placeholder": "Start typing your name",
+      "select": "Select",
+      "selectMember": "Select {{name}}",
+      "member": "Jury member",
+      "loading": "Loading jury members...",
+      "checking": "Checking jury session...",
+      "empty": "No jury members have been added yet.",
+      "noMatches": "No jury members match that search.",
+      "confirmTitle": "Continue as {{name}}?",
+      "confirmDescription": "Your scores will be recorded under this jury member.",
+      "chooseAgain": "Choose again",
+      "continue": "Continue to scoring",
       "loggingIn": "Logging in...",
       "error": {
         "invalid": "Authentication Failed",
-        "invalidDesc": "Invalid jury ID",
+        "invalidDesc": "This jury member is no longer available.",
         "failed": "Error",
-        "failedDesc": "Failed to authenticate"
+        "failedDesc": "Could not enter the jury page. Try again."
       }
     },
     "categories": {
@@ -67,7 +80,8 @@
       "waqf_ibtida_incorrect": "Incorrect pause/start",
       "waqf_ibtida_meaning": "Alters meaning",
       "ofTotalScore": "of total score",
-      "maxDeduction": "Max Deduction",
+      "maxDeduction": "Max {{cap}} pts deduction",
+      "maxAddition": "Max +{{cap}} pts",
       "perQuestion": "per question",
       "maxBonus": "Max Bonus",
       "total": "total",

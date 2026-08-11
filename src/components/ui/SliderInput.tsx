@@ -12,8 +12,7 @@ export interface SliderInputProps {
   step?: number;
 }
 
-/** A generic bounded slider, driven entirely by the caller's
- * `min`/`max`/`step` — no hardcoded field or range. */
+/** A compact bounded slider driven by the caller's `min`, `max`, and `step`. */
 export const SliderInput = ({
   label,
   value,
@@ -29,46 +28,30 @@ export const SliderInput = ({
     onChange(newValue[0]);
   };
 
-  // Create markers for the slider stops
-  const markers = Array.from({ length: Math.floor((max - min) / step) + 1 }, (_, i) => min + i * step);
+  const resolvedLabel = t(label);
 
   return (
-    <Card className={`w-full p-4 ${disabled ? "opacity-60" : ""}`}>
-      <div className="flex flex-col gap-y-4">
-        <div className="flex justify-between items-center">
-          <label className="text-sm font-medium">
-            {t(label)}
+    <Card
+      className={`w-full min-w-0 p-3 ${disabled ? "opacity-60" : ""}`}
+      data-testid={`slider-input-${resolvedLabel}`}
+    >
+      <div className="flex h-full min-h-9 min-w-0 flex-col justify-center gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <label className="min-w-0 text-xs font-medium leading-tight text-muted-foreground">
+            {resolvedLabel}
           </label>
-          <span className="text-lg font-bold text-primary">
-            {value}
-          </span>
+          <span className="text-sm font-bold text-primary">{value}</span>
         </div>
-        <div className="space-y-4">
-          <div className="relative px-2">
-            <Slider
-              value={[value]}
-              onValueChange={handleValueChange}
-              max={max}
-              min={min}
-              step={step}
-              disabled={disabled}
-              className="w-full"
-              aria-label={t(label)}
-            />
-
-            {/* Slider markers */}
-            <div className="flex justify-between mt-2 px-1">
-              {markers.map((mark) => (
-                <div key={mark} className="flex flex-col items-center">
-                  <div className="w-1 h-2 bg-muted-foreground/30 rounded-full" />
-                  <span className="text-xs text-muted-foreground mt-1 font-medium">
-                    {mark}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <Slider
+          value={[value]}
+          onValueChange={handleValueChange}
+          max={max}
+          min={min}
+          step={step}
+          disabled={disabled}
+          className="w-full py-1"
+          aria-label={resolvedLabel}
+        />
       </div>
     </Card>
   );

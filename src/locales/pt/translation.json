@@ -43,16 +43,29 @@
       "questionWithPage": "Questão {{question}}, página {{page}}"
     },
     "login": {
-      "title": "Login do Júri",
-      "subtitle": "Digite seu ID de júri para continuar",
-      "placeholder": "Digite o ID do Júri",
-      "button": "Entrar",
+      "title": "Encontre o seu nome",
+      "subtitle": "Pesquise ou escolha entre os membros do júri.",
+      "station": "Júri Hifz",
+      "event": "Acesso do júri",
+      "searchLabel": "Membro do júri",
+      "placeholder": "Comece a escrever o seu nome",
+      "select": "Escolher",
+      "selectMember": "Escolher {{name}}",
+      "member": "Membro do júri",
+      "loading": "A carregar membros do júri...",
+      "checking": "A verificar a sessão do júri...",
+      "empty": "Ainda não foram adicionados membros do júri.",
+      "noMatches": "Nenhum membro do júri corresponde à pesquisa.",
+      "confirmTitle": "Continuar como {{name}}?",
+      "confirmDescription": "As suas pontuações serão registadas para este membro do júri.",
+      "chooseAgain": "Escolher novamente",
+      "continue": "Continuar para a avaliação",
       "loggingIn": "A entrar...",
       "error": {
         "invalid": "Autenticação Falhou",
-        "invalidDesc": "ID de júri inválido",
+        "invalidDesc": "Este membro do júri já não está disponível.",
         "failed": "Erro",
-        "failedDesc": "Falha na autenticação"
+        "failedDesc": "Não foi possível entrar na página do júri. Tente novamente."
       }
     },
     "categories": {
@@ -72,7 +85,8 @@
       "overall_bonus_title": "Bônus Geral",
       "overall_bonus": "Bônus Geral",
       "ofTotalScore": "da pontuação total",
-      "maxDeduction": "Dedução Máxima",
+      "maxDeduction": "Máx. {{cap}} pts de dedução",
+      "maxAddition": "Máx. +{{cap}} pts",
       "perQuestion": "por questão",
       "maxBonus": "Bônus Máximo",
       "total": "total",

@@ -8,7 +8,7 @@ import {
   buildTrialShapesConfig,
   buildTrialWeightedConfig,
 } from "./fixtures";
-import type { EventEvaluationConfigV2 } from "../types";
+import type { EvaluationInputDefinition, EventEvaluationConfigV2 } from "../types";
 import { Timestamp } from "firebase/firestore";
 
 describe("validateEvaluationConfig: accepts valid configs", () => {
@@ -33,6 +33,25 @@ describe("validateEvaluationConfig: accepts valid configs", () => {
 
   it("accepts the override matrix config", () => {
     const result = validateEvaluationConfig(buildOverrideMatrixConfig());
+    expect(result.errors).toEqual([]);
+    expect(result.ok).toBe(true);
+  });
+
+  it("accepts the increment-only button control", () => {
+    const config = buildTrialWeightedConfig();
+    const accuracy = config.questionTypes.accuracy;
+    const questionTypes = {
+      ...config.questionTypes,
+      accuracy: {
+        ...accuracy,
+        inputs: accuracy.inputs.map((input): EvaluationInputDefinition =>
+          input.id === "x" ? { ...input, control: "incrementButton" } : input
+        ),
+      },
+    };
+
+    const result = validateEvaluationConfig({ ...config, questionTypes });
+
     expect(result.errors).toEqual([]);
     expect(result.ok).toBe(true);
   });
