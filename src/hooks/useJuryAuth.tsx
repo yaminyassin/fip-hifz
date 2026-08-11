@@ -7,7 +7,9 @@ import { useEvent } from "@/contexts/EventContext";
 import { firestore } from "@/main";
 import type { Jury } from "@/models/models";
 import {
+  authenticateJury,
   clearAuthenticatedJury,
+  deactivateJurySession,
   getAuthenticatedJury,
   logoutJury,
 } from "@/services/juryAuth";
@@ -72,14 +74,66 @@ export const useJuryAuth = () => {
   const isChecking =
     !!currentEvent && (!stateMatchesEvent || authState.kind === "checking");
 
+  useEffect(() => {
+    if (
+      !currentEvent ||
+      authState.kind !== "checking" ||
+      authState.eventId !== currentEvent
+    ) {
+      return;
+    }
+
+    const restoringJuryId = authState.juryId;
+    let cancelled = false;
+
+    void authenticateJury(currentEvent, restoringJuryId).then((jury) => {
+      if (cancelled) return;
+
+      if (!jury) {
+        clearAuthenticatedJury(currentEvent);
+        setAuthState({ kind: "anonymous", eventId: currentEvent });
+        return;
+      }
+
+      queryClient.setQueryData(
+        ["jury", currentEvent, restoringJuryId],
+        jury
+      );
+      setAuthState({
+        kind: "authenticated",
+        eventId: currentEvent,
+        juryId: restoringJuryId,
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authState, currentEvent, queryClient]);
+
+  useEffect(() => {
+    if (!currentEvent || !juryId || !isAuthenticated) return;
+
+    const handlePageHide = (event: PageTransitionEvent) => {
+      if (event.persisted) return;
+
+      void deactivateJurySession(currentEvent, juryId).catch((error) => {
+        console.error("Error deactivating jury session:", error);
+      });
+    };
+
+    window.addEventListener("pagehide", handlePageHide);
+    return () => window.removeEventListener("pagehide", handlePageHide);
+  }, [currentEvent, isAuthenticated, juryId]);
+
   const juryQuery = useMemo(() => {
-    if (!juryId || !currentEvent) return null;
+    if (!juryId || !currentEvent || !isAuthenticated) return null;
     const juryCollection = collection(
       firestore,
       getEventCollectionPath(currentEvent, "jury")
     );
     return doc(juryCollection, juryId);
-  }, [juryId, currentEvent]);
+  }, [juryId, currentEvent, isAuthenticated]);
 
   useFirestoreListener<DocumentSnapshot>({
     query: juryQuery,

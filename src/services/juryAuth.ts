@@ -22,7 +22,7 @@ export const authenticateJury = async (eventId: string, juryId: string): Promise
     // Automatically activate the jury member upon successful login
     await updateJuryActiveStatus(eventId, juryId, true);
 
-    return jury;
+    return { ...jury, isActive: true };
   } catch (error) {
     console.error("Error authenticating jury:", error);
     return null;
@@ -44,6 +44,14 @@ export const getAuthenticatedJury = (eventId: string): string | null => {
 
 export const clearAuthenticatedJury = (eventId: string): void => {
   sessionStorage.removeItem(authenticatedJuryStorageKey(eventId));
+};
+
+/** Deactivates the live jury session without clearing reloadable browser state. */
+export const deactivateJurySession = async (
+  eventId: string,
+  juryId: string
+): Promise<void> => {
+  await updateJuryActiveStatus(eventId, juryId, false);
 };
 
 // Logout jury member and automatically deactivate them
