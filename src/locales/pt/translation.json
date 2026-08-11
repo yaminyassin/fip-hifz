@@ -34,6 +34,14 @@
     "noQuestionsAssigned": "Nenhuma Questão Atribuída Ainda",
     "noQuestionsAssignedYet": "Aguardando questões serem atribuídas",
     "waitingForQuestions": "Aguardando questões",
+    "quran": {
+      "title": "Página ativa do Alcorão",
+      "open": "Abrir página ativa do Alcorão",
+      "close": "Fechar página do Alcorão",
+      "unavailable": "Nenhuma página ativa do Alcorão",
+      "page": "Página {{page}}",
+      "questionWithPage": "Questão {{question}}, página {{page}}"
+    },
     "login": {
       "title": "Login do Júri",
       "subtitle": "Digite seu ID de júri para continuar",

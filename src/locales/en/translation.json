@@ -34,6 +34,14 @@
     "noQuestionsAssigned": "No Questions Assigned Yet",
     "noQuestionsAssignedYet": "Waiting for questions to be assigned",
     "waitingForQuestions": "Waiting for questions",
+    "quran": {
+      "title": "Active Quran page",
+      "open": "Open active Quran page",
+      "close": "Close Quran page",
+      "unavailable": "No active Quran page",
+      "page": "Page {{page}}",
+      "questionWithPage": "Question {{question}}, page {{page}}"
+    },
     "login": {
       "title": "Jury Login",
       "subtitle": "Enter your jury ID to continue",

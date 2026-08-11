@@ -100,6 +100,34 @@ test.describe("/jury: config-driven evaluation flow (demo-2026, CAT_A)", () => {
     await expect(page.getByText("Overall Bonus").first()).toBeVisible();
   });
 
+  test("opens and closes the participant's active Quran page", async ({
+    page,
+  }) => {
+    const sheet = page.locator("#jury-active-quran-page");
+    const openButton = page.getByRole("button", {
+      name: "Open active Quran page",
+    });
+
+    await expect(openButton).toHaveAttribute("aria-expanded", "false");
+    await expect(sheet).toHaveAttribute("aria-hidden", "true");
+
+    await openButton.click();
+
+    const closeButton = page.getByRole("button", {
+      name: "Close Quran page",
+    });
+    await expect(closeButton).toHaveAttribute("aria-expanded", "true");
+    await expect(sheet).toHaveAttribute("aria-hidden", "false");
+    await expect(
+      sheet.locator('img[src="/quran/mushaf-v1/27.webp"]')
+    ).toBeVisible();
+
+    await closeButton.click();
+
+    await expect(openButton).toHaveAttribute("aria-expanded", "false");
+    await expect(sheet).toHaveAttribute("aria-hidden", "true");
+  });
+
   test("the void-warning highlight fires generically from config.overrideRules, not a hardcoded threshold", async ({
     page,
   }) => {

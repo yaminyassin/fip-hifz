@@ -7,6 +7,7 @@ import { JuryHeader } from "../components/ui/JuryHeader";
 import { JuryScoringPanel } from "@/components/ui/JuryScoringPanel";
 import { EvaluationConfigGate } from "@/components/EvaluationConfigGate";
 import { LiveUpdatesBanner } from "@/components/ui/LiveUpdatesBanner";
+import { JuryQuranSheet } from "@/components/ui/JuryQuranSheet";
 
 function RouteComponent() {
   const { data: participant } = useActiveParticipant();
@@ -49,6 +50,8 @@ function RouteComponent() {
           </div>
         </div>
       </div>
+
+      <JuryQuranSheet participant={participant || null} />
     </div>
   );
 }
