@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jury login options</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page: #000;
+      --page-muted: #a6adb8;
+      --line: #2b3138;
+      --paper: #f6f8fa;
+      --ink: #112235;
+      --muted: #526171;
+      --blue: #164f86;
+      --blue-dark: #0e365c;
+      --blue-soft: #e7f0f8;
+      --green: #23705a;
+      --green-soft: #e3f0eb;
+      --white: #fff;
+      --focus: #f4b740;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--white);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    button, input { font: inherit; }
+
+    button:focus-visible, input:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    main {
+      width: min(1480px, 100%);
+      margin: 0 auto;
+      padding: 28px 22px 48px;
+    }
+
+    .report-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 520px);
+      gap: 32px;
+      align-items: end;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .report-header h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(30px, 4vw, 54px);
+      font-weight: 500;
+      letter-spacing: -0.035em;
+      line-height: 1;
+    }
+
+    .report-header p {
+      margin: 0;
+      color: var(--page-muted);
+      font-size: 15px;
+    }
+
+    .key {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      margin: 18px 0 24px;
+      color: var(--page-muted);
+      font-size: 13px;
+    }
+
+    .key strong { color: var(--white); font-weight: 650; }
+
+    .variants {
+      display: grid;
+      grid-template-columns: minmax(0, 560px);
+      justify-content: center;
+      gap: 18px;
+    }
+
+    .variant {
+      min-width: 0;
+      border: 1px solid var(--line);
+      background: #0c0e11;
+    }
+
+    .variant-heading {
+      min-height: 106px;
+      padding: 16px 18px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .variant-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .letter {
+      display: grid;
+      width: 28px;
+      height: 28px;
+      place-items: center;
+      background: var(--white);
+      color: var(--page);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .recommended {
+      color: #9ed9c5;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+
+    .variant h2 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.25;
+    }
+
+    .variant-heading p {
+      margin: 6px 0 0;
+      color: var(--page-muted);
+      font-size: 13px;
+    }
+
+    .device {
+      min-height: 650px;
+      background: var(--paper);
+      color: var(--ink);
+    }
+
+    .app-rail {
+      display: flex;
+      min-height: 58px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 0 18px;
+      border-bottom: 3px solid var(--blue);
+      background: var(--white);
+    }
+
+    .app-mark {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      color: var(--blue-dark);
+      font-weight: 800;
+      letter-spacing: .035em;
+      text-transform: uppercase;
+    }
+
+    .mark-glyph {
+      display: grid;
+      width: 29px;
+      height: 29px;
+      place-items: center;
+      border: 2px solid var(--blue);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 14px;
+    }
+
+    .event-short {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-align: right;
+      text-transform: uppercase;
+    }
+
+    .screen {
+      padding: 28px 22px 26px;
+    }
+
+    .screen h3 {
+      margin: 0;
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 30px;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      line-height: 1.05;
+    }
+
+    .screen-lead {
+      margin: 10px 0 22px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .jury-list {
+      border-top: 1px solid #bac4cd;
+    }
+
+    .jury-row {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      min-height: 72px;
+      padding: 12px 2px;
+      border: 0;
+      border-bottom: 1px solid #bac4cd;
+      background: transparent;
+      color: var(--ink);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .jury-row.selected {
+      margin-inline: -10px;
+      width: calc(100% + 20px);
+      padding-inline: 10px;
+      border-color: var(--blue);
+      background: var(--blue-soft);
+    }
+
+    .initials {
+      display: grid;
+      width: 40px;
+      height: 40px;
+      place-items: center;
+      background: var(--blue-dark);
+      color: var(--white);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .025em;
+    }
+
+    .jury-name {
+      display: block;
+      font-size: 14px;
+      font-weight: 750;
+      line-height: 1.25;
+    }
+
+    .jury-meta {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .arrow {
+      color: var(--blue);
+      font-size: 22px;
+      font-weight: 400;
+    }
+
+    .confirmation {
+      margin-top: 22px;
+      padding: 16px;
+      border: 2px solid var(--blue);
+      background: var(--white);
+    }
+
+    .confirmation p {
+      margin: 0 0 13px;
+      font-size: 14px;
+      font-weight: 750;
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1.5fr;
+      gap: 8px;
+    }
+
+    .btn {
+      min-height: 44px;
+      border: 1px solid var(--blue);
+      background: var(--white);
+      color: var(--blue-dark);
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .btn.primary {
+      background: var(--blue);
+      color: var(--white);
+    }
+
+    .secondary-action {
+      width: 100%;
+      margin-top: 18px;
+      padding: 11px 0 0;
+      border: 0;
+      border-top: 1px solid #cfd6dc;
+      background: transparent;
+      color: var(--blue-dark);
+      font-size: 13px;
+      font-weight: 750;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .search-wrap {
+      margin-bottom: 18px;
+    }
+
+    .search-label {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .search {
+      width: 100%;
+      min-height: 48px;
+      padding: 0 13px;
+      border: 2px solid #8796a4;
+      border-radius: 0;
+      background: var(--white);
+      color: var(--ink);
+    }
+
+    .search::placeholder { color: #667586; }
+
+    .compact-list {
+      border: 1px solid #bac4cd;
+      background: var(--white);
+    }
+
+    .compact-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      min-height: 68px;
+      padding: 11px 12px;
+      border-bottom: 1px solid #d4dae0;
+    }
+
+    .compact-row:last-child { border-bottom: 0; }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 5px;
+      color: var(--green);
+      font-size: 11px;
+      font-weight: 750;
+    }
+
+    .status::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      background: var(--green);
+    }
+
+    .select-btn {
+      min-height: 38px;
+      padding: 0 12px;
+      border: 1px solid var(--blue);
+      background: var(--white);
+      color: var(--blue-dark);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .small-note {
+      margin: 16px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .qr-panel {
+      display: grid;
+      place-items: center;
+      padding: 26px 18px 23px;
+      border: 2px solid var(--blue);
+      background: var(--white);
+      text-align: center;
+    }
+
+    .qr {
+      width: 174px;
+      height: 174px;
+      border: 10px solid var(--white);
+      background: var(--white);
+      box-shadow: 0 0 0 1px #a9b3bc;
+    }
+
+    .qr-panel strong {
+      display: block;
+      margin-top: 18px;
+      font-size: 15px;
+    }
+
+    .qr-panel span {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .or {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 10px;
+      align-items: center;
+      margin: 22px 0 16px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .or::before, .or::after {
+      content: "";
+      height: 1px;
+      background: #bec7cf;
+    }
+
+    .fallback-select {
+      width: 100%;
+      min-height: 50px;
+      padding: 0 13px;
+      border: 2px solid #8796a4;
+      border-radius: 0;
+      background: var(--white);
+      color: var(--ink);
+      font-weight: 700;
+      text-align: left;
+    }
+
+    .reasoning {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .reasoning section {
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      color: var(--page-muted);
+      font-size: 13px;
+    }
+
+    .reasoning h3 {
+      margin: 0 0 7px;
+      color: var(--white);
+      font-size: 14px;
+    }
+
+    .reasoning p { margin: 0; }
+
+    @media (max-width: 1040px) {
+      .variants, .reasoning { grid-template-columns: 1fr; }
+      .device { min-height: auto; }
+    }
+
+    @media (max-width: 720px) {
+      main { padding: 20px 12px 34px; }
+      .report-header { grid-template-columns: 1fr; gap: 14px; }
+      .variant-heading { min-height: auto; }
+      .screen { padding: 24px 16px; }
+      .event-short { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="report-header">
+      <h1>Selected jury login</h1>
+      <p>Variant B replaces the Firestore ID field with one searchable jury roster and a confirmation step.</p>
+    </header>
+
+    <div class="key">
+      <span><strong>Goal</strong> enter without typing an ID</span>
+      <span><strong>Scale</strong> four active jurors</span>
+      <span><strong>Guard</strong> confirm before entering</span>
+    </div>
+
+    <div class="variants">
+      <article class="variant">
+        <header class="variant-heading">
+          <div class="variant-label"><span class="letter">B</span></div>
+          <h2>Searchable roster</h2>
+          <p>Denser and easier to extend if the event grows beyond a small jury.</p>
+        </header>
+        <div class="device">
+          <div class="app-rail">
+            <div class="app-mark"><span class="mark-glyph">ح</span> Hifz jury</div>
+            <div class="event-short">Mozambique<br>semi-finals</div>
+          </div>
+          <div class="screen">
+            <h3>Find your name</h3>
+            <p class="screen-lead">Search or choose from the active jury.</p>
+
+            <div class="search-wrap">
+              <label class="search-label" for="jury-search">Jury member</label>
+              <input class="search" id="jury-search" type="search" placeholder="Start typing your name">
+            </div>
+
+            <div class="compact-list">
+              <div class="compact-row">
+                <div><span class="jury-name">Qari Nazim Patel</span><span class="status">Available</span></div>
+                <button class="select-btn" type="button">Select</button>
+              </div>
+              <div class="compact-row">
+                <div><span class="jury-name">Maulana Ubaidullah Imtiaz</span><span class="status">Available</span></div>
+                <button class="select-btn" type="button">Select</button>
+              </div>
+              <div class="compact-row">
+                <div><span class="jury-name">Mufti Saad Gulam Mustafa</span><span class="status">Available</span></div>
+                <button class="select-btn" type="button">Select</button>
+              </div>
+              <div class="compact-row">
+                <div><span class="jury-name">Hafiz Suleiman</span><span class="status">Available</span></div>
+                <button class="select-btn" type="button">Select</button>
+              </div>
+            </div>
+
+            <p class="small-note">The confirmation step appears after selection.</p>
+            <button class="secondary-action" type="button">Use a jury QR code instead</button>
+          </div>
+        </div>
+      </article>
+    </div>
+  </main>
+</body>
+</html>

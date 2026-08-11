@@ -81,10 +81,12 @@ test.describe("/jury: config-driven evaluation flow (demo-2026, CAT_A)", () => {
     // Tab count = config.categories.CAT_A.questionCount (2), with pages
     // straight from participant.assignedQuestions — never a hardcoded
     // category shape.
-    await expect(page.getByText("Q1")).toBeVisible();
-    await expect(page.getByText("Page 27")).toBeVisible();
-    await expect(page.getByText("Q2")).toBeVisible();
-    await expect(page.getByText("Page 76")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Q1 Page 27" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Q2 Page 76" })
+    ).toBeVisible();
 
     // Section labels come straight from config.questionTypes (ordered),
     // never a hardcoded hifdh/tajweed/bonus block.
@@ -98,6 +100,89 @@ test.describe("/jury: config-driven evaluation flow (demo-2026, CAT_A)", () => {
     // The participant-level adjustment (overall bonus) comes from
     // config.participantAdjustments.
     await expect(page.getByText("Overall Bonus").first()).toBeVisible();
+  });
+
+  test("opens and closes the participant's active Quran page", async ({
+    page,
+  }) => {
+    const sheet = page.locator("#jury-active-quran-page");
+    const openButton = page.getByRole("button", {
+      name: "Open active Quran page",
+    });
+
+    await expect(openButton).toHaveAttribute("aria-expanded", "false");
+    await expect(sheet).toHaveAttribute("aria-hidden", "true");
+
+    await openButton.click();
+
+    const closeButton = page.getByRole("button", {
+      name: "Close Quran page",
+    });
+    await expect(closeButton).toHaveAttribute("aria-expanded", "true");
+    await expect(sheet).toHaveAttribute("aria-hidden", "false");
+    await expect(
+      sheet.locator('img[src="/quran/mushaf-v1/27.webp"]')
+    ).toBeVisible();
+
+    await closeButton.click();
+
+    await expect(openButton).toHaveAttribute("aria-expanded", "false");
+    await expect(sheet).toHaveAttribute("aria-hidden", "true");
+  });
+
+  test("packs scoring inputs into compact cells at narrow widths", async ({
+    page,
+  }) => {
+    const groupGrid = page.getByTestId("score-form-group-grid");
+    const groups = groupGrid.getByTestId("score-category");
+    await expect(groups).toHaveCount(4);
+
+    const hifdhGroup = await groups.nth(0).boundingBox();
+    const tajweedGroup = await groups.nth(1).boundingBox();
+    const presentationGroup = await groups.nth(2).boundingBox();
+    const adjustmentGroup = await groups.nth(3).boundingBox();
+    const groupGridBox = await groupGrid.boundingBox();
+    if (
+      !hifdhGroup ||
+      !tajweedGroup ||
+      !presentationGroup ||
+      !adjustmentGroup ||
+      !groupGridBox
+    ) {
+      throw new Error("The scoring groups are not visible");
+    }
+
+    expect(Math.abs(hifdhGroup.y - tajweedGroup.y)).toBeLessThan(2);
+    expect(Math.abs(hifdhGroup.y - presentationGroup.y)).toBeLessThan(2);
+    expect(hifdhGroup.width).toBeGreaterThan(tajweedGroup.width);
+    expect(tajweedGroup.width).toBeGreaterThan(presentationGroup.width);
+    expect(adjustmentGroup.y).toBeGreaterThan(hifdhGroup.y);
+    expect(adjustmentGroup.width).toBeGreaterThan(groupGridBox.width * 0.95);
+
+    await page.setViewportSize({ width: 620, height: 900 });
+
+    const inputGrids = page.getByTestId("score-category-input-grid");
+    const firstSectionInputs = inputGrids.first().locator(":scope > div");
+    await expect(firstSectionInputs).toHaveCount(3);
+
+    const firstInputBox = await firstSectionInputs.nth(0).boundingBox();
+    const secondInputBox = await firstSectionInputs.nth(1).boundingBox();
+    const thirdInputBox = await firstSectionInputs.nth(2).boundingBox();
+    if (!firstInputBox || !secondInputBox || !thirdInputBox) {
+      throw new Error("The first scoring inputs are not visible");
+    }
+    expect(Math.abs(firstInputBox.y - secondInputBox.y)).toBeLessThan(2);
+    expect(thirdInputBox.y).toBeGreaterThan(firstInputBox.y);
+
+    const bonusGrid = inputGrids.last();
+    const bonusGridBox = await bonusGrid.boundingBox();
+    const sliderBox = await bonusGrid
+      .getByTestId("slider-input-Overall Bonus")
+      .boundingBox();
+    if (!bonusGridBox || !sliderBox) {
+      throw new Error("The bonus slider is not visible");
+    }
+    expect(sliderBox.width).toBeGreaterThan(bonusGridBox.width * 0.9);
   });
 
   test("the void-warning highlight fires generically from config.overrideRules, not a hardcoded threshold", async ({
@@ -141,8 +226,7 @@ test.describe("/jury: config-driven evaluation flow (demo-2026, CAT_A)", () => {
     // clearTimeout it) before the tab switch takes effect.
     const fluencyIncrease = page.getByRole("button", { name: "Fluency Increase score" });
     await fluencyIncrease.click();
-    await page.getByText("Q2").click();
-    await expect(page.getByText("Page 76")).toBeVisible();
+    await page.getByRole("button", { name: "Q2 Page 76" }).click();
 
     // The Q1 edit must still land in Firestore even though the tab switch
     // happened before the debounce timer would have fired.
@@ -156,8 +240,7 @@ test.describe("/jury: config-driven evaluation flow (demo-2026, CAT_A)", () => {
     // Switching back to Q1 must show the flushed value (1), not a stale
     // pre-edit default (0) -- proving allScores was updated (not
     // clobbered) by the time ScoreForm reloads the question.
-    await page.getByText("Q1").click();
-    await expect(page.getByText("Page 27")).toBeVisible();
+    await page.getByRole("button", { name: "Q1 Page 27" }).click();
     await expect(page.getByTestId("score-input-Fluency")).toContainText("1");
 
     // Restore Q1's fluency back to its default (0) and let that save land,
@@ -189,8 +272,7 @@ test.describe("/jury: config-driven evaluation flow (demo-2026, CAT_A)", () => {
       .toBe(1);
 
     // Move to Q2 (page 76) and leave it at defaults (all zero).
-    await page.getByText("Q2").click();
-    await expect(page.getByText("Page 76")).toBeVisible();
+    await page.getByRole("button", { name: "Q2 Page 76" }).click();
 
     // Finish the evaluation.
     await page.getByRole("button", { name: /finish/i }).click();

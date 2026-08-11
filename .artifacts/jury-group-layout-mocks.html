@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Jury question group layouts</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --report: #000;
+        --report-line: #303030;
+        --report-muted: #aaa;
+        --canvas: #a2a9b3;
+        --paper: #fff;
+        --ink: #111827;
+        --muted: #657080;
+        --line: #dce0e5;
+        --control: #111827;
+      }
+
+      * { box-sizing: border-box; }
+      html { background: #000; }
+      body { margin: 0; background: #000; color: #fff; font-family: "Helvetica Neue", Arial, sans-serif; }
+      button { font: inherit; }
+
+      .document { width: min(100%, 1500px); margin: 0 auto; padding: 28px clamp(16px, 3vw, 44px) 60px; }
+      .intro { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 460px); gap: 30px; align-items: end; padding-bottom: 22px; border-bottom: 1px solid var(--report-line); }
+      h1 { margin: 0; max-width: 900px; font-size: clamp(30px, 4vw, 54px); font-weight: 650; letter-spacing: -0.045em; line-height: 0.98; }
+      .intro p { margin: 0; color: var(--report-muted); font-size: 14px; line-height: 1.5; }
+
+      .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0 28px; color: var(--report-muted); font-size: 13px; }
+      .size-controls { display: flex; gap: 6px; }
+      .size-control { padding: 7px 10px; border: 1px solid #555; border-radius: 0; background: transparent; color: #ddd; cursor: pointer; }
+      .size-control.active { border-color: #fff; background: #fff; color: #000; }
+      .size-control:focus-visible { outline: 3px solid #f1c644; outline-offset: 2px; }
+
+      .variants { display: grid; gap: 42px; }
+      .variant { border-top: 1px solid var(--report-line); padding-top: 16px; }
+      .variant-heading { display: grid; grid-template-columns: 34px minmax(0, 1fr) minmax(260px, 440px); gap: 12px; align-items: start; margin-bottom: 14px; }
+      .letter { width: 29px; height: 29px; display: grid; place-items: center; border: 1px solid #666; font: 700 12px/1 ui-monospace, monospace; }
+      .variant h2 { margin: 1px 0 4px; font-size: 20px; letter-spacing: -0.02em; }
+      .variant-heading p, .verdict { margin: 0; color: var(--report-muted); font-size: 12px; line-height: 1.5; }
+      .recommended { color: #a5dec6; font-weight: 750; }
+
+      .stage { width: min(100%, 1280px); margin: 0 auto; overflow: hidden; border: 1px solid #555; background: var(--canvas); color: var(--ink); }
+      body.medium .stage { width: min(100%, 960px); }
+      body.wide .stage { width: min(100%, 1280px); }
+      .app-header { min-height: 58px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 16px; background: #fff; border-bottom: 1px solid #d8dce1; }
+      .app-header strong { font-size: 14px; }
+      .participant { color: var(--muted); font-size: 11px; text-align: right; }
+      .participant b { display: block; color: var(--ink); font-size: 12px; }
+      .score-page { padding: 14px; }
+      .tabs { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+      .tab, .finish { border: 1px solid #2b313a; border-radius: 4px; background: #fff; color: var(--ink); padding: 6px 12px; font-size: 10px; }
+      .tab.active, .finish { background: var(--control); color: #fff; }
+      .finish { margin-left: auto; font-weight: 700; }
+
+      .groups { gap: 12px; }
+      .group { min-width: 0; display: flex; flex-direction: column; padding: 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); box-shadow: 0 1px 2px rgb(0 0 0 / 8%); }
+      .group-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+      .group-head h3 { margin: 0; font-size: 14px; line-height: 1.2; }
+      .group-head span { color: var(--muted); font-size: 9px; text-align: right; }
+      .inputs { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); grid-auto-rows: 1fr; align-items: stretch; gap: 10px; }
+      .input { min-width: 0; min-height: 72px; height: 100%; display: flex; flex-direction: column; justify-content: center; padding: 9px; border: 1px solid #dfe3e8; border-radius: 5px; background: #fafafa; }
+      .input-main { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .input-label { min-width: 0; color: #55606e; font-size: 10px; line-height: 1.2; }
+      .weight { margin-top: 5px; color: var(--muted); font-size: 9px; }
+      .controls { display: flex; flex-shrink: 0; align-items: center; gap: 4px; }
+      .action, .value { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 3px; font-size: 11px; }
+      .action { border: 0; background: var(--control); color: #fff; }
+      .value { border: 1px solid #8b94a0; background: #fff; font-weight: 700; }
+      .slider { min-height: 64px; }
+      .slider-top { display: flex; justify-content: space-between; color: #55606e; font-size: 10px; }
+      .slider-top b { color: var(--ink); font-size: 12px; }
+      .track { height: 5px; margin-top: 14px; position: relative; background: #e6e8eb; }
+      .track::before { content: ""; position: absolute; inset: 0 45% 0 0; background: var(--control); }
+      .track::after { content: ""; position: absolute; top: 50%; left: 55%; width: 15px; height: 15px; border-radius: 50%; background: #fff; border: 2px solid var(--control); transform: translate(-50%, -50%); }
+
+      /* A: equal columns */
+      .equal .groups { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: stretch; }
+      .equal .group { height: 100%; }
+
+      /* B: flex bento */
+      .flex-bento .groups { display: flex; flex-wrap: wrap; align-items: stretch; }
+      .flex-bento .group { flex: 1 1 240px; }
+      .flex-bento .group[data-size="3"] { flex-grow: 3; }
+      .flex-bento .group[data-size="2"] { flex-grow: 2; }
+      .flex-bento .group[data-size="1"] { flex-grow: 1; }
+      .flex-bento .adjustment { flex-basis: 100%; min-height: 104px; }
+      .flex-bento .adjustment .inputs { grid-template-columns: minmax(240px, 1fr); }
+
+      /* C: dense bento grid */
+      .grid-bento .groups { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-auto-flow: dense; align-items: stretch; }
+      .grid-bento .group[data-size="3"] { grid-column: span 3; }
+      .grid-bento .group[data-size="2"] { grid-column: span 2; }
+      .grid-bento .group[data-size="1"] { grid-column: span 1; }
+      .grid-bento .adjustment { grid-column: 1 / -1; min-height: 104px; }
+      .grid-bento .adjustment .inputs { grid-template-columns: minmax(240px, 1fr); }
+
+      .note { margin: 9px 0 0; color: var(--report-muted); font-size: 11px; line-height: 1.45; }
+
+      body.medium .equal .groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      body.medium .flex-bento .group { flex-basis: calc(50% - 6px); }
+      body.medium .flex-bento .adjustment { flex-basis: 100%; }
+      body.medium .grid-bento .groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      body.medium .grid-bento .group { grid-column: span 1; }
+      body.medium .grid-bento .group[data-size="3"] { grid-column: span 2; }
+      body.medium .grid-bento .adjustment { grid-column: 1 / -1; }
+
+      @media (max-width: 720px) {
+        .intro, .variant-heading { grid-template-columns: 1fr; }
+        .toolbar { flex-direction: column; align-items: flex-start; }
+        .equal .groups, body.medium .equal .groups, .grid-bento .groups, body.medium .grid-bento .groups { grid-template-columns: 1fr; }
+        .grid-bento .group, .grid-bento .group[data-size="3"], .grid-bento .adjustment { grid-column: 1; }
+        .flex-bento .group, body.medium .flex-bento .group { flex-basis: 100%; }
+      }
+    </style>
+  </head>
+  <body class="wide">
+    <main class="document">
+      <section class="intro">
+        <h1>Let each question group earn the space it uses.</h1>
+        <p>All three options stretch the input tiles to the available group height. The difference is how each group claims width and how the layout handles groups with one, two, or three inputs.</p>
+      </section>
+
+      <div class="toolbar">
+        <span>Compare the group behavior at two realistic jury widths.</span>
+        <div class="size-controls" aria-label="Preview width"><button type="button" class="size-control" data-size="medium">960 px</button><button type="button" class="size-control active" data-size="wide">1280 px</button></div>
+      </div>
+
+      <div class="variants">
+        <section class="variant equal">
+          <div class="variant-heading"><div class="letter">A</div><div><h2>Balanced three-column grid</h2><p>Every question group receives one equal column. Inputs stretch to the row height.</p></div><p class="verdict">Predictable and simple. The final one-input group leaves two empty columns on its row.</p></div>
+          <div class="stage"><div class="app-header"><strong>Jury Evaluation</strong><div class="participant"><b>Ahmad Al-Hafiz</b>CAT_A · Page 27</div></div><div class="score-page"><div class="tabs"><button class="tab active" type="button">Q1 · Page 27</button><button class="tab" type="button">Q2 · Page 76</button><button class="finish" type="button">Finish</button></div><div class="groups">
+            <section class="group" data-size="3"><div class="group-head"><h3>Hifdh, memorisation</h3><span>Max 50 pts deduction</span></div><div class="inputs"><div class="input"><div class="input-main"><span class="input-label">Judge correction</span><div class="controls"><span class="value">0</span><button class="action" type="button">+</button></div></div><span class="weight">-3 pts</span></div><div class="input"><div class="input-main"><span class="input-label">Self correction</span><div class="controls"><span class="value">0</span><button class="action" type="button">+</button></div></div><span class="weight">-2 pts</span></div><div class="input"><div class="input-main"><span class="input-label">Times stuck</span><div class="controls"><span class="value">0</span><button class="action" type="button">+</button></div></div><span class="weight">Info</span></div></div></section>
+            <section class="group" data-size="2"><div class="group-head"><h3>Tajweed</h3><span>Max 30 pts deduction</span></div><div class="inputs"><div class="input"><div class="input-main"><span class="input-label">Major mistake</span><div class="controls"><span class="value">0</span><button class="action" type="button">+</button></div></div><span class="weight">-2 pts</span></div><div class="input"><div class="input-main"><span class="input-label">Minor mistake</span><div class="controls"><span class="value">0</span><button class="action" type="button">+</button></div></div><span class="weight">-1 pt</span></div></div></section>
+            <section class="group" data-size="1"><div class="group-head"><h3>Presentation</h3><span>Max +5 pts</span></div><div class="inputs"><div class="input"><div class="input-main"><span class="input-label">Fluency</span><div class="controls"><span class="value">0</span><button class="action" type="button">+</button></div></div><span class="weight">+1 pt</span></div></div></section>
+            <section class="group adjustment" data-size="1"><div class="group-head"><h3>Overall bonus</h3><span>Max +5 pts · participant level</span></div><div class="inputs"><div class="input slider"><div class="slider-top"><span>Overall bonus</span><b>3</b></div><div class="track"></div></div></div></section>
+          </div></div></div><p class="note">Maximum three columns. Row heights are consistent, but the last row can leave unused page width.</p>
+        </section>
+
+        <section class="variant flex-bento">
+          <div class="variant-heading"><div class="letter">B</div><div><h2>Input-weighted flex bento</h2><p><span class="recommended">Recommended if flexbox is the priority.</span> Groups grow in proportion to their input count, then wrap as the viewport narrows.</p></div><p class="verdict">Natural and compact. Widths can shift when event configs add or remove inputs, which makes the result less predictable.</p></div>
+          <div class="stage"><div class="app-header"><strong>Jury Evaluation</strong><div class="participant"><b>Ahmad Al-Hafiz</b>CAT_A · Page 27</div></div><div class="score-page"><div class="tabs"><button class="tab active" type="button">Q1 · Page 27</button><button class="tab" type="button">Q2 · Page 76</button><button class="finish" type="button">Finish</button></div><div class="groups">
+            <section class="group" data-size="3"><div class="group-head"><h3>Hifdh, memorisation</h3><span>Max 50 pts deduction</span></div><div class="inputs"><div class="input"><div class="input-main"><span class="input-label">Judge correction</span><div class="controls"><span class="value">0</span><button class="action" type="button">+</button></div></div><span class="weight">-3 pts</span></div><div class="input"><div class="input-main"><span class="input-label">Self correction</span><div class="controls"><span class="value">0</span><button class="action" type="button">+</button></div></div><span class="weight">-2 pts</span></div><div class="input"><div class="input-main"><span class="input-label">Times stuck</span><div class="controls"><span class="value">0</span><button class="action" type="button">+</button></div></div><span class="weight">Info</span></div></div></section>
+            <section class="group" data-size="2"><div class="group-head"><h3>Tajweed</h3><span>Max 30 pts deduction</span></div><div class="inputs"><div class="input"><div class="input-main"><span class="input-label">Major mistake</span><div class="controls"><span class="value">0</span><button class="action" type="button">+</button></div></div><span class="weight">-2 pts</span></div><div class="input"><div class="input-main"><span class="input-label">Minor mistake</span><div class="controls"><span class="value">0</span><button class="action" type="button">+</button></div></div><span class="weight">-1 pt</span></div></div></section>
+            <section class="group" data-size="1"><div class="group-head"><h3>Presentation</h3><span>Max +5 pts</span></div><div class="inputs"><div class="input"><div class="input-main"><span class="input-label">Fluency</span><div class="controls"><span class="value">0</span><button class="action" type="button">+</button></div></div><span class="weight">+1 pt</span></div></div></section>
+            <section class="group adjustment" data-size="1"><div class="group-head"><h3>Overall bonus</h3><span>Max +5 pts · participant level</span></div><div class="inputs"><div class="input slider"><div class="slider-top"><span>Overall bonus</span><b>3</b></div><div class="track"></div></div></div></section>
+          </div></div></div><p class="note">Up to three groups fit on a row. Input count drives each group's flex-grow value, while the bonus remains a shallow full-width strip.</p>
+        </section>
+
+        <section class="variant grid-bento">
+          <div class="variant-heading"><div class="letter">C</div><div><h2>Dense bento grid</h2><p><span class="recommended">Recommended overall.</span> A six-track grid maps one input to one track and caps each row at three question groups.</p></div><p class="verdict">Most predictable and easiest to test. It creates the bento result flexbox is trying to approximate, with explicit spans and stable wrapping.</p></div>
+          <div class="stage"><div class="app-header"><strong>Jury Evaluation</strong><div class="participant"><b>Ahmad Al-Hafiz</b>CAT_A · Page 27</div></div><div class="score-page"><div class="tabs"><button class="tab active" type="button">Q1 · Page 27</button><button class="tab" type="button">Q2 · Page 76</button><button class="finish" type="button">Finish</button></div><div class="groups">
+            <section class="group" data-size="3"><div class="group-head"><h3>Hifdh, memorisation</h3><span>Max 50 pts deduction</span></div><div class="inputs"><div class="input"><div class="input-main"><span class="input-label">Judge correction</span><div class="controls"><span class="value">0</span><button class="action" type="button">+</button></div></div><span class="weight">-3 pts</span></div><div class="input"><div class="input-main"><span class="input-label">Self correction</span><div class="controls"><span class="value">0</span><button class="action" type="button">+</button></div></div><span class="weight">-2 pts</span></div><div class="input"><div class="input-main"><span class="input-label">Times stuck</span><div class="controls"><span class="value">0</span><button class="action" type="button">+</button></div></div><span class="weight">Info</span></div></div></section>
+            <section class="group" data-size="2"><div class="group-head"><h3>Tajweed</h3><span>Max 30 pts deduction</span></div><div class="inputs"><div class="input"><div class="input-main"><span class="input-label">Major mistake</span><div class="controls"><span class="value">0</span><button class="action" type="button">+</button></div></div><span class="weight">-2 pts</span></div><div class="input"><div class="input-main"><span class="input-label">Minor mistake</span><div class="controls"><span class="value">0</span><button class="action" type="button">+</button></div></div><span class="weight">-1 pt</span></div></div></section>
+            <section class="group" data-size="1"><div class="group-head"><h3>Presentation</h3><span>Max +5 pts</span></div><div class="inputs"><div class="input"><div class="input-main"><span class="input-label">Fluency</span><div class="controls"><span class="value">0</span><button class="action" type="button">+</button></div></div><span class="weight">+1 pt</span></div></div></section>
+            <section class="group adjustment" data-size="1"><div class="group-head"><h3>Overall bonus</h3><span>Max +5 pts · participant level</span></div><div class="inputs"><div class="input slider"><div class="slider-top"><span>Overall bonus</span><b>3</b></div><div class="track"></div></div></div></section>
+          </div></div></div><p class="note">Three question groups share the first row in a 3:2:1 ratio. The participant-level adjustment becomes a short strip below them.</p>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const controls = document.querySelectorAll(".size-control");
+      controls.forEach((control) => {
+        control.addEventListener("click", () => {
+          document.body.classList.remove("medium", "wide");
+          document.body.classList.add(control.dataset.size);
+          controls.forEach((item) => item.classList.toggle("active", item === control));
+        });
+      });
+    </script>
+  </body>
+</html>

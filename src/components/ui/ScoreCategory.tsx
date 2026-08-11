@@ -1,9 +1,12 @@
 import { Card } from "../shadcn/card";
-import { ScoreInput } from "./ScoreInput";
-import { SliderInput } from "./SliderInput";
-import { ReactNode } from "react";
+import { EvaluationInputControl } from "./EvaluationInputControl";
 import { useTranslation } from "react-i18next";
-import type { EvaluationInputDefinition } from "@/evaluation/types";
+import type {
+  EvaluationInputDefinition,
+  QuestionTypeDefinition,
+} from "@/evaluation/types";
+
+type EvaluationOperation = QuestionTypeDefinition["operation"];
 
 interface ScoreCategoryProps {
   title: string;
@@ -11,16 +14,21 @@ interface ScoreCategoryProps {
   /** Ordered input definitions for this section, straight from the event's
    * config — never a hardcoded field list. */
   inputs: readonly EvaluationInputDefinition[];
+  operation: EvaluationOperation;
   values: Record<string, number>;
   onValueChange: (inputId: string, value: number) => void;
   disabled?: boolean;
   className?: string;
-  customInput?: ReactNode;
 }
 
-function inputCaption(input: EvaluationInputDefinition, infoLabel: string): string {
+function inputCaption(
+  input: EvaluationInputDefinition,
+  operation: EvaluationOperation,
+  infoLabel: string
+): string {
   if (input.role === "scored") {
-    return `×${input.perInputWeight} pts`;
+    const sign = operation === "subtract" ? "-" : "+";
+    return `${sign}${input.perInputWeight} pts`;
   }
   return infoLabel;
 }
@@ -29,66 +37,47 @@ export const ScoreCategory = ({
   title,
   subtitle,
   inputs,
+  operation,
   values,
   onValueChange,
   disabled = false,
   className = "",
-  customInput,
 }: ScoreCategoryProps) => {
   const { t } = useTranslation();
 
-  // Determine grid class based on input count (bounded 1..4 columns).
-  const cols = Math.min(Math.max(inputs.length, 1), 4);
-  const gridColsClass = `grid-cols-${cols}`;
-
-  if (customInput) {
-    return (
-      <Card className={`p-4 ${className}`}>
-        <div className="flex flex-row mb-2 justify-between align-baseline">
-          <h3 className="text-lg font-semibold">{title}</h3>
-          {subtitle && (
-            <span className="text-sm text-muted-foreground">{subtitle}</span>
-          )}
-        </div>
-        {customInput}
-      </Card>
-    );
-  }
-
   return (
-    <Card className={`p-4 ${className}`}>
-      <div className="flex flex-row mb-2 justify-between align-baseline">
-        <h3 className="text-lg font-semibold">{title}</h3>
+    <Card
+      data-testid="score-category"
+      className={`flex h-full flex-col p-3 ${className}`}
+    >
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <h3 className="text-base font-semibold leading-tight">{title}</h3>
         {subtitle && (
-          <span className="text-sm text-muted-foreground">{subtitle}</span>
+          <span className="text-right text-xs text-muted-foreground">
+            {subtitle}
+          </span>
         )}
       </div>
-      <div className={`grid ${gridColsClass} gap-4`}>
+      <div
+        data-testid="score-category-input-grid"
+        className="grid flex-1 auto-rows-fr grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))] gap-3"
+      >
         {inputs.map((input) => (
-          <div key={input.id} className="flex flex-col items-center">
-            {input.control === "slider" ? (
-              <SliderInput
-                label={input.label.default}
+          <div key={input.id} className="flex min-w-0 flex-col">
+            <div className="flex flex-1">
+              <EvaluationInputControl
+                input={input}
                 value={values[input.id] ?? input.min}
                 onChange={(value) => onValueChange(input.id, value)}
                 disabled={disabled}
-                min={input.min}
-                max={input.max}
-                step={input.step}
               />
-            ) : (
-              <ScoreInput
-                label={input.label.default}
-                value={values[input.id] ?? input.min}
-                onChange={(value) => onValueChange(input.id, value)}
-                disabled={disabled}
-                min={input.min}
-                max={input.max}
-                step={input.step}
-              />
-            )}
-            <span className="text-xs text-center mt-1 font-medium text-muted-foreground w-full">
-              {inputCaption(input, t("jury.categories.informational", "Info"))}
+            </div>
+            <span className="mt-1 block w-full text-left text-[11px] font-medium leading-none text-muted-foreground">
+              {inputCaption(
+                input,
+                operation,
+                t("jury.categories.informational", "Info")
+              )}
             </span>
           </div>
         ))}

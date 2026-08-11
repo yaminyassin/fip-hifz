@@ -113,7 +113,7 @@ export const QuestionTabs = ({
                 key={questionNumber}
                 variant={isSelected ? "default" : "outline"}
                 size="sm"
-                className="min-w-[80px]"
+                className="min-w-[72px] px-2"
                 onClick={() => handleTabClick(questionNumber)}
                 disabled={disabled || isDisabled}
               >

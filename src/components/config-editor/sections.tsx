@@ -239,7 +239,7 @@ export function QuestionTypesSection({ draft, dispatch, disabled }: SectionProps
                     {qt.inputs.map((input) => (
                       <div
                         key={input.id}
-                        className="grid gap-3 rounded border border-border/50 p-2 sm:grid-cols-3 lg:grid-cols-6"
+                        className="grid gap-3 rounded border border-border/50 p-2 sm:grid-cols-3 lg:grid-cols-7"
                         data-testid={`qt-${qt.id}-input-${input.id}`}
                       >
                         <TextField
@@ -278,6 +278,38 @@ export function QuestionTypesSection({ draft, dispatch, disabled }: SectionProps
                               questionTypeId: qt.id,
                               inputId: input.id,
                               patch: { role: value },
+                            })
+                          }
+                        />
+                        <SelectField
+                          label={t("configEditor.inputs.control")}
+                          value={input.control}
+                          disabled={disabled}
+                          testId={`qt-${qt.id}-input-${input.id}-control`}
+                          options={[
+                            {
+                              value: "integerCounter",
+                              label: t("configEditor.inputs.counter"),
+                            },
+                            {
+                              value: "incrementButton",
+                              label: t("configEditor.inputs.incrementButton"),
+                            },
+                            {
+                              value: "slider",
+                              label: t("configEditor.inputs.slider"),
+                            },
+                            {
+                              value: "decimalCounter",
+                              label: t("configEditor.inputs.decimal"),
+                            },
+                          ]}
+                          onChange={(value) =>
+                            dispatch({
+                              type: "setInput",
+                              questionTypeId: qt.id,
+                              inputId: input.id,
+                              patch: { control: value },
                             })
                           }
                         />

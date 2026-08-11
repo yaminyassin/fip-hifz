@@ -2,7 +2,6 @@ import { useTranslation } from "react-i18next";
 import { useCallback, useEffect } from "react";
 import { ScoreCategory } from "./ScoreCategory";
 import { QuestionTabs } from "./QuestionTabs";
-import { SliderInput } from "./SliderInput";
 import { Button } from "@/components/shadcn/button";
 import { Jury, Participant } from "../../models/models";
 import { useEvent } from "@/contexts/EventContext";
@@ -44,6 +43,12 @@ interface ScoreFormProps {
   onRetryLoad: () => void;
   onDismissSaveError: () => void;
   onDismissFinishError: () => void;
+}
+
+function questionGroupSpanClass(inputCount: number): string {
+  if (inputCount >= 3) return "md:col-span-2 xl:col-span-3";
+  if (inputCount === 2) return "xl:col-span-2";
+  return "xl:col-span-1";
 }
 
 /**
@@ -211,14 +216,17 @@ export const ScoreForm = ({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
+      <div
+        data-testid="score-form-group-grid"
+        className="grid grid-cols-1 items-stretch gap-3 [grid-auto-flow:dense] md:grid-cols-2 xl:grid-cols-6"
+      >
         {orderedQuestionTypes.map(([sectionId, section]) => {
           const orderedInputs = section.inputs.slice().sort((a, b) => a.order - b.order);
           const cap = section.operation === "subtract" ? section.perSectionDeductionCap : section.perSectionAdditionCap;
           const capLabel =
             section.operation === "subtract"
-              ? t("jury.categories.maxDeduction", "Max {{cap}} pts deduction", { cap })
-              : t("jury.categories.maxAddition", "Max +{{cap}} pts", { cap });
+              ? t("jury.categories.maxDeduction", { cap })
+              : t("jury.categories.maxAddition", { cap });
 
           return (
             <ScoreCategory
@@ -226,57 +234,57 @@ export const ScoreForm = ({
               title={section.label.default}
               subtitle={capLabel}
               inputs={orderedInputs}
+              operation={section.operation}
               disabled={isDisabled}
               values={currentScores[sectionId] ?? {}}
               onValueChange={(inputId, value) => handleScoreChange(sectionId, inputId, value)}
-              className={sectionId === orderedQuestionTypes[0]?.[0] ? voidWarningClass : ""}
+              className={`${questionGroupSpanClass(orderedInputs.length)} ${
+                sectionId === orderedQuestionTypes[0]?.[0]
+                  ? voidWarningClass
+                  : ""
+              }`}
             />
           );
         })}
-      </div>
 
-      {/* Participant-level adjustments (e.g. overall bonus) */}
-      {orderedAdjustments.map(([adjustmentId, adjustment]) => {
-        const cap = adjustment.operation === "subtract" ? adjustment.deductionCap : adjustment.additionCap;
-        const capLabel =
-          adjustment.operation === "subtract"
-            ? t("jury.categories.maxDeduction", "Max {{cap}} pts deduction", { cap })
-            : t("jury.categories.maxAddition", "Max +{{cap}} pts", { cap });
-        const orderedInputs = adjustment.inputs.slice().sort((a, b) => a.order - b.order);
+        {orderedAdjustments.length > 0 && (
+          <div className="col-span-full flex flex-wrap items-stretch gap-3">
+            {orderedAdjustments.map(([adjustmentId, adjustment]) => {
+              const cap =
+                adjustment.operation === "subtract"
+                  ? adjustment.deductionCap
+                  : adjustment.additionCap;
+              const capLabel =
+                adjustment.operation === "subtract"
+                  ? t("jury.categories.maxDeduction", { cap })
+                  : t("jury.categories.maxAddition", { cap });
+              const orderedInputs = adjustment.inputs
+                .slice()
+                .sort((a, b) => a.order - b.order);
 
-        return (
-          <ScoreCategory
-            key={adjustmentId}
-            title={adjustment.label.default}
-            subtitle={`${capLabel} - ${t("jury.categories.participant_level_bonus")}`}
-            inputs={[]}
-            values={{}}
-            onValueChange={() => {}}
-            customInput={
-              <div className="flex flex-col items-center space-y-4">
-                {orderedInputs.map((input) => (
-                  <div key={input.id} className="w-full max-w-md">
-                    <SliderInput
-                      label={input.label.default}
-                      value={adjustmentValues[adjustmentId]?.[input.id] ?? input.min}
-                      onChange={(value) => onAdjustmentChange(adjustmentId, input.id, value)}
-                      disabled={isDisabled}
-                      min={input.min}
-                      max={input.max}
-                      step={input.step}
-                    />
-                  </div>
-                ))}
-                <div className="text-center">
-                  <span className="text-xs text-muted-foreground">
-                    {t("jury.categories.overall_bonus_description")}
-                  </span>
+              return (
+                <div
+                  key={adjustmentId}
+                  className="min-w-full flex-1 sm:min-w-64"
+                  style={{ flexGrow: Math.max(orderedInputs.length, 1) }}
+                >
+                  <ScoreCategory
+                    title={adjustment.label.default}
+                    subtitle={`${capLabel} - ${t("jury.categories.participant_level_bonus")}`}
+                    inputs={orderedInputs}
+                    operation={adjustment.operation}
+                    values={adjustmentValues[adjustmentId] ?? {}}
+                    onValueChange={(inputId, value) =>
+                      onAdjustmentChange(adjustmentId, inputId, value)
+                    }
+                    disabled={isDisabled}
+                  />
                 </div>
-              </div>
-            }
-          />
-        );
-      })}
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

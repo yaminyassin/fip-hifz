@@ -16,6 +16,15 @@ export type QuestionTypeId = string;
 export type AdjustmentTypeId = string;
 export type InputId = string;
 
+export const INPUT_CONTROL_VALUES = [
+  "integerCounter",
+  "decimalCounter",
+  "incrementButton",
+  "slider",
+] as const;
+
+export type InputControl = (typeof INPUT_CONTROL_VALUES)[number];
+
 export type EvaluationMode = "legacy-lisbon-display-v1" | "jury-first-v2";
 
 export interface EventEvaluationDescriptorV2 {
@@ -86,7 +95,7 @@ export interface InputDefinitionCommon {
   id: InputId;
   label: LocalizedText;
   order: number;
-  control: "integerCounter" | "decimalCounter" | "slider";
+  control: InputControl;
   min: number;
   max: number;
   step: number;
